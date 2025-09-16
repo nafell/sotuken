@@ -2,14 +2,15 @@
   "configVersion": "v1",
   "weightsVersion": "v1",
   "weights": {
-    "importance": 0.28,
-    "urgency": 0.22,
-    "relief": 0.18,
+    "importance": 0.25,
+    "urgency": 0.20,
+    "cognitiveRelief": 0.18,
     "deadlineProximity": 0.12,
-    "contextFit": 0.12,
+    "contextFit": 0.10,
     "timeFit": 0.06,
     "staleness": 0.05,
     "energyMatch": 0.04,
+    "brainFogLevel": 0.07,
     "switchCost": -0.07
   },
   "uiNoveltyPolicy": {

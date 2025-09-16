@@ -3,8 +3,8 @@
 このドキュメントは、研究プロジェクトとしての要件（再現性・実験容易性）を満たしつつ、実装を効率化するための技術的な説明をまとめたものです。研究手法に関する事項には「注釈（研究意図）」を付け、なぜ必要かを明確にしています。
 
 ## 1. 目的と全体像
-- iOSアプリで「心配事」を外在化し、状況に合った UI と優先付けで着手を後押しします。
-- UI はサーバ側 LLM（Gemini 2.5 Flash-Lite）で毎回 JSON DSL を生成し、アプリ内 WebView で描画します。
+- iOSアプリ「頭の棚卸しノート」で「関心事・気掛かり」を外在化し、脳のキャッシュメンテナンスとワーキングメモリ拡張を実現します。
+- CBTフロー（実態把握→方針立案→細分化）で段階的に具体化、細分化フェーズでUIはサーバ側 LLM（Gemini 2.5 Flash-Lite）で毎回 JSON DSL を生成。
 - 再現性最優先: サーバで設定を凍結し、同一入力→同一出力を目指します。
 
 注釈（研究意図）: 実験の信頼性を担保するため、設定・モデル・乱数種（seed）を固定し、同条件であれば同じ UI を再生成できるようにします。
@@ -91,7 +91,7 @@ curl -X POST http://localhost:3000/v1/ui/generate -H 'Content-Type: application/
 注釈（研究意図）: ADHD 傾向ユーザは新規性が着手を促す一方、過刺激は逆効果。実験で最適領域を探索するため、上限と閾値を固定し効果を評価します。
 
 ## 8. 優先スコアリング（プリセット）
-スコア例: importance, urgency, relief, deadlineProximity, contextFit, timeFit, staleness, energyMatch, switchCost を線形結合。
+関心事・タスクのスコア例: importance, urgency, cognitive_relief, deadlineProximity, contextFit, timeFit, staleness, energyMatch, switchCost を線形結合。
 
 注釈（研究意図）: 初期は個人化を避け、プリセットで固定。これにより群間比較が可能になり、効果を純粋に測定できます（再現性）。
 
@@ -99,7 +99,7 @@ curl -X POST http://localhost:3000/v1/ui/generate -H 'Content-Type: application/
 - 送信先: `POST /v1/events/batch`
 - バリデーション: `specs/events-schema.json`
 - 共通フィールド: `eventId`, `userAnonId`, `ts`, `configVersion`, `abCondition`, `responseId?`, `contextHash?`
-- 主要イベント: `ui_generated`, `ui_rendered`, `card_clicked`, `action_executed`, `task_completed`, `notification_shown/clicked`, `self_reported_mood`
+- 主要イベント: `ui_generated`, `ui_rendered`, `card_clicked`, `action_executed`, `concern_organized`, `task_completed`, `notification_shown/clicked`, `cognitive_load_reported`
 
 注釈（研究意図）: 全イベントに `configVersion` と `responseId`（可能なもの）を付与し、後から当時の UI を再生（リプレイ）できるようにします。
 
@@ -125,13 +125,17 @@ curl -X POST http://localhost:3000/v1/ui/generate -H 'Content-Type: application/
 注釈（研究意図）: 研究公開用データセットを個人に逆照合できない形に保つため、ハッシュ化や区分化に徹します。
 
 ## 13. iOS/クライアント実装の目安
-- シェル: SwiftUI + WKWebView（ダイナミックキャンバス）
-- 初期フロー:
-  1. `GET /v1/config` で設定受領
-  2. コンテキスト要約を作成
-  3. `POST /v1/ui/generate` で DSL を受領
-  4. Web レンダラに DSL を渡して描画
-  5. 主要操作を `/v1/events/batch` に送信
+- シェル: SwiftUI + WKWebView（細分化フェーズの動的UI用）
+- CBTフロー初期（実態把握→方針立案）:
+  1. 関心事の自由入力
+  2. 関心度・切迫度測定
+  3. 性質分類とアプローチ選択
+- 細分化フェーズ（動的UI）:
+  4. `GET /v1/config` で設定受領
+  5. 関心事データ＋コンテキスト要約を作成
+  6. `POST /v1/ui/generate` で DSL を受領
+  7. Web レンダラに DSL を渡して描画
+  8. 主要操作を `/v1/events/batch` に送信
 - 失敗時: 直近キャッシュ DSL か固定テンプレにフォールバック
 
 ## 14. Web レンダラ（概要）

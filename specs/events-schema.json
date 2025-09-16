@@ -106,15 +106,32 @@
         }
       ]
     },
-    "SelfReportedMood": {
+    "ConcernOrganized": {
       "allOf": [
         { "$ref": "#/definitions/Base" },
         {
           "type": "object",
           "properties": {
-            "type": { "const": "self_reported_mood" },
-            "anxietyBefore": { "type": ["integer", "null"], "minimum": 0, "maximum": 10 },
-            "anxietyAfter": { "type": ["integer", "null"], "minimum": 0, "maximum": 10 }
+            "type": { "const": "concern_organized" },
+            "concernId": { "type": "string" },
+            "phase": { "type": "string", "enum": ["reality_check", "planning", "breakdown"] },
+            "completion": { "type": "boolean" }
+          },
+          "required": ["concernId", "phase"]
+        }
+      ]
+    },
+    "CognitiveLoadReported": {
+      "allOf": [
+        { "$ref": "#/definitions/Base" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "cognitive_load_reported" },
+            "workingMemoryUsageBefore": { "type": ["integer", "null"], "minimum": 0, "maximum": 100 },
+            "workingMemoryUsageAfter": { "type": ["integer", "null"], "minimum": 0, "maximum": 100 },
+            "clarityLevel": { "type": ["string", "null"], "enum": ["very_clear", "somewhat_clear", "still_foggy"] },
+            "brainFogImprovement": { "type": ["boolean", "null"] }
           }
         }
       ]
@@ -125,9 +142,10 @@
         { "$ref": "#/definitions/UiRendered" },
         { "$ref": "#/definitions/CardClicked" },
         { "$ref": "#/definitions/ActionExecuted" },
+        { "$ref": "#/definitions/ConcernOrganized" },
         { "$ref": "#/definitions/TaskCompleted" },
         { "$ref": "#/definitions/Notification" },
-        { "$ref": "#/definitions/SelfReportedMood" },
+        { "$ref": "#/definitions/CognitiveLoadReported" },
         { "$ref": "#/definitions/Base" }
       ]
     }

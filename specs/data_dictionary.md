@@ -8,7 +8,7 @@
 - `contextHash`: サーバ送信前に要約/ハッシュ化したコンテキスト。
 
 ### ConfigSnapshot
-- `weights`: 優先スコア重み（`importance/urgency/relief/...`）。
+- `weights`: 優先スコア重み（`importance/urgency/cognitiveRelief/brainFogLevel/...`）。
 - `uiNoveltyPolicy`: `lowThreshold/highThreshold/dailyBudget` と表示制約。
 - `model`: モデル名・バージョンと決定論パラメータ。
 
@@ -23,9 +23,10 @@
 - `ui_rendered`: 表示完了。
 - `card_clicked`: カード押下。`cardId`。
 - `action_executed`: アクション実行。`actionId`, `result?`。
+- `concern_organized`: 関心事整理完了。`concernId`, `phase`（reality_check/planning/breakdown）, `completion`。
 - `task_completed`: タスク完了。`taskId`。
 - `notification_shown/clicked`: 通知表示/クリック。`notificationId`。
-- `self_reported_mood`: 不安の自己申告。`anxietyBefore/After`（0–10）。
+- `cognitive_load_reported`: 認知負荷の自己申告。`workingMemoryUsageBefore/After`（0–100）, `clarityLevel`（very_clear/somewhat_clear/still_foggy）, `brainFogImprovement`。
 
 ### 保持期間
 - 研究データ: 180日

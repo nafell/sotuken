@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: Concern App API
+  title: Mind Inventory Note API
   version: 0.1.0
-  description: Anonymous server-side APIs for dynamic UI generation, scoring, config distribution, event ingestion, and replay.
+  description: Anonymous server-side APIs for "頭の棚卸しノート" - dynamic UI generation for concern organization, CBT flow support, scoring, config distribution, event ingestion, and replay.
 servers:
   - url: https://api.example.com
 paths:
@@ -154,11 +154,13 @@ components:
       type: object
       properties:
         id: { type: string }
-        kind: { type: string, enum: [task, concern] }
+        kind: { type: string, enum: [task, concern, organized_concern] }
         title: { type: string }
         importance: { type: number }
         urgency: { type: number }
+        cognitiveLoad: { type: number }
         dueAt: { type: string, format: date-time, nullable: true }
+        cbtPhase: { type: string, enum: [reality_check, planning, breakdown], nullable: true }
       required: [id, kind, title]
     UiGenerateRequest:
       type: object
@@ -170,6 +172,7 @@ components:
           items: { $ref: '#/components/schemas/CandidateItem' }
         availableTimeMin: { type: integer }
         energy: { type: integer }
+        workingMemoryUsage: { type: integer }
         configVersion: { type: string }
       required: [userAnonId, contextSnapshot]
     UiGenerateResponse:

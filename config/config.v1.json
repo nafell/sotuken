@@ -1,0 +1,39 @@
+{
+  "configVersion": "v1",
+  "weightsVersion": "v1",
+  "weights": {
+    "importance": 0.28,
+    "urgency": 0.22,
+    "relief": 0.18,
+    "deadlineProximity": 0.12,
+    "contextFit": 0.12,
+    "timeFit": 0.06,
+    "staleness": 0.05,
+    "energyMatch": 0.04,
+    "switchCost": -0.07
+  },
+  "uiNoveltyPolicy": {
+    "lowThreshold": 0.4,
+    "highThreshold": 0.7,
+    "dailyBudget": 2,
+    "layoutHintsCaps": { "motionLevelMax": 1, "colorVarianceMax": 2 }
+  },
+  "dslVersion": "1.1",
+  "notification": { "softCapPerDay": 2, "hardCapPerDay": 3 },
+  "model": {
+    "provider": "google",
+    "name": "gemini-2.5-mini",
+    "version": "2025-02",
+    "parameters": { "temperature": 0.3, "topP": 0.8, "topK": 40 },
+    "determinism": { "seedStrategy": "date+anonId+condition", "allowFallback": true }
+  },
+  "slo": { "availability": 0.999, "p95LatencyMs": 700 },
+  "privacy": {
+    "storePII": false,
+    "contextSendPolicy": "on-device-summary",
+    "healthKitPhase": "phase0"
+  },
+  "retention": { "researchDataDays": 180, "operationalLogsDays": 30 }
+}
+
+

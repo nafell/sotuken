@@ -1,0 +1,234 @@
+openapi: 3.0.3
+info:
+  title: Concern App API
+  version: 0.1.0
+  description: Anonymous server-side APIs for dynamic UI generation, scoring, config distribution, event ingestion, and replay.
+servers:
+  - url: https://api.example.com
+paths:
+  /v1/config:
+    get:
+      summary: Get frozen config snapshot
+      operationId: getConfig
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigSnapshot'
+  /v1/ui/generate:
+    post:
+      summary: Generate UI DSL via LLM (server-side)
+      operationId: generateUi
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UiGenerateRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UiGenerateResponse'
+  /v1/score/rank:
+    post:
+      summary: Rank concerns/tasks with preset weights
+      operationId: scoreRank
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScoreRankRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScoreRankResponse'
+  /v1/events/batch:
+    post:
+      summary: Ingest anonymous analytics events (batch)
+      operationId: ingestEvents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventBatch'
+      responses:
+        '202':
+          description: Accepted
+  /v1/replay/generate:
+    post:
+      summary: Re-generate UI DSL for a past response/session
+      operationId: replayGenerate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplayRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UiGenerateResponse'
+components:
+  schemas:
+    ConfigSnapshot:
+      type: object
+      properties:
+        configVersion:
+          type: string
+        weightsVersion:
+          type: string
+        weights:
+          type: object
+          additionalProperties:
+            type: number
+        uiNoveltyPolicy:
+          type: object
+        dslVersion:
+          type: string
+        notification:
+          type: object
+        model:
+          type: object
+        slo:
+          type: object
+        privacy:
+          type: object
+        retention:
+          type: object
+      required: [configVersion, weightsVersion, weights, dslVersion]
+    ContextSnapshot:
+      type: object
+      properties:
+        time:
+          type: string
+          format: date-time
+        locationKind:
+          type: string
+          enum: [home, work, transit, outdoor, other]
+        activityKind:
+          type: string
+          enum: [stationary, walking, running, driving]
+        battery:
+          type: integer
+          minimum: 0
+          maximum: 100
+        network:
+          type: string
+          enum: [wifi, cellular, offline]
+        calendarSummary:
+          type: object
+          properties:
+            nextEventInMin:
+              type: integer
+            freeBlockMin:
+              type: integer
+        weather:
+          type: object
+          properties:
+            condition: { type: string }
+            temperatureC: { type: number }
+        energySelfReport:
+          type: integer
+          minimum: 0
+          maximum: 10
+        heartRateBand:
+          type: string
+          enum: [low, med, high]
+        hrvBand:
+          type: string
+          enum: [low, med, high]
+    CandidateItem:
+      type: object
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [task, concern] }
+        title: { type: string }
+        importance: { type: number }
+        urgency: { type: number }
+        dueAt: { type: string, format: date-time, nullable: true }
+      required: [id, kind, title]
+    UiGenerateRequest:
+      type: object
+      properties:
+        userAnonId: { type: string }
+        contextSnapshot: { $ref: '#/components/schemas/ContextSnapshot' }
+        topCandidates:
+          type: array
+          items: { $ref: '#/components/schemas/CandidateItem' }
+        availableTimeMin: { type: integer }
+        energy: { type: integer }
+        configVersion: { type: string }
+      required: [userAnonId, contextSnapshot]
+    UiGenerateResponse:
+      type: object
+      properties:
+        dsl: { type: object }
+        seed: { type: integer }
+        model: { type: string }
+        configSnapshot: { $ref: '#/components/schemas/ConfigSnapshot' }
+        abCondition: { type: string }
+        responseId: { type: string }
+      required: [dsl, seed, model, responseId]
+    ScoreRankRequest:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/CandidateItem' }
+        contextSnapshot: { $ref: '#/components/schemas/ContextSnapshot' }
+        weightsVersion: { type: string }
+      required: [items]
+    ScoreRankResponse:
+      type: object
+      properties:
+        rankedItems:
+          type: array
+          items: { $ref: '#/components/schemas/CandidateItem' }
+        scores:
+          type: array
+          items: { type: number }
+        weightsVersion: { type: string }
+      required: [rankedItems, scores, weightsVersion]
+    EventBatch:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            type: object
+            properties:
+              type: { type: string }
+              eventId: { type: string }
+              ts: { type: integer }
+              userAnonId: { type: string }
+              configVersion: { type: string }
+              abCondition: { type: string }
+              responseId: { type: string }
+              contextHash: { type: string }
+              appVersion: { type: string }
+              osVersion: { type: string }
+            required: [type, eventId, ts, userAnonId]
+      required: [events]
+    ReplayRequest:
+      type: object
+      properties:
+        responseId: { type: string }
+        sessionId: { type: string }
+      oneOf:
+        - required: [responseId]
+        - required: [sessionId]
+
+

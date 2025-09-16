@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/ui-dsl-1.1.json",
+  "title": "UI DSL v1.1",
+  "type": "object",
+  "properties": {
+    "version": { "const": "1.1" },
+    "theme": {
+      "type": "object",
+      "properties": {
+        "style": { "type": "string", "enum": ["daily-rotating"] },
+        "noveltyLevel": { "type": "string", "enum": ["low", "med", "high"] },
+        "seed": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["style", "noveltyLevel", "seed"],
+      "additionalProperties": false
+    },
+    "layoutHints": {
+      "type": "object",
+      "properties": {
+        "motionLevel": { "type": "integer", "minimum": 0, "maximum": 2 },
+        "colorVariance": { "type": "integer", "minimum": 0, "maximum": 2 }
+      },
+      "additionalProperties": false
+    },
+    "layout": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["vertical"] },
+        "sections": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Section" },
+          "maxItems": 5
+        }
+      },
+      "required": ["type", "sections"],
+      "additionalProperties": false
+    },
+    "actions": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/definitions/Action" }
+    }
+  },
+  "required": ["version", "theme", "layout"],
+  "additionalProperties": false,
+  "definitions": {
+    "Section": {
+      "oneOf": [
+        { "$ref": "#/definitions/HeadlineSection" },
+        { "$ref": "#/definitions/CardsSection" },
+        { "$ref": "#/definitions/WidgetSection" }
+      ]
+    },
+    "HeadlineSection": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "headline" },
+        "text": { "type": "string", "minLength": 1 },
+        "style": { "type": "string", "enum": ["fresh", "calm", "info"] }
+      },
+      "required": ["type", "text"],
+      "additionalProperties": false
+    },
+    "CardsSection": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "cards" },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Card" },
+          "maxItems": 3
+        }
+      },
+      "required": ["type", "items"],
+      "additionalProperties": false
+    },
+    "WidgetSection": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "widget" },
+        "component": { "type": "string", "enum": ["breathing", "timer", "quote", "databadge"] },
+        "params": { "type": "object", "additionalProperties": true }
+      },
+      "required": ["type", "component"],
+      "additionalProperties": false
+    },
+    "Card": {
+      "type": "object",
+      "properties": {
+        "component": { "const": "card" },
+        "title": { "type": "string", "minLength": 1 },
+        "subtitle": { "type": "string" },
+        "accent": { "type": "string", "enum": ["priority", "calm", "info"] },
+        "actions": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/ActionRef" },
+          "maxItems": 2
+        }
+      },
+      "required": ["component", "title"],
+      "additionalProperties": false
+    },
+    "ActionRef": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "params": { "type": "object", "additionalProperties": true }
+      },
+      "required": ["id", "label"],
+      "additionalProperties": false
+    },
+    "Action": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["navigate", "nativeTimer"] },
+        "target": { "type": "string" },
+        "paramsSchema": { "type": "object", "additionalProperties": { "type": "string" } },
+        "track": { "type": "boolean" }
+      },
+      "required": ["kind"],
+      "additionalProperties": false
+    }
+  }
+}
+
+

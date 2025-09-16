@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/events-batch.json",
+  "title": "EventsBatch",
+  "type": "object",
+  "properties": {
+    "events": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/Event" },
+      "minItems": 1
+    }
+  },
+  "required": ["events"],
+  "definitions": {
+    "Base": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" },
+        "eventId": { "type": "string" },
+        "ts": { "type": "integer", "minimum": 0 },
+        "userAnonId": { "type": "string" },
+        "configVersion": { "type": "string" },
+        "abCondition": { "type": "string" },
+        "responseId": { "type": ["string", "null"] },
+        "contextHash": { "type": ["string", "null"] },
+        "appVersion": { "type": ["string", "null"] },
+        "osVersion": { "type": ["string", "null"] }
+      },
+      "required": ["type", "eventId", "ts", "userAnonId"]
+    },
+    "UiGenerated": {
+      "allOf": [
+        { "$ref": "#/definitions/Base" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "ui_generated" },
+            "model": { "type": "string" },
+            "seed": { "type": "integer" },
+            "dslHash": { "type": "string" },
+            "configSnapshotHash": { "type": "string" }
+          },
+          "required": ["model", "seed", "dslHash"]
+        }
+      ]
+    },
+    "UiRendered": {
+      "allOf": [
+        { "$ref": "#/definitions/Base" },
+        {
+          "type": "object",
+          "properties": { "type": { "const": "ui_rendered" } }
+        }
+      ]
+    },
+    "CardClicked": {
+      "allOf": [
+        { "$ref": "#/definitions/Base" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "card_clicked" },
+            "cardId": { "type": "string" }
+          },
+          "required": ["cardId"]
+        }
+      ]
+    },
+    "ActionExecuted": {
+      "allOf": [
+        { "$ref": "#/definitions/Base" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "action_executed" },
+            "actionId": { "type": "string" },
+            "result": { "type": ["string", "null"] }
+          },
+          "required": ["actionId"]
+        }
+      ]
+    },
+    "TaskCompleted": {
+      "allOf": [
+        { "$ref": "#/definitions/Base" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "task_completed" },
+            "taskId": { "type": "string" }
+          },
+          "required": ["taskId"]
+        }
+      ]
+    },
+    "Notification": {
+      "allOf": [
+        { "$ref": "#/definitions/Base" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "enum": ["notification_shown", "notification_clicked"] },
+            "notificationId": { "type": "string" }
+          },
+          "required": ["notificationId"]
+        }
+      ]
+    },
+    "SelfReportedMood": {
+      "allOf": [
+        { "$ref": "#/definitions/Base" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "self_reported_mood" },
+            "anxietyBefore": { "type": ["integer", "null"], "minimum": 0, "maximum": 10 },
+            "anxietyAfter": { "type": ["integer", "null"], "minimum": 0, "maximum": 10 }
+          }
+        }
+      ]
+    },
+    "Event": {
+      "oneOf": [
+        { "$ref": "#/definitions/UiGenerated" },
+        { "$ref": "#/definitions/UiRendered" },
+        { "$ref": "#/definitions/CardClicked" },
+        { "$ref": "#/definitions/ActionExecuted" },
+        { "$ref": "#/definitions/TaskCompleted" },
+        { "$ref": "#/definitions/Notification" },
+        { "$ref": "#/definitions/SelfReportedMood" },
+        { "$ref": "#/definitions/Base" }
+      ]
+    }
+  }
+}
+
+

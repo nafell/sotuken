@@ -97,7 +97,7 @@ curl -X POST http://localhost:3000/v1/ui/generate -H 'Content-Type: application/
 
 ## 9. イベント送信（計測）
 - 送信先: `POST /v1/events/batch`
-- バリデーション: `specs/events-schema.json`
+- バリデーション: `specs/api-schema/events-schema.json`
 - 共通フィールド: `eventId`, `userAnonId`, `ts`, `configVersion`, `abCondition`, `responseId?`, `contextHash?`
 - 主要イベント: `ui_generated`, `ui_rendered`, `card_clicked`, `action_executed`, `concern_organized`, `task_completed`, `notification_shown/clicked`, `cognitive_load_reported`
 

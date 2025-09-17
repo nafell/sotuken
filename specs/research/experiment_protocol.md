@@ -59,7 +59,7 @@
 ### 実装要件（整合性）
 - 決定論: temperature/topP/topK固定、`seed`採用（不可時は擬似決定論）。
 - `GET /v1/config`で固定スナップショットを配布。`/v1/ui/generate`レスポンスに`configSnapshot`を含める。
-- `events/batch`は`specs/events-schema.json`に準拠し、受信時バリデーション。
+- `events/batch`は`specs/api-schema/events-schema.json`に準拠し、受信時バリデーション。
 
 ### 倫理
 - 同意UIで目的・オン/オフ・撤回方法を明示。生体活用は任意。

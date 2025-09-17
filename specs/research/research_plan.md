@@ -117,7 +117,7 @@
 - クライアント: iOS（SwiftUIシェル＋WKWebView）。
 - サーバ: Node.js/Express。LLMはサーバサイドで呼出（Gemini 2.5 Flash mini、バージョン固定）。
 - UI生成: JSON DSL v1.1、ホワイトリストコンポーネント、スキーマ検証。
-- 計測: specs/events-schema.json に準拠した匿名イベント。
+- 計測: specs/api-schema/events-schema.json に準拠した匿名イベント。
 
 ## 19. スケジュール（概略）
 - M1: 実装基盤・設定凍結・イベント計測
@@ -139,11 +139,11 @@
 
 ## 付録
 - A) API 仕様: api/openapi.yaml
-- B) イベントスキーマ: specs/events-schema.json
-- C) UI DSL スキーマ: specs/ui_dsl_v1.1.json
-- D) 実験プロトコル詳細: specs/experiment_protocol.md
-- E) データディクショナリ: specs/data_dictionary.md
-- F) リプレイAPI: specs/replay_api.md
+- B) イベントスキーマ: specs/api-schema/events-schema.json
+- C) UI DSL スキーマ: specs/api-schema/ui_dsl_v1.1.json
+- D) 実験プロトコル詳細: specs/research/experiment_protocol.md
+- E) データディクショナリ: specs/development/data_dictionary.md
+- F) リプレイAPI: specs/api-schema/replay_api.md
 
 ---
 本計画は、実運用と研究の両立を目的とし、再現性と安全性を確保するための設定凍結・決定論モード・リプレイ機構を備える。LLMやセンサの不確実性に対してはホワイトリストDSLとフォールバックでリスクを軽減し、倫理・プライバシー面でも最小限・匿名・統計化を徹底する。

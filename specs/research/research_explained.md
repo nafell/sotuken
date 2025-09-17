@@ -1,9 +1,9 @@
 ### ゴール
-- 学部生でも理解できるように、`specs/research_plan.md` と `specs/experiment_protocol.md` の内容をやさしく解説します。
+- 学部生でも理解できるように、`specs/research/research_plan.md` と `specs/research/experiment_protocol.md` の内容をやさしく解説します。
 - 各「決定事項」について、意図/目的/利点/期待効果を明確にします。
 - すぐにキャッチアップできるよう、用語・流れ・見どころを整理します。
 
-## 1) 研究計画書のやさしい解説（`specs/research_plan.md`）
+## 1) 研究計画書のやさしい解説（`specs/research/research_plan.md`）
 ### 何を調べる？
 - 「状況に合わせて毎回変わるUI（動的UI）」と「固定UI」を比べて、ユーザの行動（起動・着手・完了）や認知負荷（頭のスッキリ度・ブレインフォグ改善）に違いが出るかを検証します。
 
@@ -48,7 +48,7 @@
 - 「頭の棚卸し」というアプローチがブレインフォグ改善とprocrastination対策に効果的かを実証できる
 - 生体の粗区分を使った「無理しない提案」が有効かを見極められる
 
-## 2) 実験プロトコルのやさしい解説（`specs/experiment_protocol.md`）
+## 2) 実験プロトコルのやさしい解説（`specs/research/experiment_protocol.md`）
 ### 実験の運用ルール
 - 登録→ランダム割付→日常利用→ログ収集→解析、の流れを明確化
 - 主要/副次指標、停止基準（安全/費用/効果）を先に決めておく
@@ -110,12 +110,12 @@
 - 翌日 → 新規性ポリシーに基づいて、飽きにくく疲れにくい変化を提示
 
 ## 5) すぐキャッチアップしたい人向けの読み順
-1) `docs/developer_guide.md`（全体像とAPI叩き方の最短ルート）
+1) `specs/development/developer_guide.md`（全体像とAPI叩き方の最短ルート）
 2) `api/openapi.yaml`（どのAPIがあるか）
-3) `specs/ui_dsl_v1.1.json`（UIがどう表現されるか）
-4) `specs/experiment_protocol.md`（実験の運用ルール）
-5) `specs/research_plan.md`（背景〜統計まで一通り）
-6) `specs/events-schema.json`（何をログに残すか）
+3) `specs/api-schema/ui_dsl_v1.1.json`（UIがどう表現されるか）
+4) `specs/research/experiment_protocol.md`（実験の運用ルール）
+5) `specs/research/research_plan.md`（背景〜統計まで一通り）
+6) `specs/api-schema/events-schema.json`（何をログに残すか）
 
 ## 6) よくある疑問
 - Q: なぜ個人化（学習）を最初から使わないの？
@@ -128,9 +128,9 @@
 ---
 
 - 参考ファイル
-  - 設計全体: `specs/research_plan.md`
-  - 実験運用ルール: `specs/experiment_protocol.md`
-  - 開発者向け導入: `docs/developer_guide.md`
+  - 設計全体: `specs/research/research_plan.md`
+  - 実験運用ルール: `specs/research/experiment_protocol.md`
+  - 開発者向け導入: `specs/development/developer_guide.md`
   - 設定スナップショット: `config/config.v1.json`
 
 必要なら、この解説をスライド用に短縮版として再構成した資料や、研究事前登録用の要約文面も用意します。

@@ -1,12 +1,12 @@
 {
-  "version": "7",
-  "dialect": "sqlite",
+  "version": "5",
+  "dialect": "pg",
   "entries": [
     {
       "idx": 0,
-      "version": "6",
-      "when": 1758104669684,
-      "tag": "0000_fair_malice",
+      "version": "7",
+      "when": 1758125111784,
+      "tag": "0000_tiny_giant_man",
       "breakpoints": true
     }
   ]

@@ -1,26 +1,27 @@
 /**
  * データベース接続とマイグレーション管理
- * Phase 0 Day 2 - 午後実装
+ * Phase 0 Day 2 - 午後実装（PostgreSQL移行版）
  */
 
-import { drizzle } from 'drizzle-orm/bun-sqlite';
-import Database from 'bun:sqlite';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
 import { sql } from 'drizzle-orm';
 import * as schema from './schema';
 import { runMigrations } from './migrate';
 
-// データベースファイルパス
-const DB_PATH = process.env.DATABASE_URL || './data/dev.db';
+// PostgreSQL接続URL
+const DATABASE_URL = process.env.DATABASE_URL || 
+  `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
 
-// SQLite接続
-const sqlite = new Database(DB_PATH);
-sqlite.run('PRAGMA journal_mode = WAL;');  // パフォーマンス向上
-sqlite.run('PRAGMA synchronous = NORMAL;'); // 安全性とパフォーマンスのバランス
-sqlite.run('PRAGMA cache_size = 1000;');    // キャッシュサイズ
-sqlite.run('PRAGMA foreign_keys = ON;');    // 外部キー制約有効化
+// PostgreSQL接続
+const sql_client = postgres(DATABASE_URL, {
+  max: 10,              // 最大接続数
+  idle_timeout: 20,     // アイドル接続タイムアウト（秒）
+  connect_timeout: 10,  // 接続タイムアウト（秒）
+});
 
 // Drizzle DB インスタンス
-export const db = drizzle(sqlite, { schema });
+export const db = drizzle(sql_client, { schema });
 
 /**
  * データベース初期化
@@ -49,7 +50,7 @@ async function seedBasicData() {
     const existingExperiment = await db
       .select()
       .from(schema.experiments)
-      .where(sql`name = 'Phase 0 Pilot'`)
+      .where(sql`${schema.experiments.name} = 'Phase 0 Pilot'`)
       .limit(1);
 
     if (existingExperiment.length === 0) {

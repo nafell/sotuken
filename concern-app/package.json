@@ -17,6 +17,7 @@
     "@capacitor/geolocation": "^7.1.5",
     "@capacitor/ios": "^7.4.3",
     "@capacitor/motion": "^7.0.1",
+    "@tailwindcss/postcss": "^4.1.13",
     "dexie": "^4.2.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

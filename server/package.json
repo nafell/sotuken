@@ -11,24 +11,21 @@
     "db:migrate": "bun src/database/migrate.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:reset": "rm -f data/dev.db && bun run db:generate && bun run db:migrate",
+    "db:reset": "bun run db:generate && bun run db:migrate",
     "test": "bun test"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
     "@types/bun": "latest",
     "@types/cors": "^2.8.19",
-    "@types/sqlite3": "^5.1.0",
     "typescript": "^5.0.0"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@hono/node-server": "^1.19.3",
-    "better-sqlite3": "^12.2.0",
     "cors": "^2.8.5",
     "drizzle-kit": "^0.31.4",
     "drizzle-orm": "^0.44.5",
     "hono": "^4.9.7",
-    "sqlite3": "^5.1.7"
+    "postgres": "^3.4.5"
   }
 }

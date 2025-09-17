@@ -1,32 +1,32 @@
 /**
- * サーバーサイドデータベーススキーマ（SQLite + Drizzle）
- * Phase 0 Day 2 - 午後実装
+ * サーバーサイドデータベーススキーマ（PostgreSQL + Drizzle）
+ * Phase 0 Day 2 - 午後実装（PostgreSQL移行版）
  * @see specs/system-design/database_schema.md
  */
 
-import { sqliteTable, text, integer, blob, index } from 'drizzle-orm/sqlite-core';
+import { pgTable, text, integer, timestamp, uuid, jsonb, index } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 // ========================================
 // 実験管理テーブル
 // ========================================
 
-export const experiments = sqliteTable('experiments', {
-  id: text('id').primaryKey().default(sql`(lower(hex(randomblob(16))))`),
+export const experiments = pgTable('experiments', {
+  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
   name: text('name').notNull(),
   description: text('description'),
   configVersion: text('config_version').notNull(),
   weightsVersion: text('weights_version').notNull(),
-  startDate: integer('start_date', { mode: 'timestamp' }).notNull(),
-  endDate: integer('end_date', { mode: 'timestamp' }),
-  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`)
+  startDate: timestamp('start_date', { withTimezone: true }).notNull(),
+  endDate: timestamp('end_date', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).default(sql`now()`)
 });
 
-export const userAssignments = sqliteTable('user_assignments', {
+export const userAssignments = pgTable('user_assignments', {
   anonymousUserId: text('anonymous_user_id').primaryKey(),
-  experimentId: text('experiment_id').notNull().references(() => experiments.id),
+  experimentId: uuid('experiment_id').notNull().references(() => experiments.id),
   condition: text('condition').notNull(), // 'static_ui' | 'dynamic_ui'
-  assignedAt: integer('assigned_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`)
+  assignedAt: timestamp('assigned_at', { withTimezone: true }).default(sql`now()`)
 }, (table) => ({
   assignmentExpConditionIdx: index('idx_assignment_exp_condition').on(table.experimentId, table.condition)
 }));
@@ -35,11 +35,11 @@ export const userAssignments = sqliteTable('user_assignments', {
 // UI生成リクエストテーブル
 // ========================================
 
-export const uiGenerationRequests = sqliteTable('ui_generation_requests', {
-  generationId: text('generation_id').primaryKey().default(sql`(lower(hex(randomblob(16))))`),
+export const uiGenerationRequests = pgTable('ui_generation_requests', {
+  generationId: uuid('generation_id').primaryKey().default(sql`gen_random_uuid()`),
   sessionId: text('session_id').notNull(),
   anonymousUserId: text('anonymous_user_id').notNull(),
-  requestedAt: integer('requested_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
+  requestedAt: timestamp('requested_at', { withTimezone: true }).default(sql`now()`),
   
   // ユーザー明示入力
   concernText: text('concern_text').notNull(),
@@ -52,18 +52,18 @@ export const uiGenerationRequests = sqliteTable('ui_generation_requests', {
   // システム推論コンテキスト（抽象化済み）
   timeOfDay: text('time_of_day').notNull(),
   availableTimeMin: integer('available_time_min').notNull(),
-  factors: blob('factors', { mode: 'json' }).notNull(), // factors辞書（抽象化済み）
+  factors: jsonb('factors').notNull(), // factors辞書（抽象化済み）
   
   // 生成結果
   uiVariant: text('ui_variant').notNull(), // 'static' | 'dynamic'
   noveltyLevel: text('novelty_level'), // 'low' | 'med' | 'high'
-  uiDsl: blob('ui_dsl', { mode: 'json' }).notNull(), // 生成されたDSL
+  uiDsl: jsonb('ui_dsl').notNull(), // 生成されたDSL
   
   // メタデータ
   modelUsed: text('model_used').notNull(),
   seedUsed: integer('seed_used'),
   processingTimeMs: integer('processing_time_ms'),
-  fallbackUsed: integer('fallback_used', { mode: 'boolean' }).default(false),
+  fallbackUsed: integer('fallback_used').default(0), // PostgreSQL uses 0/1 for boolean in integer
   promptTokens: integer('prompt_tokens'),
   responseTokens: integer('response_tokens')
 }, (table) => ({
@@ -76,19 +76,19 @@ export const uiGenerationRequests = sqliteTable('ui_generation_requests', {
 // 測定イベントテーブル
 // ========================================
 
-export const measurementEvents = sqliteTable('measurement_events', {
-  eventId: text('event_id').primaryKey().default(sql`(lower(hex(randomblob(16))))`),
+export const measurementEvents = pgTable('measurement_events', {
+  eventId: uuid('event_id').primaryKey().default(sql`gen_random_uuid()`),
   sessionId: text('session_id').notNull(),
   anonymousUserId: text('anonymous_user_id').notNull(),
-  recordedAt: integer('recorded_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
+  recordedAt: timestamp('recorded_at', { withTimezone: true }).default(sql`now()`),
   
   eventType: text('event_type').notNull(), // 'ui_shown' | 'action_started' | etc.
   screenId: text('screen_id'),
   uiVariant: text('ui_variant'), // 'static' | 'dynamic'
-  generationId: text('generation_id').references(() => uiGenerationRequests.generationId),
+  generationId: uuid('generation_id').references(() => uiGenerationRequests.generationId),
   
   // 測定用メタデータ
-  metadata: blob('metadata', { mode: 'json' }).notNull(),
+  metadata: jsonb('metadata').notNull(),
   
   // 研究分析用
   experimentCondition: text('experiment_condition'),
@@ -104,18 +104,18 @@ export const measurementEvents = sqliteTable('measurement_events', {
 // 優先スコアテーブル
 // ========================================
 
-export const priorityScores = sqliteTable('priority_scores', {
-  scoreId: text('score_id').primaryKey().default(sql`(lower(hex(randomblob(16))))`),
+export const priorityScores = pgTable('priority_scores', {
+  scoreId: uuid('score_id').primaryKey().default(sql`gen_random_uuid()`),
   anonymousUserId: text('anonymous_user_id').notNull(),
-  calculatedAt: integer('calculated_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
+  calculatedAt: timestamp('calculated_at', { withTimezone: true }).default(sql`now()`),
   
   // コンテキスト情報
-  contextFactors: blob('context_factors', { mode: 'json' }).notNull(),
+  contextFactors: jsonb('context_factors').notNull(),
   configVersion: text('config_version').notNull(),
   weightsVersion: text('weights_version').notNull(),
   
   // 計算結果
-  concernScores: blob('concern_scores', { mode: 'json' }).notNull() // [{"id": "concern_001", "score": 0.75, "reasoning": {...}}]
+  concernScores: jsonb('concern_scores').notNull() // [{"id": "concern_001", "score": 0.75, "reasoning": {...}}]
 }, (table) => ({
   scoresUserTimeIdx: index('idx_scores_user_time').on(table.anonymousUserId, table.calculatedAt)
 }));
@@ -124,13 +124,13 @@ export const priorityScores = sqliteTable('priority_scores', {
 // システムログテーブル
 // ========================================
 
-export const systemLogs = sqliteTable('system_logs', {
-  logId: text('log_id').primaryKey().default(sql`(lower(hex(randomblob(16))))`),
-  loggedAt: integer('logged_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
+export const systemLogs = pgTable('system_logs', {
+  logId: uuid('log_id').primaryKey().default(sql`gen_random_uuid()`),
+  loggedAt: timestamp('logged_at', { withTimezone: true }).default(sql`now()`),
   level: text('level').notNull(), // 'INFO' | 'WARN' | 'ERROR'
   component: text('component').notNull(), // 'ui_generation' | 'scoring' | 'events'
   message: text('message').notNull(),
-  metadata: blob('metadata', { mode: 'json' }),
+  metadata: jsonb('metadata'),
   requestId: text('request_id')
 }, (table) => ({
   logsTimeLevelIdx: index('idx_logs_time_level').on(table.loggedAt, table.level),

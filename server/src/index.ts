@@ -2,6 +2,9 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { initializeDatabase, checkDatabaseHealth } from './database/index';
+import { configRoutes } from './routes/config';
+import { uiRoutes } from './routes/ui';
+import { eventRoutes } from './routes/events';
 
 const app = new Hono();
 
@@ -30,12 +33,24 @@ app.get('/health/database', async (c) => {
   return c.json(dbHealth);
 });
 
+// API Routes
+app.route('/v1/config', configRoutes);
+app.route('/v1/ui', uiRoutes);
+app.route('/v1/events', eventRoutes);
+
 // Basic route
 app.get('/', (c) => {
   return c.json({ 
     message: 'Concern App Server - Phase 0',
     version: '1.0.0',
-    phase: 'Day 2 - Database Implementation'
+    phase: 'Day 3 - API Implementation',
+    availableEndpoints: [
+      'GET /health',
+      'GET /health/database',
+      'GET /v1/config',
+      'POST /v1/ui/generate',
+      'POST /v1/events/batch'
+    ]
   });
 });
 

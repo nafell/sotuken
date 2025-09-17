@@ -4,8 +4,9 @@
  * @see specs/system-design/database_schema.md
  */
 
-import { FactorValue, FactorsDict, BaseFactors, ContextData } from '../../types/database';
+import type { FactorValue, FactorsDict, BaseFactors, ContextData } from '../../types/database.js';
 import { db } from '../database/localDB';
+import { generateUUID } from '../../utils/uuid';
 
 export class ContextService {
   private factors: FactorsDict = {};
@@ -35,7 +36,7 @@ export class ContextService {
     const factors = await this.collectCurrentFactors();
     
     const contextData: ContextData = {
-      contextId: crypto.randomUUID(),
+      contextId: generateUUID(),
       sessionId,
       collectedAt: new Date(),
       timeOfDay: factors.time_of_day.value as any,

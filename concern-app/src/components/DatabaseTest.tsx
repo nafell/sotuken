@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../services/database/localDB';
 import { contextService } from '../services/context/ContextService';
-import { UserProfile, ConcernSession, ContextData } from '../types/database';
+import type { UserProfile, ConcernSession, ContextData } from '../types/database.js';
 
 export const DatabaseTest: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -184,7 +184,7 @@ export const DatabaseTest: React.FC = () => {
                 <div className="grid grid-cols-2 gap-2 mt-1">
                   {Object.entries(debugInfo.confidenceScores || {}).map(([key, score]) => (
                     <div key={key} className="text-xs">
-                      {key}: {score}
+                      {key}: {score as number}
                     </div>
                   ))}
                 </div>

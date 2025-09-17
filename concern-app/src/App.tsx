@@ -7,13 +7,23 @@ function App() {
 
   useEffect(() => {
     // サーバーのヘルスチェック
+    console.log('🔍 サーバー接続テスト開始: http://localhost:3000/health');
+    
     fetch('http://localhost:3000/health')
-      .then(response => response.json())
+      .then(response => {
+        console.log('📡 サーバー応答:', response.status, response.statusText);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+      })
       .then(data => {
+        console.log('✅ サーバーデータ:', data);
         setServerStatus(`✅ サーバー接続成功: ${data.service}`)
       })
-      .catch(() => {
-        setServerStatus('❌ サーバー接続失敗')
+      .catch(error => {
+        console.error('❌ サーバー接続エラー:', error);
+        setServerStatus(`❌ サーバー接続失敗: ${error.message}`)
       })
   }, [])
 

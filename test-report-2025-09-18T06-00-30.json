@@ -1,0 +1,104 @@
+{
+  "summary": {
+    "totalTests": 4,
+    "successCount": 2,
+    "failureCount": 2,
+    "timedOutCount": 0,
+    "successRate": 50,
+    "totalDuration": 389,
+    "averageDuration": 97
+  },
+  "categories": {
+    "unit": {
+      "total": 4,
+      "success": 2,
+      "failure": 2,
+      "totalDuration": 388,
+      "successRate": 50,
+      "averageDuration": 97
+    }
+  },
+  "priorities": {
+    "high": {
+      "total": 3,
+      "success": 2,
+      "failure": 1,
+      "successRate": 67
+    },
+    "medium": {
+      "total": 1,
+      "success": 0,
+      "failure": 1,
+      "successRate": 0
+    }
+  },
+  "details": [
+    {
+      "name": "ContextService単体テスト",
+      "category": "unit",
+      "priority": "high",
+      "file": "unit_context_service.js",
+      "exitCode": 0,
+      "success": true,
+      "duration": 50,
+      "stdout": "🧪 ContextService 単体テスト開始\n============================================================\n  📋 時間factorsの基本収集... ✅ 成功\n  📋 時間帯判定ロジック... ✅ 成功\n  📋 デバイスfactorsの収集... ✅ 成功\n  📋 プライバシー保護サニタイズ... ✅ 成功\n  📋 factor検証ロジック... ✅ 成功\n  📋 境界値テスト - 曜日... ✅ 成功\n  📋 信頼度スコア計算... ✅ 成功\n  📋 データ型整合性... ✅ 成功\n  📋 エラーケース処理... ✅ 成功\n\n============================================================\n🏆 ContextService 単体テスト結果\n============================================================\n総テスト数: 9\n成功: 9 ✅\n失敗: 0 ❌\n成功率: 100%\n\n🎉 全単体テスト成功！\n",
+      "stderr": "",
+      "timedOut": false
+    },
+    {
+      "name": "ApiService単体テスト",
+      "category": "unit",
+      "priority": "high",
+      "file": "unit_api_service.js",
+      "exitCode": 0,
+      "success": true,
+      "duration": 240,
+      "stdout": "🔗 ApiService 単体テスト開始\n============================================================\n  📋 ヘルスチェックAPI呼び出し... ✅ 成功\n  📋 設定取得API呼び出し... ✅ 成功\n  📋 UI生成API - 正常リクエスト... ✅ 成功\n  📋 UI生成API - 不正リクエスト... ✅ 成功\n  📋 イベント送信 - 単一イベント... ✅ 成功\n  📋 イベント送信 - バッチ処理... ✅ 成功\n  📋 バリデーション - UI生成リクエスト... ✅ 成功\n  📋 バリデーション - UI生成レスポンス... ✅ 成功\n  📋 エラーレート計算... ✅ 成功\n  📋 平均応答時間計算... ✅ 成功\n  📋 並行リクエスト処理... ✅ 成功\n  📋 メモリリーク防止 - イベントキューサイズ制限... ✅ 成功\n  📋 エラーハンドリング - ネットワークエラー... ✅ 成功\n\n============================================================\n🏆 ApiService 単体テスト結果\n============================================================\n総テスト数: 13\n成功: 13 ✅\n失敗: 0 ❌\n成功率: 100%\n\n🎉 全単体テスト成功！\n",
+      "stderr": "",
+      "timedOut": false
+    },
+    {
+      "name": "データベース操作単体テスト",
+      "category": "unit",
+      "priority": "high",
+      "file": "unit_database_operations.js",
+      "exitCode": 1,
+      "success": false,
+      "duration": 50,
+      "stdout": "🗄️ データベース操作 単体テスト開始\n============================================================\n  📋 データベース初期化... ✅ 成功\n  📋 スキーマ検証... ✅ 成功\n  📋 基本CRUD - 保存... ✅ 成功\n  📋 基本CRUD - 取得... ❌ 失敗: データが取得できません\n  📋 基本CRUD - 更新... ❌ 失敗: Record not found: ctx-h4nywjmnf\n  📋 基本CRUD - 削除... ❌ 失敗: 削除前にデータが存在しません\n  📋 全データ取得... ✅ 成功\n  📋 検索機能... ✅ 成功\n  📋 カウント機能... ❌ 失敗: ui_shownカウントが正しくありません\n  📋 トランザクション - 成功ケース... ❌ 失敗: トランザクション内のセッション保存が失敗しました\n  📋 トランザクション - 失敗時ロールバック... ✅ 成功\n  📋 ストレージサイズ計算... ✅ 成功\n  📋 データベースクリア... ✅ 成功\n  📋 エラーハンドリング - 不正なストア... ✅ 成功\n  📋 エラーハンドリング - IDなしデータ... ✅ 成功\n  📋 データ整合性 - 日時フィールド... ❌ 失敗: Cannot read properties of null (reading 'startTime')\n  📋 パフォーマンス - 大量データ操作... \n      💾 パフォーマンス: 保存1ms, 取得0ms (100件)\n✅ 成功\n\n============================================================\n🏆 データベース操作 単体テスト結果\n============================================================\n総テスト数: 17\n成功: 11 ✅\n失敗: 6 ❌\n成功率: 65%\n\n⚠️ 6件の単体テスト失敗\n",
+      "stderr": "",
+      "timedOut": false
+    },
+    {
+      "name": "React コンポーネント単体テスト",
+      "category": "unit",
+      "priority": "medium",
+      "file": "unit_react_components.js",
+      "exitCode": 1,
+      "success": false,
+      "duration": 48,
+      "stdout": "⚛️ React コンポーネント単体テスト開始\n======================================================================\n  🧩 HomeScreen - メモリ使用率の色判定... ✅ 成功\n  🧩 HomeScreen - メモリ使用率メッセージ... ✅ 成功\n  🧩 HomeScreen - セッション完了後のメモリ更新... ✅ 成功\n  🧩 HomeScreen - 関心事フィルタリング... ✅ 成功\n  🧩 HomeScreen - 関心事検索... ✅ 成功\n  🧩 ConcernInput - 基本バリデーション... ✅ 成功\n  🧩 ConcernInput - 長さ制限テスト... ✅ 成功\n  🧩 ConcernInput - HTMLタグ検証... ✅ 成功\n  🧩 ConcernInput - サニタイズ機能... ✅ 成功\n  🧩 ConcernInput - 文字数・単語数カウント... ❌ 失敗: 文字数カウント失敗: 期待14、実際16\n  🧩 ConcernLevel - スライダー値とレベルマッピング... ✅ 成功\n  🧩 ConcernLevel - 説明文テスト... ✅ 成功\n  🧩 ConcernLevel - 関心スコア計算... ✅ 成功\n  🧩 SessionManager - セッション作成... ✅ 成功\n  🧩 SessionManager - セッション更新... ✅ 成功\n  🧩 SessionManager - セッション完了... ✅ 成功\n  🧩 SessionManager - セッション時間計算... ✅ 成功\n  🧩 UIUtilities - 時間表示フォーマット... ✅ 成功\n  🧩 UIUtilities - テキスト切り取り... ✅ 成功\n  🧩 UIUtilities - グラデーションクラス生成... ✅ 成功\n  🧩 UIUtilities - 読書時間計算... ❌ 失敗: 長文読書時間: 期待2、実際3\n  🧩 UIUtilities - カラーHex検証... ✅ 成功\n\n======================================================================\n🏆 React コンポーネント単体テスト結果\n======================================================================\n総テスト数: 22\n成功: 20 ✅\n失敗: 2 ❌\n成功率: 91%\n\n⚠️ 2件のReact単体テスト失敗\n\n❌ React コンポーネント単体テスト完了（一部失敗）\n",
+      "stderr": "",
+      "timedOut": false
+    }
+  ],
+  "recommendations": [
+    {
+      "type": "error",
+      "message": "2件のテストが失敗しています",
+      "details": [
+        "データベース操作単体テスト",
+        "React コンポーネント単体テスト"
+      ],
+      "action": "失敗したテストの詳細を確認し、修正してください"
+    },
+    {
+      "type": "critical",
+      "message": "高優先度テストが失敗しています",
+      "details": [
+        "データベース操作単体テスト"
+      ],
+      "action": "高優先度テストの修正を最優先で行ってください"
+    }
+  ]
+}

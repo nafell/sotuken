@@ -7,6 +7,7 @@
 import type { FactorValue, FactorsDict, BaseFactors, ContextData } from '../../types/database.js';
 import { db } from '../database/localDB';
 import { generateUUID } from '../../utils/uuid';
+import { capacitorIntegration } from './CapacitorIntegration';
 
 export class ContextService {
   private factors: FactorsDict = {};
@@ -133,30 +134,37 @@ export class ContextService {
   }
 
   /**
-   * Capacitor統合factors（将来実装）
+   * Capacitor統合factors
    */
   private async collectCapacitorFactors(): Promise<void> {
-    // Phase 0では基本実装のみ
-    // 将来的にGeolocation、Motion、Device APIを統合
-
+    console.log('🔄 Collecting Capacitor factors...');
+    
     try {
-      // プレースホルダー実装
+      // Capacitor統合による詳細なfactors収集
+      const capacitorFactors = await capacitorIntegration.collectAllCapacitorFactors();
+      
+      // 既存のfactorsにマージ
+      Object.assign(this.factors, capacitorFactors);
+      
+      console.log(`✅ Capacitor factors integrated: ${Object.keys(capacitorFactors).length} items`);
+      
+    } catch (error) {
+      console.warn('❌ Capacitor factors collection failed:', error);
+      
+      // フォールバック実装
       this.factors.location_category = {
         value: 'unknown',
-        source: 'capacitor_placeholder',
+        source: 'capacitor_fallback',
         timestamp: new Date(),
-        confidence: 0.0
+        confidence: 0.1
       };
 
       this.factors.activity_level = {
         value: 'stationary',
-        source: 'capacitor_placeholder', 
+        source: 'capacitor_fallback', 
         timestamp: new Date(),
-        confidence: 0.0
+        confidence: 0.1
       };
-
-    } catch (error) {
-      console.warn('Capacitor factors collection failed:', error);
     }
   }
 

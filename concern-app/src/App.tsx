@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { DatabaseTest } from './components/DatabaseTest'
+import { FactorsTest } from './components/FactorsTest'
 
 function App() {
   const [serverStatus, setServerStatus] = useState<string>('接続中...')
-  const [currentView, setCurrentView] = useState<'overview' | 'database'>('overview')
+  const [currentView, setCurrentView] = useState<'overview' | 'database' | 'factors'>('overview')
 
   useEffect(() => {
     // サーバーのヘルスチェック
@@ -43,6 +44,22 @@ function App() {
     )
   }
 
+  if (currentView === 'factors') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 py-8">
+        <div className="max-w-6xl mx-auto">
+          <button
+            onClick={() => setCurrentView('overview')}
+            className="mb-4 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+          >
+            ← 概要に戻る
+          </button>
+          <FactorsTest />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
       <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4">
@@ -51,7 +68,7 @@ function App() {
             🎯 Concern App
           </h1>
           <p className="text-lg text-gray-600 mb-6">
-            Phase 0 - Day 2 実装中！
+            Phase 0 - Day 4 factors辞書実装完了！
           </p>
           
           <div className="space-y-4">
@@ -65,7 +82,7 @@ function App() {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h3 className="font-semibold text-blue-800 mb-2">🚀 バックエンド</h3>
               <p className="text-sm text-blue-700 mb-2">
-                Bun + Hono サーバー
+                Bun + Hono + PostgreSQL + API実装完了
               </p>
               <p className="text-xs text-blue-600">
                 {serverStatus}
@@ -87,15 +104,21 @@ function App() {
             
             <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
               <h3 className="font-semibold text-purple-800 mb-2">📡 factors辞書</h3>
-              <p className="text-sm text-purple-700">
-                コンテキスト収集システム実装済み
+              <p className="text-sm text-purple-700 mb-2">
+                コンテキスト収集システム + Capacitor統合
               </p>
+              <button
+                onClick={() => setCurrentView('factors')}
+                className="text-xs bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-600 transition-colors"
+              >
+                テスト画面へ →
+              </button>
             </div>
           </div>
           
           <div className="mt-6 pt-4 border-t border-gray-200">
             <p className="text-sm text-gray-500">
-              次のフェーズ: サーバーデータベース（SQLite + Drizzle）
+              次のフェーズ: 5画面UI実装 + API連携統合
             </p>
           </div>
         </div>

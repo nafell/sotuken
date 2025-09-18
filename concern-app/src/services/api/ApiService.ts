@@ -1,7 +1,9 @@
 /**
  * ApiService - サーバーAPI連携
- * Phase 0 Day 4 - クライアント・サーバー統合
+ * Phase 0 Day 9 - UI生成API・イベントトラッキング統合
  */
+
+import type { FactorsDict } from '../context/ContextService';
 
 export interface ApiConfig {
   configVersion: string;
@@ -18,8 +20,6 @@ export interface ApiConfig {
 
 export interface UIGenerationRequest {
   sessionId: string;
-  anonymousUserId: string;
-  uiVariant: string;
   userExplicitInput: {
     concernText: string;
     selectedCategory?: string;
@@ -27,12 +27,8 @@ export interface UIGenerationRequest {
     urgencyChoice?: string;
     concernLevel?: string;
   };
-  systemInferredContext: {
-    timeOfDay: string;
-    availableTimeMin?: number;
-    factors: Record<string, any>;
-  };
-  noveltyLevel: string;
+  contextFactors: FactorsDict;
+  noveltyLevel?: string;
 }
 
 export interface UIGenerationResponse {
@@ -50,35 +46,36 @@ export interface UIGenerationResponse {
   };
 }
 
-export interface EventBatch {
-  events: Array<{
-    eventId: string;
-    sessionId: string;
-    anonymousUserId: string;
-    eventType: string;
-    timestamp: string;
-    metadata: Record<string, any>;
-  }>;
-}
-
 export class ApiService {
+  private static instance: ApiService | null = null;
   private baseUrl: string;
   private anonymousUserId: string;
 
-  constructor() {
-    this.baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/v1';
+  private constructor() {
+    this.baseUrl = 'http://localhost:3000/v1';
     this.anonymousUserId = this.generateAnonymousUserId();
     
-    console.log(`🌐 API Service initialized: ${this.baseUrl}`);
+    console.log(`🔧 ApiService初期化完了 - UserID: ${this.anonymousUserId}`);
   }
 
+  static getInstance(): ApiService {
+    if (!ApiService.instance) {
+      ApiService.instance = new ApiService();
+    }
+    return ApiService.instance;
+  }
+
+  // ========================================
+  // 設定配布API
+  // ========================================
+
   /**
-   * 設定取得API
+   * 実験条件・重み設定の取得
    */
   async getConfig(): Promise<ApiConfig> {
+    console.log('📥 設定取得リクエスト送信');
+
     try {
-      console.log('📡 Fetching config from server...');
-      
       const response = await fetch(`${this.baseUrl}/config`, {
         method: 'GET',
         headers: {
@@ -92,78 +89,120 @@ export class ApiService {
       }
 
       const config = await response.json();
-      console.log(`✅ Config received: v${config.configVersion}`);
+      console.log('✅ 設定取得成功:', config);
       
       return config;
       
     } catch (error) {
-      console.error('❌ Failed to fetch config:', error);
+      console.error('❌ 設定取得エラー:', error);
       throw error;
     }
   }
 
-  /**
-   * UI生成API
-   */
-  async generateUI(request: Omit<UIGenerationRequest, 'anonymousUserId'>): Promise<UIGenerationResponse> {
-    try {
-      console.log('🎨 Requesting UI generation...');
-      
-      const fullRequest: UIGenerationRequest = {
-        ...request,
-        anonymousUserId: this.anonymousUserId
-      };
+  // ========================================
+  // UI生成API
+  // ========================================
 
+  /**
+   * 動的UI生成API
+   */
+  async generateUI(concernText: string, factors: FactorsDict, sessionId?: string): Promise<UIGenerationResponse> {
+    console.log('🎨 UI生成リクエスト送信開始');
+    console.log('📄 concernText:', concernText);
+    console.log('📊 factors:', factors);
+
+    const requestBody: UIGenerationRequest = {
+      sessionId: sessionId || this.generateSessionId(),
+      userExplicitInput: {
+        concernText
+      },
+      contextFactors: factors,
+      noveltyLevel: 'low' // Phase 0では固定
+    };
+
+    try {
       const response = await fetch(`${this.baseUrl}/ui/generate`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-User-ID': this.anonymousUserId
         },
-        body: JSON.stringify(fullRequest)
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
-        throw new Error(`UI Generation API failed: ${response.status} ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`HTTP ${response.status}: ${errorData.error?.message || response.statusText}`);
       }
 
       const result = await response.json();
-      console.log(`✅ UI generated: ${result.generationId}`);
+      console.log('✅ UI生成成功:', result);
       
       return result;
       
     } catch (error) {
-      console.error('❌ UI generation failed:', error);
+      console.error('❌ UI生成エラー:', error);
+      throw error;
+    }
+  }
+
+  // ========================================
+  // イベントログAPI
+  // ========================================
+
+  /**
+   * バッチイベント送信API
+   */
+  async sendEvents(events: Array<{
+    eventType: string;
+    eventData: any;
+    timestamp: string;
+    sessionId?: string;
+  }>): Promise<void> {
+    console.log('📡 イベント送信開始:', events.length, 'events');
+
+    try {
+      const response = await fetch(`${this.baseUrl}/events/batch`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-ID': this.anonymousUserId
+        },
+        body: JSON.stringify({
+          events,
+          batchId: this.generateSessionId()
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`HTTP ${response.status}: ${errorData.error?.message || response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ イベント送信成功:', result);
+      
+    } catch (error) {
+      console.error('❌ イベント送信エラー:', error);
       throw error;
     }
   }
 
   /**
-   * イベントログ送信API
+   * 単一イベント送信（バッチ送信のラッパー）
    */
-  async sendEvents(eventBatch: EventBatch): Promise<void> {
-    try {
-      console.log(`📊 Sending ${eventBatch.events.length} events...`);
-      
-      const response = await fetch(`${this.baseUrl}/events/batch`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(eventBatch)
-      });
-
-      if (!response.ok) {
-        throw new Error(`Events API failed: ${response.status} ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      console.log(`✅ Events recorded: ${result.recordedEvents} events`);
-      
-    } catch (error) {
-      console.error('❌ Event logging failed:', error);
-      throw error;
-    }
+  async sendEvent(eventType: string, eventData: any, sessionId?: string): Promise<void> {
+    await this.sendEvents([{
+      eventType,
+      eventData,
+      timestamp: new Date().toISOString(),
+      sessionId
+    }]);
   }
+
+  // ========================================
+  // ヘルスチェックAPI
+  // ========================================
 
   /**
    * APIヘルスチェック
@@ -189,6 +228,13 @@ export class ApiService {
   // ========================================
   // ヘルパーメソッド
   // ========================================
+
+  /**
+   * セッションID生成
+   */
+  private generateSessionId(): string {
+    return 'sess_' + Date.now().toString(36) + Math.random().toString(36).substr(2);
+  }
 
   /**
    * 匿名ユーザーID生成
@@ -235,4 +281,4 @@ export class ApiService {
 }
 
 // シングルトンインスタンス
-export const apiService = new ApiService();
+export const apiService = ApiService.getInstance();

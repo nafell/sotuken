@@ -104,10 +104,11 @@ interface UISpecDSL {
 
 1. **全mappingsキー**はDataSchema内の有効な"ENTITY.attribute"形式
 2. **render値**は上記のサポートされたタイプのみ
-3. **category時**: \`categories\`配列必須
-4. **summary時**: \`summary\`フィールド必須
-5. **PNTR時**: \`thumbnail\`配列必須
-6. **custom時**: \`component\`名必須
+3. **editableフィールド必須**: 全てのSVAL, ARRY, PNTRレンダリングには\`editable: true\`または\`editable: false\`を明示的に指定すること
+4. **category時**: \`categories\`配列必須
+5. **summary時**: \`summary\`フィールド必須
+6. **PNTR時**: \`thumbnail\`配列必須
+7. **custom時**: \`component\`名必須
 `;
   }
 
@@ -129,16 +130,16 @@ ${JSON.stringify(dataSchema, null, 2)}
 1. **レイアウト**: \`singleColumn\` 固定（シンプルで直感的）
 
 2. **CONCERN属性のマッピング**:
-   - \`concernText\`: \`paragraph\`（編集可能、プレースホルダー推奨）
-   - \`category\`: \`category\`（categories必須）
-   - \`urgency\`: \`number\`（編集可能）
+   - \`concernText\`: { render: "paragraph", editable: true, placeholder: "..." }
+   - \`category\`: { render: "category", editable: true, categories: [...] }
+   - \`urgency\`: { render: "number", editable: true }
 
 3. **QUESTION配列のマッピング**:
-   - \`clarificationQuestions\`: \`expanded\`（全質問を表示）
+   - \`clarificationQuestions\`: { render: "expanded", editable: true, item: { render: "radio" } }
    - 各質問のanswerTypeに応じて適切なrender指定
-     - answerType="choice" → \`radio\`
-     - answerType="scale" → \`number\`
-     - answerType="text" → \`shortText\`
+     - answerType="choice" → { render: "radio", editable: true }
+     - answerType="scale" → { render: "number", editable: true }
+     - answerType="text" → { render: "shortText", editable: true }
 
 4. **表示順序**: \`displayOrder\`で論理的な順序を指定
 

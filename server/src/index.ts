@@ -5,6 +5,7 @@ import { initializeDatabase, checkDatabaseHealth } from './database/index';
 import { configRoutes } from './routes/config';
 import { uiRoutes } from './routes/ui';
 import { eventRoutes } from './routes/events';
+import { thoughtRoutes } from './routes/thought';
 
 const app = new Hono();
 
@@ -37,6 +38,7 @@ app.get('/health/database', async (c) => {
 app.route('/v1/config', configRoutes);
 app.route('/v1/ui', uiRoutes);
 app.route('/v1/events', eventRoutes);
+app.route('/v1/thought', thoughtRoutes);
 
 // Basic route
 app.get('/', (c) => {
@@ -49,7 +51,9 @@ app.get('/', (c) => {
       'GET /health/database',
       'GET /v1/config',
       'POST /v1/ui/generate',
-      'POST /v1/events/batch'
+      'POST /v1/events/batch',
+      'POST /v1/thought/generate',
+      'GET /v1/thought/health'
     ]
   });
 });

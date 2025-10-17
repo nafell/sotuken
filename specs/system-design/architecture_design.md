@@ -1,5 +1,11 @@
-# アーキテクチャ設計書
+# アーキテクチャ設計書 v2.0
 *「頭の棚卸しノート」アプリ - システム全体設計*
+
+**更新履歴:**
+- v1.0 (2025/09/17): 初版（Phase 0完成時）
+- v2.0 (2025/10/12): **2系統DSL対応版**（思考整理 + タスク推奨の分離設計）
+
+---
 
 ## 📖 概要
 
@@ -9,6 +15,7 @@
 - **拡張性**: factors辞書による無限センサー対応
 - **実用性**: PWAからネイティブアプリへの段階的移行
 - **堅牢性**: エラー処理とフォールバック機構の充実
+- **🆕 2層モデル採用**: Jelly (CHI 2025)の思想に基づくDataSchema + UISpec分離設計
 
 ### システム全体像
 ```mermaid
@@ -100,6 +107,36 @@ async function collectFactors(): Promise<FactorsDict> {
 
 ### Layer 2: ビジネスロジック層
 
+---
+
+## 🆕 2系統DSLアーキテクチャ（v2.0の核心）
+
+### 系統1: 思考整理DSL（DataSchema + UISpec）
+**適用範囲:** capture, plan, breakdown
+
+```mermaid
+graph LR
+    A[ユーザー入力] --> B[LLM: DataSchema生成]
+    B --> C[LLM: UISpec生成]
+    C --> D[Rule-based Renderer]
+    D --> E[React UI表示]
+```
+
+### 系統2: タスク推奨DSL（Schema不要）
+**適用範囲:** home推奨
+
+```mermaid
+graph LR
+    A[factors収集] --> B[ScoreRanking Service]
+    B --> C[TaskRecommendationDSL生成]
+    C --> D[TaskCard Renderer]
+    D --> E[React UI表示]
+```
+
+**参考文献:** [Jelly: Generative and Malleable User Interfaces (CHI 2025)](https://arxiv.org/html/2503.04084v1)
+
+---
+
 #### **Context Service（factors辞書管理）**
 ```typescript
 interface FactorsDict {
@@ -152,28 +189,51 @@ class ContextService {
 }
 ```
 
-#### **UI Generation Service（動的UI生成）**
+#### **🆕 Thought Organization Service（思考整理UI生成）**
 ```typescript
-interface UIGenerationService {
-  async generateUI(request: UIGenerationRequest): Promise<UIGenerationResponse> {
-    try {
-      // サーバーでLLM生成
-      const response = await this.apiService.post('/v1/ui/generate', {
-        ...request,
-        userExplicitInput: request.userInput,  // そのまま送信
-        systemInferredContext: this.anonymizeContext(request.context) // 抽象化
+// 系統1: 思考整理DSL生成サービス
+class ThoughtOrganizationService {
+  async generateUI(request: {
+    stage: 'capture' | 'plan' | 'breakdown';
+    concernText: string;
+    factors: FactorsDict;
+    previousSchema?: DataSchemaDSL;
+  }): Promise<{ dataSchema: DataSchemaDSL; uiSpec: UISpecDSL }> {
+    
+    if (request.stage === 'plan') {
+      // ✅ planステージ: フルパイプライン
+      // DataSchema生成 → UISpec生成
+      const dataSchema = await this.llm.generateDataSchema({
+        concernText: request.concernText,
+        stage: 'plan',
+        previousSchema: request.previousSchema
       });
       
-      // DSL検証
-      if (!this.validateDSL(response.uiDsl)) {
-        throw new Error('Invalid DSL received');
-      }
+      const uiSpec = await this.llm.generateUISpec({
+        dataSchema,
+        factors: request.factors,
+        stage: 'plan'
+      });
       
-      return response;
+      return { dataSchema, uiSpec };
       
-    } catch (error) {
-      // フォールバック機構
-      return this.getFallbackUI(request);
+    } else if (request.stage === 'capture') {
+      // ✅ captureステージ: 簡易パイプライン
+      // 固定Schema + 内容調整
+      const dataSchema = this.getFixedCaptureSchema();
+      
+      const uiSpec = await this.llm.adjustUISpec({
+        dataSchema,
+        concernText: request.concernText,
+        stage: 'capture'
+      });
+      
+      return { dataSchema, uiSpec };
+      
+    } else {
+      // ✅ breakdownステージ: 最簡易（固定Template）
+      const template = this.getFixedBreakdownTemplate(request.previousSchema);
+      return { dataSchema: template.dataSchema, uiSpec: template.uiSpec };
     }
   }
   
@@ -186,12 +246,62 @@ interface UIGenerationService {
         anonymized.factors[key] = {
           ...factor,
           value: this.abstractValue(factor.value),
-          // rawDataは削除
         };
       }
     }
     
     return anonymized;
+  }
+}
+```
+
+#### **🆕 Task Recommendation Service（タスク推奨）**
+```typescript
+// 系統2: タスク推奨DSL生成サービス（Schema不要）
+class TaskRecommendationService {
+  async selectAndRender(request: {
+    available_time: number;
+    factors: FactorsDict;
+    tasks: Task[];
+  }): Promise<TaskRecommendationDSL> {
+    
+    // ✅ Step 1: スコアリング
+    const scored = request.tasks.map(task => ({
+      task,
+      score: this.calculateScore(task, request.factors)
+    }));
+    
+    // ✅ Step 2: ランキング
+    const ranked = scored.sort((a, b) => b.score - a.score);
+    const topTask = ranked[0].task;
+    
+    // ✅ Step 3: ゲーティング（variant決定）
+    const variant = this.applyGating(topTask, request.available_time);
+    
+    // ✅ Step 4: サリエンシー決定
+    const saliency = this.calculateSaliency(topTask);
+    
+    // ✅ Step 5: TaskRecommendationDSL生成
+    return {
+      version: "1.0",
+      type: "task_recommendation",
+      selectedTask: {
+        taskId: topTask.id,
+        variant,
+        saliency
+      },
+      taskCard: this.getTaskCardSpec(),
+      scoring: this.getScoringSpec()
+    };
+  }
+  
+  private calculateScore(task: Task, factors: FactorsDict): number {
+    const importance = task.importance;
+    const urgencyN = 1 - this.logistic(task.due_in_hours, 48, 0.1);
+    const stalenessN = this.logistic(task.days_since_last_touch, 3, 1.5);
+    const contextFitN = this.calculateContextFit(task, factors);
+    
+    return 0.4 * importance + 0.3 * urgencyN + 0.2 * stalenessN + 0.1 * contextFitN;
   }
 }
 ```
@@ -599,6 +709,50 @@ spec:
 
 ---
 
+---
+
+## 🆕 v2.0追加: 2系統DSL実装方針
+
+### 実装優先度
+1. **Phase 1A**: 思考整理DSL（capture/plan/breakdown）
+2. **Phase 1B**: タスク推奨DSL（home推奨）
+3. **Phase 1C**: Rule-based Rendering統合
+
+### API構造（v2.0）
+
+#### 系統1: 思考整理API
+```
+POST /v1/thought/generate        - DataSchema + UISpec一括生成
+POST /v1/thought/generate-schema - DataSchemaのみ生成
+POST /v1/thought/generate-uispec - UISpecのみ生成
+```
+
+#### 系統2: タスク推奨API
+```
+POST /v1/task/rank              - TaskRecommendationDSL生成
+```
+
+### Rule-based Rendering実装
+
+**ComponentMapper:**
+- DSL `render`値 → React Component
+- `saliency`値 → Tailwind CSSクラス
+- カスタムウィジェット拡張ポイント
+
+**主要ウィジェット:**
+1. TextAreaWidget (paragraph)
+2. InputWidget (shortText)
+3. NumberInputWidget (number)
+4. RadioGroupWidget (radio)
+5. CategoryPickerWidget (category)
+6. ListWidget (expanded)
+7. SummaryListWidget (summary)
+8. DynamicWidget (custom)
+9. TaskCardWidget (タスクカード)
+
+---
+
 *作成日: 2025年9月17日*  
-*バージョン: v1.0*  
+*最終更新: 2025年10月12日*  
+*バージョン: v2.0（2系統DSL対応版）*  
 *対応MVP要件: v2.0*

@@ -31,8 +31,8 @@ export class GeminiService {
     }
 
     this.genAI = new GoogleGenerativeAI(apiKey);
-    // Gemini 1.5 Flash を使用（高速・コスト効率）
-    this.model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // gemini-2.5-flash-lite を使用
+    this.model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
   }
 
   /**

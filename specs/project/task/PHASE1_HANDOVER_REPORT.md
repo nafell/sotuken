@@ -59,9 +59,9 @@
    - 必須フィールド自動補完
 
 **テストファイル**:
-- `/server/test/gemini_service.test.ts` ✅ PASS（構造テスト）
+- `/server/test/gemini_service.test.ts` ✅ PASS（実API呼び出し成功）
 - `/server/test/dataschema_prompt.test.ts` ✅ PASS
-- `/server/test/dataschema_generation.test.ts` ⚠️ 要APIキー
+- `/server/test/dataschema_generation.test.ts` ✅ PASS（実LLM生成成功）
 
 **プロンプト長**:
 - capture: 2,197文字
@@ -94,7 +94,7 @@
 **テストファイル**:
 - `/server/test/uispec_validator.test.ts` ✅ PASS（6テストケース）
 - `/server/test/uispec_prompt.test.ts` ✅ PASS
-- `/server/test/uispec_generation.test.ts` ⚠️ 要APIキー
+- `/server/test/uispec_generation.test.ts` ✅ PASS（実LLM生成成功）
 
 **プロンプト長**:
 - capture: 2,756文字
@@ -148,22 +148,45 @@ GET /v1/thought/health
 ```
 
 **テストファイル**:
-- `/server/test/thought_api.test.ts` ✅ PASS（構造テスト）
+- `/server/test/thought_api.test.ts` ✅ PASS（完全なE2Eテスト成功）
 
 ---
 
 ## ⚠️ 発生した問題と対処
 
-### 1. GEMINI_API_KEY 設定の問題
+### 1. Geminiモデル名の問題 ✅ **解決済み**
 
 **問題**:
-- 環境変数 `GEMINI_API_KEY` が設定されているが、無効なAPIキーとして認識される
-- 実際のLLM生成テストが失敗
+- `gemini-1.5-flash` モデルが見つからないエラー
+- 404 Not Found エラーが発生
 
 **対処**:
-- 構造テストとロジックテストは完了
-- 実装自体は正しく動作（エラーハンドリング、再試行ロジック確認済み）
-- 実際のAPI呼び出しテストはAPIキー設定後に実施可能
+- モデル名を `gemini-1.5-pro` に変更
+- `/server/src/services/GeminiService.ts` を修正
+
+**結果**: ✅ 全テスト成功
+
+---
+
+### 2. UISpec生成時の`editable`フィールド欠如 ✅ **解決済み**
+
+**問題**:
+- LLMが生成するUISpecに `editable` フィールドが欠けている
+- バリデーションエラーが発生（3回リトライ後失敗）
+
+**対処**:
+- プロンプトに`editable`フィールドが必須であることを明記
+- 具体的な例を追加
+- `/server/src/services/UISpecGenerator.ts` を修正
+
+**結果**: ✅ 全テスト成功
+
+---
+
+### 3. GEMINI_API_KEY 設定 ✅ **完了**
+
+**状況**:
+- 有効なAPIキーが設定され、全テスト成功
 
 **留意点**:
 ```bash
@@ -413,13 +436,15 @@ curl http://localhost:3000/v1/thought/health
 
 ## 🎯 成功基準の確認
 
-### Phase 1A完了基準 ✅
+### Phase 1A完了基準 ✅ **完全達成**
 
-- [x] A1-A11全てテスト成功
-- [x] TypeScriptコンパイルエラーなし
-- [x] バリデーション機能動作確認
-- [x] プロンプト生成機能動作確認
-- [x] API構造実装完了
+- [x] A1-A11全てテスト成功 ✅
+- [x] TypeScriptコンパイルエラーなし ✅
+- [x] バリデーション機能動作確認 ✅
+- [x] プロンプト生成機能動作確認 ✅
+- [x] API構造実装完了 ✅
+- [x] **実際のLLM生成テスト成功** ✅ **NEW**
+- [x] **完全なE2E APIテスト成功** ✅ **NEW**
 
 ### 次のマイルストーン
 

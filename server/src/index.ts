@@ -6,6 +6,7 @@ import { configRoutes } from './routes/config';
 import { uiRoutes } from './routes/ui';
 import { eventRoutes } from './routes/events';
 import { thoughtRoutes } from './routes/thought';
+import { taskRoutes } from './routes/task';
 
 const app = new Hono();
 
@@ -39,13 +40,14 @@ app.route('/v1/config', configRoutes);
 app.route('/v1/ui', uiRoutes);
 app.route('/v1/events', eventRoutes);
 app.route('/v1/thought', thoughtRoutes);
+app.route('/v1/task', taskRoutes);
 
 // Basic route
 app.get('/', (c) => {
   return c.json({ 
-    message: 'Concern App Server - Phase 0',
+    message: 'Concern App Server - Phase 1B',
     version: '1.0.0',
-    phase: 'Day 3 - API Implementation',
+    phase: 'Phase 1B - Task Recommendation',
     availableEndpoints: [
       'GET /health',
       'GET /health/database',
@@ -53,7 +55,9 @@ app.get('/', (c) => {
       'POST /v1/ui/generate',
       'POST /v1/events/batch',
       'POST /v1/thought/generate',
-      'GET /v1/thought/health'
+      'GET /v1/thought/health',
+      'POST /v1/task/rank',
+      'GET /v1/task/health'
     ]
   });
 });

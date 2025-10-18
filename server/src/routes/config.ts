@@ -1,8 +1,10 @@
 import { Hono } from 'hono';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { ExperimentService } from '../services/ExperimentService';
 
 const configRoutes = new Hono();
+const experimentService = new ExperimentService();
 
 /**
  * 設定配布API
@@ -20,18 +22,18 @@ configRoutes.get('/', async (c) => {
     // リクエストヘッダーから匿名ユーザーIDを取得
     const anonymousUserId = c.req.header('X-User-ID') || 'anonymous';
     
-    // 実験条件割り当て（Phase 0では固定、Phase 1で動的割り当て実装）
-    const experimentAssignment = {
-      condition: "dynamic_ui", // TODO: 実際の割り当てロジック
-      assignedAt: new Date().toISOString(),
-      experimentId: "exp_001"
-    };
+    // Phase 2: 実験条件割り当て（ハッシュベース）
+    const experimentAssignment = await experimentService.getOrAssignCondition(anonymousUserId);
     
     // 設定レスポンス構築
     const configResponse = {
       configVersion: baseConfig.configVersion,
       weightsVersion: baseConfig.weightsVersion,
-      experimentAssignment,
+      experimentAssignment: {
+        condition: experimentAssignment.condition,
+        assignedAt: experimentAssignment.assignedAt,
+        method: experimentAssignment.method
+      },
       weights: baseConfig.weights,
       uiNoveltyPolicy: baseConfig.uiNoveltyPolicy,
       model: baseConfig.model

@@ -5,6 +5,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { TaskService } from '../services/TaskService';
+import { eventLogger } from '../services/EventLogger';
+import { db } from '../services/database/localDB';
 import type { Task } from '../types/database';
 
 interface TaskRecommendationScreenProps {
@@ -94,15 +96,37 @@ export const TaskRecommendationScreen: React.FC<TaskRecommendationScreenProps> =
       const recommendedTaskId = result.recommendedTaskId || result.topTask?.taskId;
       const recommendedTask = tasks.find(t => t.taskId === recommendedTaskId) || tasks[0];
       
-      setRecommendation({
+      const recResult = {
         task: recommendedTask,
         variant: result.uiVariant || result.topTask?.variant || 'task_card',
         saliency: result.saliency || result.topTask?.saliency || 2,
         score: result.topScore || result.topTask?.score || 0,
         generationId: result.generationId,
-      });
+      };
       
-      setRecommendationShownAt(new Date());
+      setRecommendation(recResult);
+      
+      const shownAt = new Date();
+      setRecommendationShownAt(shownAt);
+      
+      // task_recommendation_shown イベント記録 ⭐️
+      await eventLogger.log({
+        eventType: 'task_recommendation_shown',
+        screenId: 'task_recommendation',
+        metadata: {
+          uiCondition: 'dynamic_ui', // TODO: 実験条件から取得
+          taskId: recommendedTask.taskId,
+          taskVariant: recResult.variant,
+          saliency: recResult.saliency,
+          score: recResult.score,
+          generationId: recResult.generationId,
+          factorsSnapshot: {
+            time_of_day: timeOfDay,
+            location_category: location,
+            available_time: availableTime,
+          },
+        },
+      });
       
     } catch (err) {
       console.error('Recommendation fetch error:', err);
@@ -112,9 +136,55 @@ export const TaskRecommendationScreen: React.FC<TaskRecommendationScreenProps> =
     }
   };
 
-  // 着手ハンドラー（タスク2.9で実装）
-  const handleActionStart = () => {
-    console.log('Action started - will implement in task 2.9');
+  // 着手ハンドラー ⭐️着手の定義
+  const handleActionStart = async () => {
+    if (!recommendation || !recommendation.task || !recommendationShownAt) {
+      console.error('Invalid state for action start');
+      return;
+    }
+
+    try {
+      // ActionReport作成
+      const report = await db.startAction(
+        recommendation.task.taskId,
+        userId,
+        recommendationShownAt,
+        'dynamic_ui', // TODO: 実験条件から取得
+        {
+          timeOfDay,
+          location,
+          availableTimeMin: availableTime,
+          factorsSnapshot: {
+            time_of_day: timeOfDay,
+            location_category: location,
+            available_time: availableTime,
+          },
+        }
+      );
+
+      // task_action_started イベント記録 ⭐️
+      await eventLogger.log({
+        eventType: 'task_action_started',
+        screenId: 'task_recommendation',
+        metadata: {
+          uiCondition: 'dynamic_ui',
+          taskId: recommendation.task.taskId,
+          timeToActionSec: report.timeToStartSec,
+        },
+      });
+
+      console.log('✅ Action started:', {
+        reportId: report.reportId,
+        timeToStartSec: report.timeToStartSec,
+      });
+
+      // TODO: ActionReportModalを表示（タスク2.11で実装）
+      alert(`着手しました！\n表示から${report.timeToStartSec.toFixed(1)}秒後に着手`);
+
+    } catch (error) {
+      console.error('❌ Action start failed:', error);
+      alert('着手の記録に失敗しました');
+    }
   };
 
   return (

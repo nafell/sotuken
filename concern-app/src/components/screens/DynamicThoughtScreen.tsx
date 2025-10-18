@@ -32,7 +32,7 @@ interface DynamicThoughtScreenProps {
 
 export const DynamicThoughtScreen: React.FC<DynamicThoughtScreenProps> = ({ 
   stage: propStage,
-  concernId: propConcernId,
+  concernId: _propConcernId,
   onComplete: _onComplete
 }) => {
   const navigate = useNavigate();
@@ -47,7 +47,7 @@ export const DynamicThoughtScreen: React.FC<DynamicThoughtScreenProps> = ({
 
   // Phase 2 Step 3: propsまたはlocation.stateから取得（propsを優先）
   const stage = propStage || state?.stage || 'capture';
-  const _concernId = propConcernId || state?.concernId || ''; // 将来の機能で使用予定
+  // concernIdは将来の機能で使用予定（現在はflowStateManagerから取得）
   
   // ConcernFlowStateManagerから関心事情報を取得
   const flowState = flowStateManager.loadState();

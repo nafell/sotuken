@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { sessionManager } from '../../services/session/SessionManager';
+import { flowStateManager } from '../../services/ConcernFlowStateManager';
+import { generateId } from '../../utils/uuid';
 
 interface LocationState {
   prefillConcern?: string;
@@ -19,12 +21,39 @@ export const ConcernInputScreen: React.FC = () => {
         const sessionId = await sessionManager.startSession(concernText.trim());
         console.log('✅ セッション開始:', sessionId);
         
-        navigate('/concern-level', { 
-          state: { concernText: concernText.trim() }
+        // Phase 2 Step 3: ConcernFlowStateManager を使ってフロー開始
+        const concernId = generateId('concern');
+        const userId = localStorage.getItem('anonymousUserId') || generateId('user');
+        
+        // ユーザーIDを保存（初回のみ）
+        if (!localStorage.getItem('anonymousUserId')) {
+          localStorage.setItem('anonymousUserId', userId);
+        }
+        
+        // 実験条件を取得（/v1/config から取得済みの場合）
+        const uiCondition = localStorage.getItem('experimentCondition') as 'dynamic_ui' | 'static_ui' | null;
+        
+        // フロー状態を初期化
+        flowStateManager.startNewFlow(
+          concernId,
+          concernText.trim(),
+          userId,
+          uiCondition || 'dynamic_ui'
+        );
+        
+        console.log('✅ ConcernFlow開始:', { concernId, userId, uiCondition });
+        
+        // Phase 2 Step 3: captureステージへ遷移
+        navigate('/concern/capture', { 
+          state: { 
+            concernText: concernText.trim(),
+            concernId,
+            userId
+          }
         });
       } catch (error) {
         console.error('❌ セッション開始エラー:', error);
-        // エラーが発生してもナビゲーションは続行
+        // エラーが発生してもナビゲーションは続行（後方互換性のため/concern-levelへ）
         navigate('/concern-level', { 
           state: { concernText: concernText.trim() }
         });

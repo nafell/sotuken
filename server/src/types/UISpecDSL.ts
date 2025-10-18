@@ -251,6 +251,11 @@ export class UISpecValidator {
       errors.push(`schemaRef mismatch: ${uiSpec.schemaRef} !== ${dataSchema.generationId}`);
     }
 
+    // layout.sections の検証
+    if (uiSpec.layout?.sections) {
+      this.validateLayoutSections(uiSpec.layout.sections, errors);
+    }
+
     return {
       isValid: errors.length === 0,
       errors
@@ -369,6 +374,48 @@ export class UISpecValidator {
     // 未知のrenderタイプ
     else {
       errors.push(`${entityPath}: Unknown render type: ${render}`);
+    }
+  }
+
+  /**
+   * layout.sectionsの検証
+   */
+  private validateLayoutSections(
+    sections: any[],
+    errors: string[]
+  ): void {
+    if (!Array.isArray(sections)) {
+      errors.push("layout.sections must be an array");
+      return;
+    }
+
+    for (let i = 0; i < sections.length; i++) {
+      const section = sections[i];
+      const sectionId = section.id || `index-${i}`;
+
+      // id の検証
+      if (!section.id) {
+        errors.push(`LayoutSection at index ${i}: Missing required field 'id'`);
+      }
+
+      // widgets の検証
+      if (!section.widgets) {
+        errors.push(`LayoutSection ${sectionId}: 'widgets' is required`);
+      } else if (!Array.isArray(section.widgets)) {
+        errors.push(`LayoutSection ${sectionId}: 'widgets' must be an array`);
+      } else if (section.widgets.length === 0) {
+        // 空配列は警告のみ（エラーにはしない）
+        console.warn(`⚠️ LayoutSection ${sectionId}: 'widgets' array is empty`);
+      }
+
+      // span の検証（オプショナル）
+      if (section.span !== undefined) {
+        if (typeof section.span !== 'number') {
+          errors.push(`LayoutSection ${sectionId}: 'span' must be a number`);
+        } else if (section.span < 1 || section.span > 12) {
+          errors.push(`LayoutSection ${sectionId}: 'span' must be between 1 and 12`);
+        }
+      }
     }
   }
 }

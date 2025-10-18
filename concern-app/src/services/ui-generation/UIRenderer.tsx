@@ -168,7 +168,7 @@ export const UIRenderer: React.FC<UIRendererProps> = ({
               </h3>
             )}
             <div className="space-y-4">
-              {section.widgets.map((widgetPath: string, widgetIndex: number) => 
+              {(section.widgets || []).map((widgetPath: string, widgetIndex: number) => 
                 renderWidget(widgetPath, widgetIndex)
               )}
             </div>

@@ -1,0 +1,134 @@
+/**
+ * DynamicUINavigator
+ * 
+ * Phase 2 Step 3: 動的UI版のルーター
+ * 思考整理フロー（capture/plan/breakdown）からタスク推奨までの完全なフロー
+ */
+
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+
+// Phase 0-1: 既存画面
+import HomeScreen from '../components/screens/HomeScreen';
+import ConcernInputScreen from '../components/screens/ConcernInputScreen';
+import CategorySelectionScreen from '../components/screens/CategorySelectionScreen';
+import ConcernLevelScreen from '../components/screens/ConcernLevelScreen';
+import ApproachScreen from '../components/screens/ApproachScreen';
+import BreakdownScreen from '../components/screens/BreakdownScreen';
+import FeedbackScreen from '../components/screens/FeedbackScreen';
+
+// Phase 1C: 動的思考整理画面
+import DynamicThoughtScreen from '../components/screens/DynamicThoughtScreen';
+
+// Phase 2: タスク管理画面
+import TaskRecommendationScreen from '../screens/TaskRecommendationScreen';
+import TaskListScreen from '../screens/TaskListScreen';
+import TaskCreateScreen from '../screens/TaskCreateScreen';
+
+/**
+ * DynamicUINavigator
+ * 
+ * 動的UI条件（dynamic_ui）用のルーティング設定
+ * 
+ * フロー:
+ * 1. / → HomeScreen（スタート）
+ * 2. /concern/input → ConcernInputScreen（関心事入力）
+ * 3. /concern/capture → DynamicThoughtScreen (stage=capture)（思考整理：捕捉）
+ * 4. /concern/plan → DynamicThoughtScreen (stage=plan)（思考整理：計画）
+ * 5. /concern/breakdown → DynamicThoughtScreen (stage=breakdown)（思考整理：分解）
+ * 6. /tasks/recommend → TaskRecommendationScreen（タスク推奨）
+ * 7. /tasks → TaskListScreen（タスク一覧）
+ * 8. /tasks/create → TaskCreateScreen（タスク作成）
+ * 
+ * 備考:
+ * - 既存のPhase 0-1画面も互換性のために残す
+ * - Phase 1Cの動的思考整理画面を統合
+ * - Phase 2のタスク管理画面を統合
+ */
+export const DynamicUINavigator: React.FC = () => {
+  return (
+    <Routes>
+      {/* ==================== */}
+      {/* ホーム */}
+      {/* ==================== */}
+      <Route path="/" element={<HomeScreen />} />
+
+      {/* ==================== */}
+      {/* 関心事入力フロー（Phase 0-1） */}
+      {/* ==================== */}
+      <Route path="/concern/input" element={<ConcernInputScreen />} />
+      <Route path="/concern/category" element={<CategorySelectionScreen />} />
+      <Route path="/concern/level" element={<ConcernLevelScreen />} />
+      <Route path="/concern/approach" element={<ApproachScreen />} />
+      <Route path="/concern/breakdown-static" element={<BreakdownScreen />} />
+      <Route path="/concern/feedback" element={<FeedbackScreen />} />
+
+      {/* ==================== */}
+      {/* 思考整理フロー（Phase 1C + Phase 2） */}
+      {/* ==================== */}
+      
+      {/* Capture Stage: 関心事の捕捉・明確化 */}
+      <Route 
+        path="/concern/capture" 
+        element={
+          <DynamicThoughtScreen 
+            stage="capture" 
+            concernId="" 
+            onComplete={(result) => {
+              console.log('[DynamicUINavigator] Capture completed:', result);
+            }} 
+          />
+        } 
+      />
+      
+      {/* Plan Stage: 計画立案 */}
+      <Route 
+        path="/concern/plan" 
+        element={
+          <DynamicThoughtScreen 
+            stage="plan" 
+            concernId="" 
+            onComplete={(result) => {
+              console.log('[DynamicUINavigator] Plan completed:', result);
+            }} 
+          />
+        } 
+      />
+      
+      {/* Breakdown Stage: タスク分解 */}
+      <Route 
+        path="/concern/breakdown" 
+        element={
+          <DynamicThoughtScreen 
+            stage="breakdown" 
+            concernId="" 
+            onComplete={(result) => {
+              console.log('[DynamicUINavigator] Breakdown completed:', result);
+            }} 
+          />
+        } 
+      />
+
+      {/* ==================== */}
+      {/* タスク管理（Phase 2） */}
+      {/* ==================== */}
+      
+      {/* タスク推奨画面 */}
+      <Route path="/tasks/recommend" element={<TaskRecommendationScreen />} />
+      
+      {/* タスク一覧 */}
+      <Route path="/tasks" element={<TaskListScreen />} />
+      
+      {/* タスク作成 */}
+      <Route path="/tasks/create" element={<TaskCreateScreen />} />
+
+      {/* ==================== */}
+      {/* Fallback: 未定義のパスはホームへ */}
+      {/* ==================== */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+};
+
+export default DynamicUINavigator;
+

@@ -10,6 +10,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { apiService } from '../../services/api/ApiService';
 import { ContextService } from '../../services/context/ContextService';
 import { sessionManager } from '../../services/session/SessionManager';
+import { flowStateManager } from '../../services/ConcernFlowStateManager';
+import { taskGenerationService } from '../../services/TaskGenerationService';
 import { UIRenderer } from '../../services/ui-generation/UIRenderer';
 import type { UISpecDSL } from '../../../../server/src/types/UISpecDSL';
 import type { DataSchemaDSL } from '../../../../server/src/types/DataSchemaDSL';
@@ -17,10 +19,22 @@ import type { DataSchemaDSL } from '../../../../server/src/types/DataSchemaDSL';
 interface LocationState {
   concernText: string;
   stage?: 'capture' | 'plan' | 'breakdown';
+  concernId?: string;
+  userId?: string;
   [key: string]: any;
 }
 
-export const DynamicThoughtScreen: React.FC = () => {
+interface DynamicThoughtScreenProps {
+  stage: 'capture' | 'plan' | 'breakdown';
+  concernId?: string;
+  onComplete?: (result: any) => void;
+}
+
+export const DynamicThoughtScreen: React.FC<DynamicThoughtScreenProps> = ({ 
+  stage: propStage,
+  concernId: propConcernId,
+  onComplete: _onComplete
+}) => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as LocationState;
@@ -31,8 +45,13 @@ export const DynamicThoughtScreen: React.FC = () => {
   const [dataSchema, setDataSchema] = useState<DataSchemaDSL | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
 
-  const concernText = state?.concernText || '';
-  const stage = state?.stage || 'capture';
+  // Phase 2 Step 3: propsまたはlocation.stateから取得（propsを優先）
+  const stage = propStage || state?.stage || 'capture';
+  const _concernId = propConcernId || state?.concernId || ''; // 将来の機能で使用予定
+  
+  // ConcernFlowStateManagerから関心事情報を取得
+  const flowState = flowStateManager.loadState();
+  const concernText = state?.concernText || flowState?.concernText || '';
 
   /**
    * UI生成
@@ -161,6 +180,7 @@ export const DynamicThoughtScreen: React.FC = () => {
 
   /**
    * 次へ進む
+   * Phase 2 Step 3: ConcernFlowStateManagerと統合
    */
   const handleNext = async () => {
     console.log('🚀 フォームデータ送信:', formData);
@@ -172,12 +192,89 @@ export const DynamicThoughtScreen: React.FC = () => {
         formData
       }, sessionManager.getSessionId() || undefined);
 
-      // ステージに応じた次の画面へ
+      // Phase 2 Step 3: ConcernFlowStateManagerに各ステージの結果を保存
       if (stage === 'capture') {
-        navigate('/plan', { state: { ...state, captureData: formData } });
+        // Captureステージの結果を保存
+        flowStateManager.updateCaptureResult({
+          clarifiedConcern: formData.CONCERN?.clarifiedConcern || concernText,
+          keyPoints: formData.CONCERN?.keyPoints || [],
+          timestamp: new Date().toISOString()
+        });
+        
+        console.log('✅ Capture結果保存完了');
+        
+        // Planステージへ
+        navigate('/concern/plan', { 
+          state: { 
+            ...state, 
+            captureData: formData,
+            concernText: formData.CONCERN?.clarifiedConcern || concernText
+          } 
+        });
+        
       } else if (stage === 'plan') {
-        navigate('/breakdown', { state: { ...state, planData: formData } });
+        // Planステージの結果を保存
+        flowStateManager.updatePlanResult({
+          approach: formData.PLAN?.approach || '',
+          steps: formData.PLAN?.steps || [],
+          timestamp: new Date().toISOString()
+        });
+        
+        console.log('✅ Plan結果保存完了');
+        
+        // Breakdownステージへ
+        navigate('/concern/breakdown', { 
+          state: { 
+            ...state, 
+            planData: formData 
+          } 
+        });
+        
+      } else if (stage === 'breakdown') {
+        // Breakdownステージの結果を保存
+        const tasks = formData.BREAKDOWN?.tasks || formData.TASK?.items || [];
+        
+        flowStateManager.updateBreakdownResult({
+          tasks: tasks.map((task: any) => ({
+            title: task.title || task.name || '',
+            description: task.description || '',
+            importance: task.importance || 3,
+            urgency: task.urgency || 3,
+            estimatedMinutes: task.estimatedMinutes || task.estimate || 30
+          })),
+          timestamp: new Date().toISOString()
+        });
+        
+        console.log('✅ Breakdown結果保存完了');
+        
+        // Phase 2 Step 3: タスク生成実行
+        try {
+          const generationResult = await taskGenerationService.generateTasksFromBreakdown();
+          console.log('✅ タスク生成完了:', generationResult.tasks.length, '件');
+          
+          // タスク推奨画面へ遷移
+          navigate('/tasks/recommend', { 
+            state: { 
+              ...state, 
+              breakdownData: formData,
+              generatedTasks: generationResult.tasks,
+              concernId: generationResult.concernId
+            } 
+          });
+        } catch (error) {
+          console.error('❌ タスク生成エラー:', error);
+          
+          // エラーが発生してもタスク推奨画面へ遷移（手動作成を促す）
+          navigate('/tasks/recommend', { 
+            state: { 
+              ...state, 
+              breakdownData: formData,
+              taskGenerationError: String(error)
+            } 
+          });
+        }
       } else {
+        // 後方互換性のためfeedbackへ
         navigate('/feedback', { state: { ...state, breakdownData: formData } });
       }
     } catch (err) {

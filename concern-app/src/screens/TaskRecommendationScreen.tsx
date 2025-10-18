@@ -7,6 +7,8 @@ import React, { useState, useEffect } from 'react';
 import { TaskService } from '../services/TaskService';
 import { eventLogger } from '../services/EventLogger';
 import { db } from '../services/database/localDB';
+import { ActionReportModal } from '../components/ActionReportModal';
+import { ClarityFeedbackModal } from '../components/ClarityFeedbackModal';
 import type { Task } from '../types/database';
 
 interface TaskRecommendationScreenProps {
@@ -31,6 +33,12 @@ export const TaskRecommendationScreen: React.FC<TaskRecommendationScreenProps> =
   const [error, setError] = useState<string | null>(null);
   const [recommendation, setRecommendation] = useState<RecommendationResult | null>(null);
   const [recommendationShownAt, setRecommendationShownAt] = useState<Date | null>(null);
+  
+  // Modal state
+  const [showActionModal, setShowActionModal] = useState<boolean>(false);
+  const [showClarityModal, setShowClarityModal] = useState<boolean>(false);
+  const [currentReportId, setCurrentReportId] = useState<string>('');
+  const [actionElapsedSec, setActionElapsedSec] = useState<number>(0);
 
   // 初期化：時間帯を自動設定
   useEffect(() => {
@@ -178,13 +186,30 @@ export const TaskRecommendationScreen: React.FC<TaskRecommendationScreenProps> =
         timeToStartSec: report.timeToStartSec,
       });
 
-      // TODO: ActionReportModalを表示（タスク2.11で実装）
-      alert(`着手しました！\n表示から${report.timeToStartSec.toFixed(1)}秒後に着手`);
+      // ActionReportModalを表示
+      setCurrentReportId(report.reportId);
+      setShowActionModal(true);
 
     } catch (error) {
       console.error('❌ Action start failed:', error);
       alert('着手の記録に失敗しました');
     }
+  };
+
+  // ActionReport完了ハンドラー
+  const handleActionComplete = (elapsedSec: number) => {
+    setActionElapsedSec(elapsedSec);
+    setShowActionModal(false);
+    setShowClarityModal(true);
+  };
+
+  // ClarityFeedback完了ハンドラー
+  const handleClarityComplete = () => {
+    setShowClarityModal(false);
+    setRecommendation(null);
+    setRecommendationShownAt(null);
+    setCurrentReportId('');
+    setActionElapsedSec(0);
   };
 
   return (
@@ -298,6 +323,28 @@ export const TaskRecommendationScreen: React.FC<TaskRecommendationScreenProps> =
             着手する
           </button>
         </div>
+      )}
+
+      {/* ActionReportModal */}
+      {recommendation && recommendation.task && (
+        <ActionReportModal
+          isOpen={showActionModal}
+          onClose={() => setShowActionModal(false)}
+          task={recommendation.task}
+          reportId={currentReportId}
+          onComplete={handleActionComplete}
+        />
+      )}
+
+      {/* ClarityFeedbackModal */}
+      {recommendation && recommendation.task && (
+        <ClarityFeedbackModal
+          isOpen={showClarityModal}
+          onClose={handleClarityComplete}
+          reportId={currentReportId}
+          task={recommendation.task}
+          elapsedSec={actionElapsedSec}
+        />
       )}
     </div>
   );

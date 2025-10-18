@@ -11,8 +11,8 @@
  */
 
 import { db } from './database/localDB';
-import { Task } from '../types/database';
-import { flowStateManager, ConcernFlowState } from './ConcernFlowStateManager';
+import type { Task } from '../types/database';
+import { flowStateManager } from './ConcernFlowStateManager';
 import { generateId } from '../utils/uuid';
 
 export interface TaskGenerationResult {
@@ -79,7 +79,10 @@ export class TaskGenerationService {
         urgency: this.normalizeScore(taskData.urgency, 1, 5),
         
         // 時間見積もり
-        estimatedMinutes: taskData.estimatedMinutes || 30,
+        estimateMin: taskData.estimatedMinutes || 30,
+        
+        // マイクロステップ情報
+        hasIndependentMicroStep: false,
         
         // ステータス
         status: 'active',
@@ -96,20 +99,16 @@ export class TaskGenerationService {
         
         // メタデータ
         tags: this.extractTags(taskData.title, taskData.description || ''),
-        context: {
-          generatedFrom: 'breakdown',
-          concernText: flowState.concernText,
-          breakdownTimestamp: breakdownResult.timestamp
-        },
+        priority: this.calculatePriority(taskData.importance || 3, taskData.urgency || 3),
         
-        // UI条件
-        uiCondition: flowState.uiCondition || 'dynamic_ui',
+        // ステータス管理（追加フィールド）
+        progress: 0,
         
-        // 関連
-        dependencies: [],
+        // タスク生成元
+        source: 'breakdown_flow',
         
-        // 未同期フラグ
-        needsSync: true
+        // 同期管理
+        syncedToServer: false
       };
       
       tasks.push(task);
@@ -147,6 +146,17 @@ export class TaskGenerationService {
     if (score > max) return max;
     
     return Math.round(score);
+  }
+  
+  /**
+   * 重要度と緊急度から優先度を計算
+   */
+  private calculatePriority(importance: number, urgency: number): 'low' | 'medium' | 'high' {
+    const score = importance + urgency;
+    
+    if (score >= 8) return 'high';
+    if (score >= 5) return 'medium';
+    return 'low';
   }
   
   /**

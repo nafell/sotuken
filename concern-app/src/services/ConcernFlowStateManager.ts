@@ -9,7 +9,7 @@
  * - フロー間のデータ受け渡し
  */
 
-import { Task } from '../types/database';
+import type { Task } from '../types/database';
 
 /**
  * ConcernFlowState
@@ -93,11 +93,16 @@ export class ConcernFlowStateManager {
       // 既存の状態を読み込み
       const currentState = this.loadState();
       
-      // マージして保存
-      const newState: ConcernFlowState = {
+      // マージして保存（必須フィールドのバリデーション）
+      const newState = {
         ...currentState,
         ...state,
-      };
+      } as ConcernFlowState;
+      
+      // 必須フィールドチェック
+      if (!newState.concernId || !newState.concernText || !newState.userId) {
+        throw new Error('concernId, concernText, userId are required fields');
+      }
       
       sessionStorage.setItem(this.storageKey, JSON.stringify(newState));
       console.log('[ConcernFlowStateManager] State saved:', newState);

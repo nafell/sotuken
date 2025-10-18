@@ -6,11 +6,10 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { TaskService } from '../services/TaskService';
 import { eventLogger } from '../services/EventLogger';
 import { db } from '../services/database/localDB';
-import { flowStateManager } from '../services/ConcernFlowStateManager';
 import { ActionReportModal } from '../components/ActionReportModal';
 import { ClarityFeedbackModal } from '../components/ClarityFeedbackModal';
 import type { Task } from '../types/database';
@@ -35,7 +34,6 @@ interface RecommendationResult {
 }
 
 export const TaskRecommendationScreen: React.FC<TaskRecommendationScreenProps> = ({ userId: propUserId }) => {
-  const navigate = useNavigate();
   const routeLocation = useLocation();
   const locationState = routeLocation.state as LocationState;
   

@@ -9,21 +9,21 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
 // Phase 0-1: 既存画面
-import HomeScreen from '../components/screens/HomeScreen';
-import ConcernInputScreen from '../components/screens/ConcernInputScreen';
-import CategorySelectionScreen from '../components/screens/CategorySelectionScreen';
-import ConcernLevelScreen from '../components/screens/ConcernLevelScreen';
-import ApproachScreen from '../components/screens/ApproachScreen';
-import BreakdownScreen from '../components/screens/BreakdownScreen';
-import FeedbackScreen from '../components/screens/FeedbackScreen';
+import { HomeScreen } from '../components/screens/HomeScreen';
+import { ConcernInputScreen } from '../components/screens/ConcernInputScreen';
+import { CategorySelectionScreen } from '../components/screens/CategorySelectionScreen';
+import { ConcernLevelScreen } from '../components/screens/ConcernLevelScreen';
+import { ApproachScreen } from '../components/screens/ApproachScreen';
+import { BreakdownScreen } from '../components/screens/BreakdownScreen';
+import { FeedbackScreen } from '../components/screens/FeedbackScreen';
 
 // Phase 1C: 動的思考整理画面
-import DynamicThoughtScreen from '../components/screens/DynamicThoughtScreen';
+import { DynamicThoughtScreen } from '../components/screens/DynamicThoughtScreen';
 
 // Phase 2: タスク管理画面
-import TaskRecommendationScreen from '../screens/TaskRecommendationScreen';
-import TaskListScreen from '../screens/TaskListScreen';
-import TaskCreateScreen from '../screens/TaskCreateScreen';
+import { TaskRecommendationScreen } from '../screens/TaskRecommendationScreen';
+import { TaskListScreen } from '../screens/TaskListScreen';
+import { TaskCreateScreen } from '../screens/TaskCreateScreen';
 
 /**
  * DynamicUINavigator
@@ -46,6 +46,9 @@ import TaskCreateScreen from '../screens/TaskCreateScreen';
  * - Phase 2のタスク管理画面を統合
  */
 export const DynamicUINavigator: React.FC = () => {
+  // Phase 2: userIdを取得（localStorage から）
+  const userId = localStorage.getItem('anonymousUserId') || 'anonymous';
+  
   return (
     <Routes>
       {/* ==================== */}
@@ -74,8 +77,8 @@ export const DynamicUINavigator: React.FC = () => {
           <DynamicThoughtScreen 
             stage="capture" 
             concernId="" 
-            onComplete={(result) => {
-              console.log('[DynamicUINavigator] Capture completed:', result);
+            onComplete={(_result: any) => {
+              console.log('[DynamicUINavigator] Capture completed:', _result);
             }} 
           />
         } 
@@ -88,8 +91,8 @@ export const DynamicUINavigator: React.FC = () => {
           <DynamicThoughtScreen 
             stage="plan" 
             concernId="" 
-            onComplete={(result) => {
-              console.log('[DynamicUINavigator] Plan completed:', result);
+            onComplete={(_result: any) => {
+              console.log('[DynamicUINavigator] Plan completed:', _result);
             }} 
           />
         } 
@@ -102,8 +105,8 @@ export const DynamicUINavigator: React.FC = () => {
           <DynamicThoughtScreen 
             stage="breakdown" 
             concernId="" 
-            onComplete={(result) => {
-              console.log('[DynamicUINavigator] Breakdown completed:', result);
+            onComplete={(_result: any) => {
+              console.log('[DynamicUINavigator] Breakdown completed:', _result);
             }} 
           />
         } 
@@ -114,13 +117,13 @@ export const DynamicUINavigator: React.FC = () => {
       {/* ==================== */}
       
       {/* タスク推奨画面 */}
-      <Route path="/tasks/recommend" element={<TaskRecommendationScreen />} />
+      <Route path="/tasks/recommend" element={<TaskRecommendationScreen userId={userId} />} />
       
       {/* タスク一覧 */}
-      <Route path="/tasks" element={<TaskListScreen />} />
+      <Route path="/tasks" element={<TaskListScreen userId={userId} />} />
       
       {/* タスク作成 */}
-      <Route path="/tasks/create" element={<TaskCreateScreen />} />
+      <Route path="/tasks/create" element={<TaskCreateScreen userId={userId} />} />
 
       {/* ==================== */}
       {/* Fallback: 未定義のパスはホームへ */}

@@ -305,7 +305,8 @@ ${JSON.stringify(dataSchema, null, 2)}
    * 必須フィールドを補完
    */
   private fillRequiredFields(uiSpec: Partial<UISpecDSL>, request: UISpecGenerationRequest): Partial<UISpecDSL> {
-    return {
+    // 基本フィールドの補完
+    const filled: Partial<UISpecDSL> = {
       ...uiSpec,
       version: uiSpec.version || "1.0",
       generatedAt: uiSpec.generatedAt || new Date().toISOString(),
@@ -314,6 +315,69 @@ ${JSON.stringify(dataSchema, null, 2)}
       stage: request.stage,
       mappings: uiSpec.mappings || {}
     };
+
+    // mappingsの補完（ARRY, PNTRの不足フィールド）
+    if (filled.mappings) {
+      filled.mappings = this.fillMappingsDefaults(filled.mappings, request.dataSchema);
+    }
+
+    return filled;
+  }
+
+  /**
+   * mappingsのデフォルト値を補完
+   */
+  private fillMappingsDefaults(
+    mappings: { [entityPath: string]: any },
+    dataSchema: DataSchemaDSL
+  ): { [entityPath: string]: any } {
+    const filledMappings = { ...mappings };
+
+    for (const [entityPath, renderSpec] of Object.entries(filledMappings)) {
+      const render = renderSpec.render;
+
+      // ARRYレンダリングの補完
+      if (["expanded", "summary"].includes(render)) {
+        if (!renderSpec.item) {
+          console.log(`⚠️ ARRY ${entityPath}: itemフィールドが欠落 → デフォルト補完`);
+          renderSpec.item = { render: "shortText" };
+        }
+        if (renderSpec.editable === undefined) {
+          renderSpec.editable = true;
+        }
+      }
+
+      // PNTRレンダリングの補完
+      else if (["link", "inline", "card"].includes(render)) {
+        if (!renderSpec.thumbnail || renderSpec.thumbnail.length === 0) {
+          console.log(`⚠️ PNTR ${entityPath}: thumbnailが欠落 → デフォルト補完`);
+          // エンティティパスから属性名を推測
+          const [entityName, ...attrParts] = entityPath.split(".");
+          const attrName = attrParts.join(".");
+          renderSpec.thumbnail = [attrName + ".title", attrName + ".description"];
+        }
+        if (renderSpec.editable === undefined) {
+          renderSpec.editable = false;
+        }
+      }
+
+      // SVALレンダリングのeditable補完
+      else if (["paragraph", "shortText", "number", "radio", "category", "hidden"].includes(render)) {
+        if (renderSpec.editable === undefined) {
+          renderSpec.editable = render !== "hidden";
+        }
+      }
+
+      // CUSTOMレンダリングの補完
+      else if (render === "custom") {
+        if (!renderSpec.component) {
+          console.log(`⚠️ CUSTOM ${entityPath}: componentが欠落 → 削除`);
+          delete filledMappings[entityPath];
+        }
+      }
+    }
+
+    return filledMappings;
   }
 
   /**

@@ -63,8 +63,14 @@ eventRoutes.post('/batch', async (c) => {
       
       // 有効なイベントタイプチェック
       const validEventTypes = [
+        // Phase 0 既存イベント
         'ui_shown', 'action_started', 'action_completed', 
-        'satisfaction_reported', 'session_ended', 'screen_navigation'
+        'satisfaction_reported', 'session_ended', 'screen_navigation',
+        'button_tap', 'input_change', 'navigation',
+        // Phase 2 追加イベント
+        'task_recommendation_shown', 'task_action_started', 'task_action_completed',
+        'clarity_feedback_submitted', 'task_created', 'task_updated', 'task_deleted',
+        'experiment_condition_assigned', 'experiment_condition_switched'
       ];
       
       if (!validEventTypes.includes(event.eventType)) {
@@ -126,8 +132,14 @@ eventRoutes.get('/stats', async (c) => {
     status: 'development_mode',
     storageMode: 'memory_only', // Phase 1でデータベース統合
     supportedEventTypes: [
+      // Phase 0 既存
       'ui_shown', 'action_started', 'action_completed',
-      'satisfaction_reported', 'session_ended', 'screen_navigation'
+      'satisfaction_reported', 'session_ended', 'screen_navigation',
+      'button_tap', 'input_change', 'navigation',
+      // Phase 2 追加
+      'task_recommendation_shown', 'task_action_started', 'task_action_completed',
+      'clarity_feedback_submitted', 'task_created', 'task_updated', 'task_deleted',
+      'experiment_condition_assigned', 'experiment_condition_switched'
     ],
     batchProcessing: true,
     retentionPeriod: 'TBD_phase1',

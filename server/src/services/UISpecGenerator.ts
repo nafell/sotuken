@@ -321,6 +321,11 @@ ${JSON.stringify(dataSchema, null, 2)}
       filled.mappings = this.fillMappingsDefaults(filled.mappings, request.dataSchema);
     }
 
+    // layoutの補完（sectionsのwidgets欠落対応）
+    if (filled.layout) {
+      this.fillLayoutDefaults(filled.layout);
+    }
+
     return filled;
   }
 
@@ -378,6 +383,34 @@ ${JSON.stringify(dataSchema, null, 2)}
     }
 
     return filledMappings;
+  }
+
+  /**
+   * layout.sectionsのデフォルト値を補完
+   */
+  private fillLayoutDefaults(layout: any): void {
+    if (!layout.sections) return;
+
+    for (const section of layout.sections) {
+      // widgets が欠落している場合
+      if (!section.widgets) {
+        console.log(`⚠️ LayoutSection ${section.id || 'unknown'}: widgetsフィールドが欠落 → 空配列に補完`);
+        section.widgets = [];
+      }
+
+      // widgets が配列でない場合
+      if (!Array.isArray(section.widgets)) {
+        console.warn(`⚠️ LayoutSection ${section.id || 'unknown'}: widgetsが配列でない → 空配列に変換`);
+        section.widgets = [];
+      }
+
+      // id が欠落している場合
+      if (!section.id) {
+        const generatedId = `section-${Math.random().toString(36).substr(2, 9)}`;
+        console.log(`⚠️ LayoutSection: idが欠落 → ${generatedId} を割り当て`);
+        section.id = generatedId;
+      }
+    }
   }
 
   /**

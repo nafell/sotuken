@@ -160,20 +160,31 @@ export const UIRenderer: React.FC<UIRendererProps> = ({
   const renderSectionedLayout = (sections: any[]) => {
     return (
       <div className="space-y-6">
-        {sections.map((section, sectionIndex) => (
-          <div key={sectionIndex} className="bg-white rounded-lg shadow-sm p-6">
-            {section.title && (
-              <h3 className="text-lg font-bold text-gray-900 mb-4 border-b pb-2">
-                {section.title}
-              </h3>
-            )}
-            <div className="space-y-4">
-              {(section.widgets || []).map((widgetPath: string, widgetIndex: number) => 
-                renderWidget(widgetPath, widgetIndex)
+        {sections.map((section, sectionIndex) => {
+          // デバッグログ: widgets が欠落している場合に警告
+          if (!section.widgets) {
+            console.warn(
+              `⚠️ [UIRenderer] Section "${section.id || `index-${sectionIndex}`}" has no widgets. ` +
+              `This may indicate an incomplete UISpec generation.`,
+              { section, sectionIndex }
+            );
+          }
+
+          return (
+            <div key={sectionIndex} className="bg-white rounded-lg shadow-sm p-6">
+              {section.title && (
+                <h3 className="text-lg font-bold text-gray-900 mb-4 border-b pb-2">
+                  {section.title}
+                </h3>
               )}
+              <div className="space-y-4">
+                {(section.widgets || []).map((widgetPath: string, widgetIndex: number) => 
+                  renderWidget(widgetPath, widgetIndex)
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };

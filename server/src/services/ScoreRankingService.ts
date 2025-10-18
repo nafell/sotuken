@@ -32,11 +32,15 @@ export class ScoreRankingService {
     
     // 2. urgency: 締切が近いほど高スコア
     // 1 - logistic(due_in_hours, mid=48, k=0.1)
-    const urgencyN = 1 - this.logistic(task.due_in_hours, 48, 0.1);
+    // デフォルト値: due_in_hoursが未定義なら48時間（中程度）
+    const dueInHours = task.due_in_hours ?? 48;
+    const urgencyN = 1 - this.logistic(dueInHours, 48, 0.1);
     
     // 3. staleness: 放置期間が長いほど高スコア
     // logistic(days_since_last_touch, mid=3, k=1.5)
-    const stalenessN = this.logistic(task.days_since_last_touch, 3, 1.5);
+    // デフォルト値: 未定義なら0日（新規タスク）
+    const daysSinceLastTouch = task.days_since_last_touch ?? 0;
+    const stalenessN = this.logistic(daysSinceLastTouch, 3, 1.5);
     
     // 4. contextFit: 状況適合度
     const contextFitN = this.calculateContextFit(task, factors);

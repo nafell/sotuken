@@ -134,12 +134,15 @@ ${JSON.stringify(dataSchema, null, 2)}
    - \`category\`: { render: "category", editable: true, categories: [...] }
    - \`urgency\`: { render: "number", editable: true }
 
-3. **QUESTION配列のマッピング**:
-   - \`clarificationQuestions\`: { render: "expanded", editable: true, item: { render: "radio" } }
-   - 各質問のanswerTypeに応じて適切なrender指定
-     - answerType="choice" → { render: "radio", editable: true }
-     - answerType="scale" → { render: "number", editable: true }
-     - answerType="text" → { render: "shortText", editable: true }
+3. **QUESTION配列のマッピング**（重要: itemフィールド必須）:
+   - \`clarificationQuestions\`: { render: "expanded", editable: true, item: { render: "shortText" } }
+   
+   ⚠️ **重要**: 配列型（render="expanded" または "summary"）は必ず \`item\`フィールドを含めてください！
+   
+   - 各質問のanswerTypeに応じて適切な\`item.render\`指定
+     - answerType="choice" → item: { render: "radio" }
+     - answerType="scale" → item: { render: "number" }
+     - answerType="text" → item: { render: "shortText" }
 
 4. **表示順序**: \`displayOrder\`で論理的な順序を指定
 
@@ -169,10 +172,24 @@ ${JSON.stringify(dataSchema, null, 2)}
    - sections配列で左右/上下のパネル構成を設計
    - 戦略選択と詳細調整を分離
 
-2. **カスタムウィジェット活用**:
-   - \`strategyCandidates\`: \`strategy_preview_picker\` 推奨
-   - \`tradeoffs\`: \`tradeoff_slider\` 推奨
-   - \`constraints\`: \`counterfactual_toggles\` 推奨
+2. **カスタムウィジェット活用**（重要: render="custom"を使用）:
+   - \`strategyCandidates\`: { render: "custom", component: "strategy_preview_picker", props: {...} }
+   - \`tradeoffs\`: { render: "custom", component: "tradeoff_slider", props: {...} }
+   - \`constraints\`: { render: "custom", component: "counterfactual_toggles", props: {...} }
+   
+   ⚠️ **注意**: カスタムウィジェットは必ず \`render: "custom"\` を指定し、\`component\`フィールドでウィジェット名を指定してください。
+   
+   例:
+   \`\`\`json
+   "STRATEGY.strategyCandidates": {
+     "render": "custom",
+     "component": "strategy_preview_picker",
+     "props": {
+       "allowMultiSelect": false
+     },
+     "displayOrder": 1
+   }
+   \`\`\`
 
 3. **再生成ポリシー**（オプション）:
    - ユーザーがスライダーやトグルを操作したら、戦略候補を再生成
@@ -208,9 +225,12 @@ ${JSON.stringify(dataSchema, null, 2)}
    - 左パネル: タスクリスト（actionSteps）
    - 右パネル: サマリー情報（totalEstimate等）
 
-2. **ACTION配列のマッピング**:
-   - \`actionSteps\`: \`expanded\`（全タスクを表示、並び替え可能）
-   - \`reorderable: true\` 推奨
+2. **ACTION配列のマッピング**（重要: itemフィールド必須）:
+   - \`actionSteps\`: { render: "expanded", editable: true, reorderable: true, item: { render: "shortText" } }
+   
+   ⚠️ **重要**: 配列型（render="expanded" または "summary"）は必ず \`item\`フィールドを含めてください！
+   
+   例: { "render": "expanded", "editable": true, "item": { "render": "shortText" } }
 
 3. **ACTION属性のマッピング**:
    - \`title\`: \`shortText\`（編集可能）

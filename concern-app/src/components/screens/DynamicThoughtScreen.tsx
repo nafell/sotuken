@@ -232,7 +232,10 @@ export const DynamicThoughtScreen: React.FC<DynamicThoughtScreenProps> = ({
         
       } else if (stage === 'breakdown') {
         // Breakdownステージの結果を保存
-        const tasks = formData.BREAKDOWN?.tasks || formData.TASK?.items || [];
+        // actionStepsはCONCERN.actionSteps, BREAKDOWN.tasks, TASK.itemsのいずれかに入っている
+        const tasks = formData.CONCERN?.actionSteps || formData.BREAKDOWN?.tasks || formData.TASK?.items || [];
+        
+        console.log('🔍 Breakdownで取得したタスク:', tasks);
         
         flowStateManager.updateBreakdownResult({
           tasks: tasks.map((task: any) => ({

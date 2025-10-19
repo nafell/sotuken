@@ -26,6 +26,9 @@ import { StaticTaskRecommendationScreen } from '../screens/StaticTaskRecommendat
 import { TaskListScreen } from '../screens/TaskListScreen';
 import { TaskCreateScreen } from '../screens/TaskCreateScreen';
 
+// Phase 2 Step 5: 設定画面
+import { SettingsScreen } from '../screens/SettingsScreen';
+
 /**
  * DynamicUINavigator
  * 
@@ -128,6 +131,11 @@ export const DynamicUINavigator: React.FC = () => {
       
       {/* タスク作成 */}
       <Route path="/tasks/create" element={<TaskCreateScreen userId={userId} />} />
+
+      {/* ==================== */}
+      {/* 設定（Phase 2 Step 5） */}
+      {/* ==================== */}
+      <Route path="/settings" element={<SettingsScreen />} />
 
       {/* ==================== */}
       {/* Fallback: 未定義のパスはホームへ */}

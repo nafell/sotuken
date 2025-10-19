@@ -39,9 +39,13 @@ export class ExperimentService {
    * @returns 実験条件割り当て結果（未割り当ての場合 condition = null）
    */
   async getCondition(userId: string): Promise<ExperimentAssignment> {
+    console.log('[ExperimentService] getCondition called for userId:', userId);
+    
     // キャッシュチェック
     if (this.assignmentCache.has(userId)) {
-      return this.assignmentCache.get(userId)!;
+      const cached = this.assignmentCache.get(userId)!;
+      console.log('[ExperimentService] キャッシュから返す:', cached);
+      return cached;
     }
 
     // TODO Phase 2 Step 5.2: データベースから既存割り当てをチェック
@@ -60,6 +64,7 @@ export class ExperimentService {
       experimentId: this.experimentId
     };
 
+    console.log('[ExperimentService] 未割り当てとして返す:', assignment);
     return assignment;
   }
 
@@ -78,6 +83,8 @@ export class ExperimentService {
     assignedBy: string,
     note?: string
   ): Promise<ExperimentAssignment> {
+    console.log('[ExperimentService] assignConditionManually called:', { userId, condition, assignedBy, note });
+    
     const assignment: ExperimentAssignment = {
       userId,
       condition,
@@ -95,6 +102,7 @@ export class ExperimentService {
     this.assignmentCache.set(userId, assignment);
 
     console.log(`[ExperimentService] 条件割り当て完了: ${userId} → ${condition}`);
+    console.log('[ExperimentService] 現在のキャッシュ:', Array.from(this.assignmentCache.entries()));
 
     return assignment;
   }

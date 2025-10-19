@@ -76,86 +76,37 @@ export class ClientExperimentService {
    * @returns 実験条件（null = 未割り当て）
    */
   async fetchCondition(): Promise<ExperimentCondition> {
-    // 注意: キャッシュチェックを削除
-    // リロード時は常にサーバーから最新の条件を取得する
-    // （管理者が割り当てた後にリロードすると条件が更新される）
-
-    try {
-      // ユーザーIDを取得（存在しない場合は自動生成）
-      const userId = this.getUserId();
-      
-      console.log('[ClientExperimentService] サーバーから条件を取得中...', { userId });
-
-      // /v1/config APIから取得
-      const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-      const response = await fetch(`${serverUrl}/v1/config`, {
-        method: 'GET',
-        headers: {
-          'X-User-ID': userId,
-        },
+    // 緊急対応: 動的UIに固定（2025-10-19）
+    // A/Bテスト機構に問題があるため、一時的に動的UIに固定
+    console.warn('[ClientExperimentService] 緊急対応: 動的UIに固定されています');
+    
+    this.condition = 'dynamic_ui';
+    this.experimentId = 'exp_2025_10_emergency';
+    
+    // ローカルDBに保存
+    const userProfile = await db.userProfile.toCollection().first();
+    if (userProfile) {
+      await db.userProfile.update(userProfile.userId, {
+        experimentCondition: this.condition,
+        experimentAssignedAt: new Date(),
+        conditionOverriddenByUser: false
       });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
-
-      const config = await response.json();
-      
-      this.condition = config.experimentAssignment.condition;
-      this.experimentId = config.experimentId;
-
-      if (this.condition === null) {
-        // 未割り当ての場合
-        console.warn('[ClientExperimentService] 実験条件が未割り当てです。管理者による割り当てを待ってください。');
-        return null;
-      }
-
-      console.log('[ClientExperimentService] 実験条件を取得:', {
-        condition: this.condition,
-        experimentId: this.experimentId,
-        assignedAt: config.experimentAssignment.assignedAt
-      });
-
-      // ローカルDBに保存
-      const userProfile = await db.userProfile.toCollection().first();
-      if (userProfile) {
-        await db.userProfile.update(userProfile.userId, {
-          experimentCondition: this.condition,
-          experimentAssignedAt: config.experimentAssignment.assignedAt 
-            ? new Date(config.experimentAssignment.assignedAt) 
-            : undefined
-        });
-      }
-
-      // イベント記録
-      await eventLogger.log({
-        eventType: 'experiment_condition_assigned',
-        screenId: 'app_init',
-        metadata: {
-          experimentId: this.experimentId,
-          condition: this.condition,
-          assignmentMethod: config.experimentAssignment.method,
-          assignedBy: config.experimentAssignment.assignedBy
-        }
-      });
-
-      return this.condition;
-
-    } catch (error) {
-      console.error('[ClientExperimentService] 実験条件の取得に失敗:', error);
-
-      // フォールバック: ローカルDBから取得
-      const userProfile = await db.userProfile.toCollection().first();
-      if (userProfile?.experimentCondition) {
-        this.condition = userProfile.experimentCondition;
-        console.log('[ClientExperimentService] ローカルDBから条件を復元:', this.condition);
-        return this.condition;
-      }
-
-      // 条件未割り当て
-      console.warn('[ClientExperimentService] 実験条件が取得できませんでした（未割り当て）');
-      return null;
     }
+
+    // イベント記録
+    await eventLogger.log({
+      eventType: 'experiment_condition_assigned',
+      screenId: 'app_init',
+      metadata: {
+        experimentId: this.experimentId,
+        condition: this.condition,
+        assignmentMethod: 'emergency_fix',
+        assignedBy: 'system',
+        note: '緊急対応: 動的UI固定'
+      }
+    });
+
+    return this.condition;
   }
 
   /**

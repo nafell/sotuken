@@ -22,17 +22,19 @@ configRoutes.get('/', async (c) => {
     // リクエストヘッダーから匿名ユーザーIDを取得
     const anonymousUserId = c.req.header('X-User-ID') || 'anonymous';
     
-    // Phase 2: 実験条件割り当て（ハッシュベース）
-    const experimentAssignment = await experimentService.getOrAssignCondition(anonymousUserId);
+    // Phase 2 Step 5: 実験条件取得（手動割り当て方式）
+    const experimentAssignment = await experimentService.getCondition(anonymousUserId);
     
     // 設定レスポンス構築
     const configResponse = {
       configVersion: baseConfig.configVersion,
       weightsVersion: baseConfig.weightsVersion,
+      experimentId: experimentAssignment.experimentId,
       experimentAssignment: {
-        condition: experimentAssignment.condition,
+        condition: experimentAssignment.condition,  // null = 未割り当て
         assignedAt: experimentAssignment.assignedAt,
-        method: experimentAssignment.method
+        method: experimentAssignment.method,
+        assignedBy: experimentAssignment.assignedBy
       },
       weights: baseConfig.weights,
       uiNoveltyPolicy: baseConfig.uiNoveltyPolicy,
@@ -43,7 +45,7 @@ configRoutes.get('/', async (c) => {
     c.header('Content-Type', 'application/json');
     c.header('Cache-Control', 'public, max-age=300'); // 5分キャッシュ
     
-    console.log(`📤 Config served to user: ${anonymousUserId}, condition: ${experimentAssignment.condition}`);
+    console.log(`📤 Config served to user: ${anonymousUserId}, condition: ${experimentAssignment.condition || 'unassigned'}`);
     
     return c.json(configResponse);
     

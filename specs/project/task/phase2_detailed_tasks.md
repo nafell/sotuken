@@ -27,13 +27,15 @@
 | Step 1: データモデル・API | 16 | 2-3日 | ⭐️⭐️⭐️ |
 | Step 2: タスク推奨画面 | 18 | 3-4日 | ⭐️⭐️⭐️ |
 | Step 3: 思考整理フロー統合 | 12 | 4-5日 | ⭐️⭐️⭐️ |
-| Step 4: A/Bテスト機構（手動割り当て） | 15 | 3-4日 | ⭐️⭐️⭐️ |
-| Step 5: 固定UI版整備 | 10 | 3-4日 | ⭐️⭐️ |
+| Step 4: 固定UI版整備 | 10 | 3-4日 | ⭐️⭐️ |
+| Step 5: A/Bテスト機構（手動割り当て） | 15 | 3-4日 | ⭐️⭐️⭐️ |
 | Step 6: 測定・ログシステム | 12 | 2-3日 | ⭐️⭐️⭐️ |
 
 **合計**: 83タスク、17-23日
 
-**設計変更**: Step 4を手動割り当て方式に変更（被験者数が少ないため）
+**設計変更**: 
+- Step 4とStep 5を入れ替え（固定UI版を先に実装することでA/Bテスト時の検証が容易に）
+- Step 5を手動割り当て方式に変更（被験者数が少ないため）
 
 ---
 
@@ -1309,16 +1311,195 @@ git commit -m "feat(phase2): Update Completion and Home screens
 
 ---
 
-## 🔨 Step 4: A/Bテスト機構（3-4日）⭐️研究の核心
+## 🔨 Step 4: 固定UI版整備（3-4日）
+
+### 🎯 目標
+固定UI版のタスク推奨画面を実装。動的UI版と同じ機能だがUIパターンは固定。
+
+**実装理由**: Step 5のA/Bテスト機構実装前に両UI（動的UI版・固定UI版）を揃えることで、条件切り替えのテストが即座に可能になる。
+
+---
+
+### 4.1 StaticTaskRecommendationScreen骨格作成
+
+**目標**: 固定UI版タスク推奨画面の基本構造  
+**ファイル**: `/concern-app/src/screens/StaticTaskRecommendationScreen.tsx` （新規作成）
+
+**実装内容**:
+- TaskRecommendationScreenとほぼ同じ構造
+- factors入力UI
+- タスク推奨API呼び出し
+- 固定デザインのTaskCard表示（DSL生成なし）
+
+**成功基準**:
+- 画面がレンダリング可能
+- API呼び出しが動作する
+
+**テスト方法**:
+```bash
+cd /home/tk220307/sotuken/concern-app
+bun run build
+```
+
+---
+
+### 4.2 固定デザインテンプレート定義
+
+**目標**: 静的UIパターンの定数定義  
+**ファイル**: `/concern-app/src/styles/StaticTaskCardStyles.ts` （新規作成）
+
+**実装内容**:
+- STATIC_TASK_CARD_STYLE 定数定義
+- 固定レイアウト（vertical）
+- 固定配色（background, border等）
+- 固定フォントサイズ
+
+**成功基準**:
+- スタイル定数が定義されている
+
+**テスト方法**:
+```bash
+cd /home/tk220307/sotuken/concern-app
+bun run build
+```
+
+**参考**: `specs/project/phase2/screen_specifications.md` の固定デザインテンプレート
+
+---
+
+### 4.3 StaticTaskCard component実装
+
+**目標**: 固定デザインのTaskCardコンポーネント  
+**ファイル**: `/concern-app/src/components/StaticTaskCard.tsx` （新規作成）
+
+**実装内容**:
+- TaskCardWidgetとは異なる固定デザイン実装
+- variant, saliencyは受け取るがスタイルは固定
+- 「着手する」ボタンは共通
+
+**成功基準**:
+- TaskCardが表示される
+- デザインが固定されている
+
+**テスト方法**:
+```typescript
+<StaticTaskCard
+  task={testTask}
+  variant="task_card"
+  saliency={2}
+  onActionStart={handleActionStart}
+/>
+// 固定スタイルで表示されることを確認
+```
+
+---
+
+### 4.4 StaticTaskRecommendationScreen完成
+
+**目標**: 固定UI版タスク推奨画面の完全実装  
+**ファイル**: `/concern-app/src/screens/StaticTaskRecommendationScreen.tsx`
+
+**実装内容**:
+- StaticTaskCard表示
+- ActionReportModal統合（共通コンポーネント）
+- ClarityFeedbackModal統合（共通コンポーネント）
+- イベントログ記録（uiCondition='static_ui'）
+
+**成功基準**:
+- 全フローが動作する
+- イベントログのuiConditionが'static_ui'
+
+**テスト方法**:
+```typescript
+// 1. StaticTaskRecommendationScreenを開く（後でA/Bテスト機構実装後に条件切り替え可能）
+// 2. タスク推奨が表示される（固定デザイン）
+// 3. 着手ボタンをタップ
+// 4. ActionReportModal → ClarityFeedbackModal
+// 5. IndexedDBのinteractionEventsを確認
+//    → metadata.uiCondition = 'static_ui' であることを確認
+```
+
+---
+
+### ✅ 4.5 Commit: 固定UI版タスク推奨実装
+
+**コミット内容**:
+```bash
+git add concern-app/src/screens/StaticTaskRecommendationScreen.tsx concern-app/src/components/StaticTaskCard.tsx concern-app/src/styles/StaticTaskCardStyles.ts
+git commit -m "feat(phase2): Implement StaticTaskRecommendationScreen
+
+- Create StaticTaskRecommendationScreen with fixed UI design
+- Define static task card style template (no DSL generation)
+- Implement StaticTaskCard component with consistent styling
+- Share ActionReportModal and ClarityFeedbackModal with dynamic version
+- Record events with uiCondition='static_ui'
+- Ref: specs/project/phase2/screen_specifications.md"
+```
+
+---
+
+### 4.6 固定UI版フロー機能統一
+
+**目標**: 既存の固定UI画面のデータフロー調整  
+**ファイル**: `/concern-app/src/screens/BreakdownScreen.tsx`（既存ファイル更新）
+
+**実装内容**:
+- breakdownステージ完了時にTaskGenerationService呼び出し
+- 生成されたタスクをIndexedDBに保存
+- `/tasks/recommend` へナビゲート（StaticTaskRecommendationScreen）
+
+**成功基準**:
+- 固定UI版フローでもタスク生成が動作する
+
+**テスト方法**:
+```typescript
+// 1. ConcernInputScreenからフロー開始（固定UI版）
+// 2. CategorySelection → Approach → Breakdownと進む
+// 3. Breakdown完了時にタスクが生成される
+// 4. StaticTaskRecommendationScreenが開く
+```
+
+**注意**: A/Bテスト機構実装前なので、まだ条件による切り替えはない。Step 5実装後に条件に応じて画面が切り替わるようになる。
+
+---
+
+### 4.7 Step 4統合テスト
+
+**目標**: 固定UI版フロー全体の動作確認
+
+**テストシナリオ**:
+1. ConcernInputScreenから関心事入力フロー開始
+2. CategorySelection → Approach → Breakdownと進む
+3. Breakdown完了時にタスクが生成される
+4. StaticTaskRecommendationScreen表示（固定デザイン）
+5. 着手ボタンタップ → ActionReportModal
+6. 完了ボタンタップ → ClarityFeedbackModal
+7. スッキリ度送信
+8. IndexedDB確認:
+   - actionReports: uiCondition='static_ui'
+   - interactionEvents: uiCondition='static_ui'
+
+**成功基準**:
+- [ ] 固定UI版フロー全体動作
+- [ ] uiConditionが正しく記録される
+- [ ] タスク生成からタスク推奨までの流れが正常
+
+**注意**: この時点ではまだA/Bテスト機構がないため、条件切り替えはできない。Step 5実装後に両UI間の切り替えが可能になる。
+
+---
+
+## 🔨 Step 5: A/Bテスト機構（3-4日）⭐️研究の核心
 
 ### 🎯 目標
 動的UI版と固定UI版を切り替える実験機構を実装。管理者による手動割り当て方式。
 
 **設計変更**: 被験者数が少ない（5名程度）ため、ハッシュベース自動割り当てではなく、手動割り当て方式を採用。管理者が AdminUserManagement 画面で各被験者に条件を割り当てる。
 
+**実装前提**: Step 4で固定UI版が実装済みのため、両UI（動的UI版・固定UI版）が揃った状態でA/Bテスト機構を構築できる。✅
+
 ---
 
-### 4.0 サーバー側ExperimentService骨格作成
+### 5.1 サーバー側ExperimentService骨格作成
 
 **目標**: サーバー側の実験条件管理サービス骨格  
 **ファイル**: `/server/src/services/ExperimentService.ts` （新規作成）
@@ -1346,7 +1527,7 @@ bun run build
 
 ---
 
-### 4.1 サーバー側ExperimentService実装
+### 5.2 サーバー側ExperimentService実装
 
 **目標**: 手動割り当てロジック実装  
 **ファイル**: `/server/src/services/ExperimentService.ts`
@@ -1392,7 +1573,7 @@ console.log('Counts:', counts);
 
 ---
 
-### 4.2 管理者用API実装
+### 5.3 管理者用API実装
 
 **目標**: 管理者が割り当てを行うためのAPIエンドポイント  
 **ファイル**: `/server/src/routes/admin.ts` （新規作成）
@@ -1432,7 +1613,7 @@ curl -X POST http://localhost:3000/admin/assignments \
 
 ---
 
-### ✅ 4.3 Commit: サーバー側実験条件管理実装
+### ✅ 5.4 Commit: サーバー側実験条件管理実装
 
 **コミット内容**:
 ```bash
@@ -1448,7 +1629,7 @@ git commit -m "feat(phase2): Implement manual assignment ExperimentService
 
 ---
 
-### 4.4 ClientExperimentService骨格作成
+### 5.5 ClientExperimentService骨格作成
 
 **目標**: クライアント側の実験条件管理サービス骨格  
 **ファイル**: `/concern-app/src/services/ExperimentService.ts` （新規作成）
@@ -1472,7 +1653,7 @@ bun run build
 
 ---
 
-### 4.5 fetchCondition実装
+### 5.6 fetchCondition実装
 
 **目標**: サーバーから実験条件を取得  
 **ファイル**: `/concern-app/src/services/ExperimentService.ts`
@@ -1503,7 +1684,7 @@ console.log('Assigned condition:', condition);
 
 ---
 
-### 4.6 switchCondition実装（デバッグ用）
+### 5.7 switchCondition実装（デバッグ用）
 
 **目標**: 実験条件の手動切り替え機能  
 **ファイル**: `/concern-app/src/services/ExperimentService.ts`
@@ -1528,7 +1709,7 @@ await experimentService.switchCondition('static_ui');
 
 ---
 
-### ✅ 4.7 Commit: ClientExperimentService実装
+### ✅ 5.8 Commit: ClientExperimentService実装
 
 **コミット内容**:
 ```bash
@@ -1545,7 +1726,7 @@ git commit -m "feat(phase2): Implement ClientExperimentService
 
 ---
 
-### 4.8 UnassignedScreen作成
+### 5.9 UnassignedScreen作成
 
 **目標**: 未割り当てユーザー用の待機画面  
 **ファイル**: `/concern-app/src/screens/UnassignedScreen.tsx` （新規作成）
@@ -1570,7 +1751,7 @@ git commit -m "feat(phase2): Implement ClientExperimentService
 
 ---
 
-### 4.9 App.tsx条件別ルーティング実装
+### 5.10 App.tsx条件別ルーティング実装
 
 **目標**: App.tsxで実験条件に応じてNavigatorを切り替え  
 **ファイル**: `/concern-app/src/App.tsx`
@@ -1603,7 +1784,7 @@ git commit -m "feat(phase2): Implement ClientExperimentService
 
 ---
 
-### 4.10 StaticUINavigator骨格作成
+### 5.11 StaticUINavigator骨格作成
 
 **目標**: 固定UI版のルーター骨格  
 **ファイル**: `/concern-app/src/navigators/StaticUINavigator.tsx` （新規作成）
@@ -1617,7 +1798,7 @@ git commit -m "feat(phase2): Implement ClientExperimentService
   - `/concern/category` → CategorySelectionScreen
   - `/concern/approach` → ApproachScreen
   - `/concern/breakdown` → BreakdownScreen
-  - `/tasks/recommend` → StaticTaskRecommendationScreen（未実装）
+  - `/tasks/recommend` → StaticTaskRecommendationScreen（Step 4で実装済み）
   - `/tasks` → TaskListScreen（共通）
   - `/settings` → SettingsScreen（共通）
 
@@ -1630,11 +1811,11 @@ cd /home/tk220307/sotuken/concern-app
 bun run build
 ```
 
-**注意点**: StaticTaskRecommendationScreenはまだ未実装（骨格のみ）
+**注意**: StaticTaskRecommendationScreenはStep 4で実装済み
 
 ---
 
-### 4.11 SettingsScreen実装
+### 5.12 SettingsScreen実装
 
 **目標**: ユーザー用設定画面（条件表示・統計情報）  
 **ファイル**: `/concern-app/src/screens/SettingsScreen.tsx` （新規作成）
@@ -1665,7 +1846,7 @@ bun run build
 
 ---
 
-### 4.12 AdminUserManagement画面実装
+### 5.13 AdminUserManagement画面実装
 
 **目標**: 管理者用のユーザー管理画面  
 **ファイル**: `/concern-app/src/screens/AdminUserManagement.tsx` （新規作成）
@@ -1704,7 +1885,7 @@ bun run build
 
 ---
 
-### ✅ 4.13 Commit: A/Bテスト手動割り当て機構実装
+### ✅ 5.14 Commit: A/Bテスト手動割り当て機構実装
 
 **コミット内容**:
 ```bash
@@ -1722,7 +1903,7 @@ git commit -m "feat(phase2): Implement manual assignment A/B testing
 
 ---
 
-### 4.14 手動割り当てフローの検証テスト
+### 5.15 手動割り当てフローの検証テスト
 
 **目標**: 手動割り当てフローの動作確認
 
@@ -1756,7 +1937,7 @@ git commit -m "feat(phase2): Implement manual assignment A/B testing
 
 ---
 
-### 4.15 条件切り替え（デバッグ）の検証テスト
+### 5.16 条件切り替え（デバッグ）の検証テスト
 
 **目標**: デバッグ用切り替え機能の動作確認
 
@@ -1774,179 +1955,6 @@ git commit -m "feat(phase2): Implement manual assignment A/B testing
 - [ ] デバッグ機能が開発環境でのみ表示される
 - [ ] 警告ダイアログが表示される
 - [ ] 条件切り替えが正常に動作する
-
----
-
-## 🔨 Step 5: 固定UI版整備（3-4日）
-
-### 🎯 目標
-固定UI版のタスク推奨画面を実装。動的UI版と同じ機能だがUIパターンは固定。
-
----
-
-### 5.1 StaticTaskRecommendationScreen骨格作成
-
-**目標**: 固定UI版タスク推奨画面の基本構造  
-**ファイル**: `/concern-app/src/screens/StaticTaskRecommendationScreen.tsx` （新規作成）
-
-**実装内容**:
-- TaskRecommendationScreenとほぼ同じ構造
-- factors入力UI
-- タスク推奨API呼び出し
-- 固定デザインのTaskCard表示（DSL生成なし）
-
-**成功基準**:
-- 画面がレンダリング可能
-- API呼び出しが動作する
-
-**テスト方法**:
-```bash
-cd /home/tk220307/sotuken/concern-app
-bun run build
-```
-
----
-
-### 5.2 固定デザインテンプレート定義
-
-**目標**: 静的UIパターンの定数定義  
-**ファイル**: `/concern-app/src/styles/StaticTaskCardStyles.ts` （新規作成）
-
-**実装内容**:
-- STATIC_TASK_CARD_STYLE 定数定義
-- 固定レイアウト（vertical）
-- 固定配色（background, border等）
-- 固定フォントサイズ
-
-**成功基準**:
-- スタイル定数が定義されている
-
-**テスト方法**:
-```bash
-cd /home/tk220307/sotuken/concern-app
-bun run build
-```
-
-**参考**: `specs/project/phase2/screen_specifications.md` の固定デザインテンプレート
-
----
-
-### 5.3 StaticTaskCard component実装
-
-**目標**: 固定デザインのTaskCardコンポーネント  
-**ファイル**: `/concern-app/src/components/StaticTaskCard.tsx` （新規作成）
-
-**実装内容**:
-- TaskCardWidgetとは異なる固定デザイン実装
-- variant, saliencyは受け取るがスタイルは固定
-- 「着手する」ボタンは共通
-
-**成功基準**:
-- TaskCardが表示される
-- デザインが固定されている
-
-**テスト方法**:
-```typescript
-<StaticTaskCard
-  task={testTask}
-  variant="task_card"
-  saliency={2}
-  onActionStart={handleActionStart}
-/>
-// 固定スタイルで表示されることを確認
-```
-
----
-
-### 5.4 StaticTaskRecommendationScreen完成
-
-**目標**: 固定UI版タスク推奨画面の完全実装  
-**ファイル**: `/concern-app/src/screens/StaticTaskRecommendationScreen.tsx`
-
-**実装内容**:
-- StaticTaskCard表示
-- ActionReportModal統合（共通コンポーネント）
-- ClarityFeedbackModal統合（共通コンポーネント）
-- イベントログ記録（uiCondition='static_ui'）
-
-**成功基準**:
-- 全フローが動作する
-- イベントログのuiConditionが'static_ui'
-
-**テスト方法**:
-```typescript
-// 1. SettingsScreenで条件を'static_ui'に切り替え
-// 2. StaticTaskRecommendationScreenを開く
-// 3. タスク推奨が表示される（固定デザイン）
-// 4. 着手ボタンをタップ
-// 5. ActionReportModal → ClarityFeedbackModal
-// 6. IndexedDBのinteractionEventsを確認
-//    → metadata.uiCondition = 'static_ui' であることを確認
-```
-
----
-
-### ✅ 5.5 Commit: 固定UI版タスク推奨実装
-
-**コミット内容**:
-```bash
-git add concern-app/src/screens/StaticTaskRecommendationScreen.tsx concern-app/src/components/StaticTaskCard.tsx concern-app/src/styles/StaticTaskCardStyles.ts
-git commit -m "feat(phase2): Implement StaticTaskRecommendationScreen
-
-- Create StaticTaskRecommendationScreen with fixed UI design
-- Define static task card style template (no DSL generation)
-- Implement StaticTaskCard component with consistent styling
-- Share ActionReportModal and ClarityFeedbackModal with dynamic version
-- Record events with uiCondition='static_ui'
-- Ref: specs/project/phase2/screen_specifications.md"
-```
-
----
-
-### 5.6 固定UI版フロー機能統一
-
-**目標**: 既存の固定UI画面のデータフロー調整  
-**ファイル**: `/concern-app/src/screens/BreakdownScreen.tsx`（既存ファイル更新）
-
-**実装内容**:
-- breakdownステージ完了時にTaskGenerationService呼び出し
-- 生成されたタスクをIndexedDBに保存
-- `/tasks/recommend` へナビゲート（StaticTaskRecommendationScreen）
-
-**成功基準**:
-- 固定UI版フローでもタスク生成が動作する
-
-**テスト方法**:
-```typescript
-// 1. 条件を'static_ui'に切り替え
-// 2. ConcernInputScreenからフロー開始
-// 3. CategorySelection → Approach → Breakdownと進む
-// 4. Breakdown完了時にタスクが生成される
-// 5. StaticTaskRecommendationScreenが開く
-```
-
----
-
-### 5.7 Step 5統合テスト
-
-**目標**: 固定UI版フロー全体の動作確認
-
-**テストシナリオ**:
-1. SettingsScreenで条件を'static_ui'に切り替え
-2. 関心事入力フロー（ConcernInput → Category → Approach → Breakdown）
-3. タスク生成
-4. StaticTaskRecommendationScreen表示（固定デザイン）
-5. 着手ボタンタップ → ActionReportModal
-6. 完了ボタンタップ → ClarityFeedbackModal
-7. スッキリ度送信
-8. IndexedDB確認:
-   - actionReports: uiCondition='static_ui'
-   - interactionEvents: uiCondition='static_ui'
-
-**成功基準**:
-- [ ] 固定UI版フロー全体動作
-- [ ] uiConditionが正しく記録される
-- [ ] 動的UI版と同じ機能が動作する
 
 ---
 
@@ -2328,12 +2336,15 @@ git commit -m "test(phase2): Add Phase 2 test suites
 
 ---
 
-**文書バージョン:** 1.1  
+**文書バージョン:** 1.2  
 **対象:** LLM実装エージェント  
 **総タスク数:** 83タスク  
 **推定実行期間:** 17-23日（3.5-4.5週間）
 
 **作成者**: AI Agent (Claude Sonnet 4.5)  
 **作成日**: 2025年10月18日  
-**最終更新**: 2025年10月19日（Step 4を手動割り当て方式に変更）
+**最終更新**: 2025年10月19日  
+**変更履歴**:
+- v1.1: Step 4を手動割り当て方式に変更（被験者数少数のため）
+- v1.2: Step 4とStep 5を入れ替え（固定UI版を先に実装することでA/Bテスト時の検証が容易に）
 

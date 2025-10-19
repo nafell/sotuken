@@ -76,19 +76,48 @@ class EventLogger {
    */
   private async flush(): Promise<void> {
     if (this.buffer.length === 0) return;
-    
+
     const eventsToSend = [...this.buffer];
     this.buffer = [];
-    
+
     try {
-      // TODO: サーバーへのバッチ送信（Phase 2後半で実装）
-      console.log(`📤 Would flush ${eventsToSend.length} events to server`);
-      
+      const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const batchId = crypto.randomUUID();
+
+      // サーバーへのバッチ送信
+      const response = await fetch(`${serverUrl}/v1/events/batch`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-ID': this.getUserId(),
+        },
+        body: JSON.stringify({
+          batchId,
+          events: eventsToSend,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Batch send failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log(`📤 Flushed ${result.receivedCount} events to server (batch: ${batchId})`);
+
     } catch (error) {
       console.error('❌ Event flush failed:', error);
-      // 失敗時はバッファに戻す
+      // 失敗時はバッファに戻す（リトライ用）
       this.buffer = [...eventsToSend, ...this.buffer];
     }
+  }
+
+  /**
+   * ユーザーIDを取得
+   */
+  private getUserId(): string {
+    // IndexedDBから取得する（簡易実装）
+    // 実際はSessionManagerから取得するべき
+    return localStorage.getItem('userId') || 'anonymous';
   }
 
   /**

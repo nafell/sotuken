@@ -8,6 +8,7 @@ import { eventRoutes } from './routes/events';
 import { thoughtRoutes } from './routes/thought';
 import { taskRoutes } from './routes/task';
 import admin from './routes/admin';
+import { metricsRoutes } from './routes/metrics';
 
 const app = new Hono();
 
@@ -42,14 +43,15 @@ app.route('/v1/ui', uiRoutes);
 app.route('/v1/events', eventRoutes);
 app.route('/v1/thought', thoughtRoutes);
 app.route('/v1/task', taskRoutes);
+app.route('/v1/metrics', metricsRoutes);  // Phase 2 Step 6: メトリクスAPI
 app.route('/admin', admin);  // Phase 2 Step 5: 管理者用API
 
 // Basic route
 app.get('/', (c) => {
   return c.json({ 
-    message: 'Concern App Server - Phase 2 Step 5',
+    message: 'Concern App Server - Phase 2 Step 6',
     version: '1.0.0',
-    phase: 'Phase 2 - A/B Testing (Manual Assignment)',
+    phase: 'Phase 2 - Metrics & Logging System',
     availableEndpoints: [
       'GET /health',
       'GET /health/database',
@@ -60,6 +62,8 @@ app.get('/', (c) => {
       'GET /v1/thought/health',
       'POST /v1/task/rank',
       'GET /v1/task/health',
+      'GET /v1/metrics/engagement',
+      'GET /v1/metrics/health',
       'GET /admin/assignments',
       'GET /admin/assignments/counts',
       'POST /admin/assignments',

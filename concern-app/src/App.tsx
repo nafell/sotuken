@@ -13,6 +13,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { DynamicUINavigator } from './navigators/DynamicUINavigator';
 import { StaticUINavigator } from './navigators/StaticUINavigator';
 import { UnassignedScreen } from './screens/UnassignedScreen';
+import { AdminUserManagement } from './screens/AdminUserManagement';
 import { DatabaseTest } from './components/DatabaseTest';
 import { FactorsTest } from './components/FactorsTest';
 import { experimentService, type ExperimentCondition } from './services/ClientExperimentService';
@@ -71,6 +72,13 @@ function App() {
     <Router>
       <div className="min-h-screen">
         <Routes>
+          {/* 管理者画面（実験条件に関係なくアクセス可能） */}
+          <Route path="/admin" element={<AdminUserManagement />} />
+          
+          {/* 開発・デバッグ用ルート（直接アクセス） */}
+          <Route path="/dev/database" element={<DatabaseTest />} />
+          <Route path="/dev/factors" element={<FactorsTest />} />
+          
           {/* Phase 2 Step 5: 条件別ルーティング */}
           {condition === null ? (
             /* 未割り当てユーザー */
@@ -82,10 +90,6 @@ function App() {
             /* 固定UI版 */
             <Route path="/*" element={<StaticUINavigator />} />
           )}
-          
-          {/* 開発・デバッグ用ルート（直接アクセス） */}
-          <Route path="/dev/database" element={<DatabaseTest />} />
-          <Route path="/dev/factors" element={<FactorsTest />} />
         </Routes>
       </div>
     </Router>

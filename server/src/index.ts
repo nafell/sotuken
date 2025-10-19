@@ -7,6 +7,7 @@ import { uiRoutes } from './routes/ui';
 import { eventRoutes } from './routes/events';
 import { thoughtRoutes } from './routes/thought';
 import { taskRoutes } from './routes/task';
+import admin from './routes/admin';
 
 const app = new Hono();
 
@@ -41,13 +42,14 @@ app.route('/v1/ui', uiRoutes);
 app.route('/v1/events', eventRoutes);
 app.route('/v1/thought', thoughtRoutes);
 app.route('/v1/task', taskRoutes);
+app.route('/admin', admin);  // Phase 2 Step 5: 管理者用API
 
 // Basic route
 app.get('/', (c) => {
   return c.json({ 
-    message: 'Concern App Server - Phase 1B',
+    message: 'Concern App Server - Phase 2 Step 5',
     version: '1.0.0',
-    phase: 'Phase 1B - Task Recommendation',
+    phase: 'Phase 2 - A/B Testing (Manual Assignment)',
     availableEndpoints: [
       'GET /health',
       'GET /health/database',
@@ -57,7 +59,11 @@ app.get('/', (c) => {
       'POST /v1/thought/generate',
       'GET /v1/thought/health',
       'POST /v1/task/rank',
-      'GET /v1/task/health'
+      'GET /v1/task/health',
+      'GET /admin/assignments',
+      'GET /admin/assignments/counts',
+      'POST /admin/assignments',
+      'DELETE /admin/assignments/:userId'
     ]
   });
 });

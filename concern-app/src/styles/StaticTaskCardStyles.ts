@@ -133,11 +133,10 @@ export const STATIC_IMPORTANCE_STYLES = {
  * CSSスタイルオブジェクトを生成するヘルパー
  */
 export const getStaticTaskCardStyle = (
-  variant: keyof typeof STATIC_VARIANT_CONFIG,
+  _variant: keyof typeof STATIC_VARIANT_CONFIG,
   importanceLevel: 'low' | 'medium' | 'high' = 'medium'
 ): React.CSSProperties => {
   const template = STATIC_TASK_CARD_TEMPLATE;
-  const variantConfig = STATIC_VARIANT_CONFIG[variant];
   const importanceStyle = STATIC_IMPORTANCE_STYLES[importanceLevel];
   
   return {

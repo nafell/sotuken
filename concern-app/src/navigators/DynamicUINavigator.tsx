@@ -22,6 +22,7 @@ import { DynamicThoughtScreen } from '../components/screens/DynamicThoughtScreen
 
 // Phase 2: タスク管理画面
 import { TaskRecommendationScreen } from '../screens/TaskRecommendationScreen';
+import { StaticTaskRecommendationScreen } from '../screens/StaticTaskRecommendationScreen';
 import { TaskListScreen } from '../screens/TaskListScreen';
 import { TaskCreateScreen } from '../screens/TaskCreateScreen';
 
@@ -116,8 +117,11 @@ export const DynamicUINavigator: React.FC = () => {
       {/* タスク管理（Phase 2） */}
       {/* ==================== */}
       
-      {/* タスク推奨画面 */}
+      {/* タスク推奨画面（動的UI版） */}
       <Route path="/tasks/recommend" element={<TaskRecommendationScreen userId={userId} />} />
+      
+      {/* タスク推奨画面（固定UI版） - Phase 2 Step 4 */}
+      <Route path="/tasks/recommend/static" element={<StaticTaskRecommendationScreen userId={userId} />} />
       
       {/* タスク一覧 */}
       <Route path="/tasks" element={<TaskListScreen userId={userId} />} />

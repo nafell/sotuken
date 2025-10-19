@@ -53,20 +53,36 @@ export class ClientExperimentService {
   }
 
   /**
+   * ユーザーIDを取得または生成
+   * 
+   * @returns ユーザーID
+   */
+  getUserId(): string {
+    let userId = localStorage.getItem('anonymousUserId');
+    
+    if (!userId) {
+      // ユーザーIDが存在しない場合は生成
+      userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem('anonymousUserId', userId);
+      console.log('[ClientExperimentService] 新規ユーザーID生成:', userId);
+    }
+    
+    return userId;
+  }
+
+  /**
    * 実験条件を取得（サーバーから）
    * 
    * @returns 実験条件（null = 未割り当て）
    */
   async fetchCondition(): Promise<ExperimentCondition> {
-    // 既にキャッシュがある場合は返す
-    if (this.condition !== null) {
-      console.log('[ClientExperimentService] キャッシュから条件を返す:', this.condition);
-      return this.condition;
-    }
+    // 注意: キャッシュチェックを削除
+    // リロード時は常にサーバーから最新の条件を取得する
+    // （管理者が割り当てた後にリロードすると条件が更新される）
 
     try {
-      // ユーザーIDを取得
-      const userId = localStorage.getItem('anonymousUserId') || 'anonymous';
+      // ユーザーIDを取得（存在しない場合は自動生成）
+      const userId = this.getUserId();
 
       // /v1/config APIから取得
       const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';

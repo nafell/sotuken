@@ -6,9 +6,11 @@
  */
 
 import React from 'react';
+import { experimentService } from '../services/ClientExperimentService';
 
 export const UnassignedScreen: React.FC = () => {
-  const userId = localStorage.getItem('anonymousUserId') || 'unknown';
+  // ユーザーIDを取得（存在しない場合は自動生成）
+  const userId = experimentService.getUserId();
 
   const handleReload = () => {
     window.location.reload();

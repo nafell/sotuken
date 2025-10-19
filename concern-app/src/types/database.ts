@@ -37,7 +37,9 @@ export interface UserProfile {
   userId: string; // プライマリキー（UUID）
   anonymousId: string; // サーバー送信用匿名ID
   createdAt: Date;
-  experimentCondition: 'static_ui' | 'dynamic_ui';
+  experimentCondition?: 'static_ui' | 'dynamic_ui'; // Phase 2 Step 5: オプショナルに変更
+  experimentAssignedAt?: Date; // Phase 2 Step 5: 実験条件割り当て日時
+  conditionOverriddenByUser?: boolean; // Phase 2 Step 5: デバッグ用切り替えフラグ
   configVersion: string;
   settings: {
     notifications: boolean;

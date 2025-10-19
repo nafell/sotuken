@@ -27,11 +27,13 @@
 | Step 1: データモデル・API | 16 | 2-3日 | ⭐️⭐️⭐️ |
 | Step 2: タスク推奨画面 | 18 | 3-4日 | ⭐️⭐️⭐️ |
 | Step 3: 思考整理フロー統合 | 12 | 4-5日 | ⭐️⭐️⭐️ |
-| Step 4: A/Bテスト機構 | 14 | 3-4日 | ⭐️⭐️⭐️ |
+| Step 4: A/Bテスト機構（手動割り当て） | 15 | 3-4日 | ⭐️⭐️⭐️ |
 | Step 5: 固定UI版整備 | 10 | 3-4日 | ⭐️⭐️ |
 | Step 6: 測定・ログシステム | 12 | 2-3日 | ⭐️⭐️⭐️ |
 
-**合計**: 82タスク、17-23日
+**合計**: 83タスク、17-23日
+
+**設計変更**: Step 4を手動割り当て方式に変更（被験者数が少ないため）
 
 ---
 
@@ -1310,11 +1312,143 @@ git commit -m "feat(phase2): Update Completion and Home screens
 ## 🔨 Step 4: A/Bテスト機構（3-4日）⭐️研究の核心
 
 ### 🎯 目標
-動的UI版と固定UI版を切り替える実験機構を実装。ユーザーごとに条件を固定割り当て。
+動的UI版と固定UI版を切り替える実験機構を実装。管理者による手動割り当て方式。
+
+**設計変更**: 被験者数が少ない（5名程度）ため、ハッシュベース自動割り当てではなく、手動割り当て方式を採用。管理者が AdminUserManagement 画面で各被験者に条件を割り当てる。
 
 ---
 
-### 4.1 ClientExperimentService骨格作成
+### 4.0 サーバー側ExperimentService骨格作成
+
+**目標**: サーバー側の実験条件管理サービス骨格  
+**ファイル**: `/server/src/services/ExperimentService.ts` （新規作成）
+
+**実装内容**:
+- `ExperimentService` class骨格
+- `ExperimentAssignment` interface定義
+- メソッドシグネチャ（空実装）:
+  - `getCondition()`
+  - `assignConditionManually()`
+  - `getAllAssignments()`
+  - `getAssignmentCounts()`
+  - `removeAssignment()`
+
+**成功基準**:
+- TypeScriptコンパイルエラーなし
+
+**テスト方法**:
+```bash
+cd /home/tk220307/sotuken/server
+bun run build
+```
+
+**参考**: `specs/project/phase2/ab_testing.md` のサーバー側実装
+
+---
+
+### 4.1 サーバー側ExperimentService実装
+
+**目標**: 手動割り当てロジック実装  
+**ファイル**: `/server/src/services/ExperimentService.ts`
+
+**実装内容**:
+- `getCondition()` メソッド実装
+  - 既存の割り当てをチェック
+  - 未割り当ての場合は null を返す
+- `assignConditionManually()` メソッド実装
+  - 管理者による手動割り当て
+  - assignedBy, note を記録
+- `getAllAssignments()` メソッド実装
+  - 全ユーザーの割り当て状況を取得
+- `getAssignmentCounts()` メソッド実装
+  - 条件別の人数をカウント
+- `removeAssignment()` メソッド実装
+  - 割り当てを削除
+
+**成功基準**:
+- 全メソッドが正常に動作する
+- データベースに正しく保存される
+
+**テスト方法**:
+```typescript
+// server/tests/experiment_service_test.ts
+const service = new ExperimentService();
+
+// 手動割り当て
+await service.assignConditionManually('user_abc123', 'dynamic_ui', 'admin', 'テスト被験者1');
+
+// 条件取得
+const assignment = await service.getCondition('user_abc123');
+console.log('Condition:', assignment.condition);
+// 'dynamic_ui' であることを確認
+
+// 人数カウント
+const counts = await service.getAssignmentCounts();
+console.log('Counts:', counts);
+// { dynamic_ui: 1, static_ui: 0, unassigned: 0 }
+```
+
+**参考**: `specs/project/phase2/ab_testing.md` のExperimentService実装
+
+---
+
+### 4.2 管理者用API実装
+
+**目標**: 管理者が割り当てを行うためのAPIエンドポイント  
+**ファイル**: `/server/src/routes/admin.ts` （新規作成）
+
+**実装内容**:
+- GET `/admin/assignments` - 全割り当て状況取得
+- GET `/admin/assignments/counts` - 条件別人数取得
+- POST `/admin/assignments` - 手動割り当て実行
+- DELETE `/admin/assignments/:userId` - 割り当て削除
+
+**成功基準**:
+- 全エンドポイントが動作する
+- ExperimentServiceと正しく統合されている
+
+**テスト方法**:
+```bash
+# 割り当て状況取得
+curl -X GET http://localhost:3000/admin/assignments
+
+# 条件別人数取得
+curl -X GET http://localhost:3000/admin/assignments/counts
+
+# 手動割り当て
+curl -X POST http://localhost:3000/admin/assignments \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "user_123",
+    "condition": "dynamic_ui",
+    "assignedBy": "admin",
+    "note": "テスト被験者1"
+  }'
+
+# レスポンス: {"success": true, "assignment": {...}}
+```
+
+**参考**: `specs/project/phase2/ab_testing.md` の管理者用API実装
+
+---
+
+### ✅ 4.3 Commit: サーバー側実験条件管理実装
+
+**コミット内容**:
+```bash
+git add server/src/services/ExperimentService.ts server/src/routes/admin.ts
+git commit -m "feat(phase2): Implement manual assignment ExperimentService
+
+- Add ExperimentService with manual assignment methods
+- Implement getCondition, assignConditionManually, getAllAssignments
+- Add admin API endpoints for assignment management
+- Support for assignedBy and note fields
+- Ref: specs/project/phase2/ab_testing.md"
+```
+
+---
+
+### 4.4 ClientExperimentService骨格作成
 
 **目標**: クライアント側の実験条件管理サービス骨格  
 **ファイル**: `/concern-app/src/services/ExperimentService.ts` （新規作成）
@@ -1338,34 +1472,38 @@ bun run build
 
 ---
 
-### 4.2 fetchCondition実装
+### 4.5 fetchCondition実装
 
 **目標**: サーバーから実験条件を取得  
 **ファイル**: `/concern-app/src/services/ExperimentService.ts`
 
 **実装内容**:
 - `/v1/config` API呼び出し
-- condition（dynamic_ui / static_ui）を取得
+- condition（dynamic_ui / static_ui / null）を取得
+- **nullの場合**: 未割り当てと判断
 - LocalDBのuserProfileに保存
 - experiment_condition_assignedイベント記録
 
 **成功基準**:
 - APIから条件を取得できる
+- 未割り当ての場合nullが返る
 - LocalDBに保存される
 
 **テスト方法**:
 ```typescript
 const condition = await experimentService.fetchCondition();
 console.log('Assigned condition:', condition);
-// 'dynamic_ui' または 'static_ui' が返される
+// 'dynamic_ui', 'static_ui', または null が返される
 
 // IndexedDBのuserProfileを確認
 // experimentConditionフィールドが保存されていることを確認
 ```
 
+**参考**: `specs/project/phase2/ab_testing.md` のクライアント側実装
+
 ---
 
-### 4.3 switchCondition実装（デバッグ用）
+### 4.6 switchCondition実装（デバッグ用）
 
 **目標**: 実験条件の手動切り替え機能  
 **ファイル**: `/concern-app/src/services/ExperimentService.ts`
@@ -1375,6 +1513,7 @@ console.log('Assigned condition:', condition);
 - LocalDBのuserProfile更新
 - experiment_condition_switchedイベント記録
 - window.location.reload()呼び出し
+- **注意**: 開発環境専用機能
 
 **成功基準**:
 - 条件が切り替わる
@@ -1389,7 +1528,7 @@ await experimentService.switchCondition('static_ui');
 
 ---
 
-### ✅ 4.4 Commit: ClientExperimentService実装
+### ✅ 4.7 Commit: ClientExperimentService実装
 
 **コミット内容**:
 ```bash
@@ -1397,7 +1536,8 @@ git add concern-app/src/services/ExperimentService.ts
 git commit -m "feat(phase2): Implement ClientExperimentService
 
 - Add fetchCondition() to retrieve assignment from /v1/config
-- Implement switchCondition() for manual override (debug)
+- Support null condition for unassigned users
+- Implement switchCondition() for debug purposes only
 - Cache condition in IndexedDB userProfile
 - Record experiment_condition_assigned/switched events
 - Ref: specs/project/phase2/ab_testing.md"
@@ -1405,33 +1545,65 @@ git commit -m "feat(phase2): Implement ClientExperimentService
 
 ---
 
-### 4.4 App.tsx条件別ルーティング骨格
+### 4.8 UnassignedScreen作成
+
+**目標**: 未割り当てユーザー用の待機画面  
+**ファイル**: `/concern-app/src/screens/UnassignedScreen.tsx` （新規作成）
+
+**実装内容**:
+- 未割り当て状態を説明するメッセージ表示
+- ユーザーIDを表示（被験者に伝えてもらう）
+- 再読み込みボタン
+
+**成功基準**:
+- 画面が表示される
+- ユーザーIDが表示される
+
+**テスト方法**:
+```typescript
+// 未割り当て状態でアプリを開く
+// UnassignedScreenが表示される
+// "実験条件の割り当て待ち" メッセージが表示される
+```
+
+**参考**: `specs/project/phase2/ab_testing.md` のApp.tsx実装
+
+---
+
+### 4.9 App.tsx条件別ルーティング実装
 
 **目標**: App.tsxで実験条件に応じてNavigatorを切り替え  
 **ファイル**: `/concern-app/src/App.tsx`
 
 **実装内容**:
 - useEffect でexperimentService.fetchCondition()呼び出し
-- condition state管理
+- condition state管理（`'dynamic_ui' | 'static_ui' | null`）
 - 条件別レンダリング:
+  - condition === null → UnassignedScreen（未割り当て）
   - condition === 'dynamic_ui' → DynamicUINavigator
   - condition === 'static_ui' → StaticUINavigator
 - Loading state表示
 
 **成功基準**:
 - 条件に応じてNavigatorが切り替わる
+- 未割り当ての場合UnassignedScreenが表示される
 
 **テスト方法**:
 ```typescript
 // 1. アプリ起動
 // 2. Loading画面が表示される
-// 3. 条件取得後、DynamicUINavigator または StaticUINavigator が表示される
+// 3. 条件取得後:
+//    - 未割り当て → UnassignedScreen
+//    - dynamic_ui → DynamicUINavigator
+//    - static_ui → StaticUINavigator
 // 4. Console.logで条件を確認
 ```
 
+**参考**: `specs/project/phase2/ab_testing.md` のApp.tsx実装
+
 ---
 
-### 4.5 StaticUINavigator骨格作成
+### 4.10 StaticUINavigator骨格作成
 
 **目標**: 固定UI版のルーター骨格  
 **ファイル**: `/concern-app/src/navigators/StaticUINavigator.tsx` （新規作成）
@@ -1462,90 +1634,146 @@ bun run build
 
 ---
 
-### 4.6 SettingsScreen基本実装
+### 4.11 SettingsScreen実装
 
-**目標**: 実験条件表示・切り替え画面  
+**目標**: ユーザー用設定画面（条件表示・統計情報）  
 **ファイル**: `/concern-app/src/screens/SettingsScreen.tsx` （新規作成）
 
 **実装内容**:
-- 現在の実験条件表示
+- ユーザーID表示（被験者が研究者に伝えるため）
+- 現在の実験条件表示（動的UI / 固定UI / 未割り当て）
 - 割り当て日時表示
-- デバッグモード警告表示
-- 条件切り替えボタン（confirmダイアログ付き）
-- 統計情報表示（タスク作成数、着手回数等）
+- 統計情報表示（タスク作成数、着手回数、完了回数、平均スッキリ度）
+- **デバッグセクション**（開発環境のみ表示）:
+  - 条件切り替えボタン（警告付き）
 
 **成功基準**:
-- 設定画面が表示される
-- 条件切り替えボタンが動作する
+- 設定画面が正しく表示される
+- 未割り当ての場合も適切に表示される
+- デバッグ機能が開発環境でのみ動作する
 
 **テスト方法**:
 ```typescript
 // 1. SettingsScreenを開く
-// 2. 現在の条件が表示される（例: "現在の条件: 動的UI"）
-// 3. 切り替えボタンをタップ
-// 4. 確認ダイアログが表示される
-// 5. OKをタップ → ページがリロードされる
+// 2. ユーザーIDが表示される
+// 3. 実験条件が表示される（例: "動的UI版"）
+// 4. 統計情報が表示される
+// 5. 開発環境の場合、デバッグセクションが表示される
 ```
 
-**参考**: `specs/project/phase2/ab_testing.md` のSettingsScreen
+**参考**: `specs/project/phase2/ab_testing.md` のユーザー用設定画面
 
 ---
 
-### ✅ 4.7 Commit: A/Bテスト条件別ルーティング実装
+### 4.12 AdminUserManagement画面実装
+
+**目標**: 管理者用のユーザー管理画面  
+**ファイル**: `/concern-app/src/screens/AdminUserManagement.tsx` （新規作成）
+
+**実装内容**:
+- 条件別人数サマリー表示（動的UI群・固定UI群・未割り当て）
+- ユーザー一覧テーブル:
+  - ユーザーID
+  - 実験条件（バッジ表示）
+  - 割り当て日時
+  - メモ
+  - 操作ボタン（動的UI / 固定UI / 削除）
+- 割り当てボタン操作:
+  - メモ入力プロンプト
+  - 管理者API呼び出し
+  - データ再読み込み
+- 運用ガイド表示
+
+**成功基準**:
+- 管理画面が正しく表示される
+- 割り当て操作が正常に動作する
+- UIが使いやすい
+
+**テスト方法**:
+```typescript
+// 1. AdminUserManagement画面を開く
+// 2. ユーザー一覧が表示される
+// 3. 条件別人数が正しく表示される
+// 4. 「動的UI」ボタンをクリック
+// 5. メモ入力プロンプトが表示される
+// 6. メモを入力して確定
+// 7. 割り当てが成功し、テーブルが更新される
+```
+
+**参考**: `specs/project/phase2/ab_testing.md` の管理者用UI
+
+---
+
+### ✅ 4.13 Commit: A/Bテスト手動割り当て機構実装
 
 **コミット内容**:
 ```bash
-git add concern-app/src/App.tsx concern-app/src/navigators/StaticUINavigator.tsx concern-app/src/screens/SettingsScreen.tsx
-git commit -m "feat(phase2): Implement A/B testing routing
+git add concern-app/src/App.tsx concern-app/src/navigators/StaticUINavigator.tsx concern-app/src/screens/SettingsScreen.tsx concern-app/src/screens/UnassignedScreen.tsx concern-app/src/screens/AdminUserManagement.tsx
+git commit -m "feat(phase2): Implement manual assignment A/B testing
 
 - Update App.tsx with condition-based Navigator switching
+- Add UnassignedScreen for users without condition assignment
 - Create StaticUINavigator for static UI condition
-- Implement SettingsScreen for condition display and manual switch
-- Support dynamic_ui and static_ui experimental conditions
+- Implement SettingsScreen with user stats and debug features
+- Add AdminUserManagement screen for manual assignment
+- Support null condition for unassigned users
 - Ref: specs/project/phase2/ab_testing.md"
 ```
 
 ---
 
-### 4.8 実験条件の検証テスト
+### 4.14 手動割り当てフローの検証テスト
 
-**目標**: ハッシュベース割り当ての一貫性確認
+**目標**: 手動割り当てフローの動作確認
 
 **テストシナリオ**:
-1. ブラウザのIndexedDBを削除（リセット）
-2. アプリを起動
-3. 割り当てられた条件を記録（例: dynamic_ui）
-4. LocalStorageのanonymous_user_idを記録
-5. IndexedDBを再度削除
-6. アプリを起動
-7. 同じanonymous_user_idが生成されることを確認
-8. 同じ条件（dynamic_ui）が割り当てられることを確認
+1. **未割り当てユーザーアクセス**:
+   - ブラウザのIndexedDBを削除
+   - アプリを起動
+   - UnassignedScreenが表示される
+   - ユーザーIDをメモする
+
+2. **管理者による割り当て**:
+   - AdminUserManagement画面を開く
+   - 上記ユーザーIDが一覧に表示される
+   - 「未割り当て」バッジが表示される
+   - 「動的UI」ボタンをクリック
+   - メモ入力（例: "テスト被験者1"）
+   - 割り当てが成功する
+   - テーブルで「動的UI」バッジに変わる
+   - 条件別人数が更新される（動的UI群: 1名）
+
+3. **ユーザー側での確認**:
+   - 被験者のブラウザでアプリをリロード
+   - DynamicUINavigatorが表示される
+   - SettingsScreenで「動的UI版」と表示される
 
 **成功基準**:
-- [ ] 同じユーザーIDで常に同じ条件が割り当てられる
-
-**テスト方法**: 上記シナリオを手動実行
+- [ ] 未割り当てユーザーがUnassignedScreenを見る
+- [ ] 管理者が正しく割り当てできる
+- [ ] 割り当て後、適切なUIが表示される
+- [ ] 条件別人数が正確にカウントされる
 
 ---
 
-### 4.9 条件切り替えの検証テスト
+### 4.15 条件切り替え（デバッグ）の検証テスト
 
-**目標**: 手動切り替えの動作確認
+**目標**: デバッグ用切り替え機能の動作確認
 
 **テストシナリオ**:
-1. アプリ起動（条件: dynamic_ui）
+1. 開発環境でアプリ起動（条件: dynamic_ui）
 2. SettingsScreenを開く
-3. 「固定UIに切り替え」ボタンをタップ
-4. ページがリロードされる
-5. StaticUINavigatorが表示される
-6. 固定UI版の画面フローが動作することを確認
-7. 再度SettingsScreenを開く
-8. 「動的UIに切り替え」ボタンをタップ
-9. DynamicUINavigatorに戻ることを確認
+3. デバッグセクションが表示される
+4. 「条件を切り替え（デバッグ）」ボタンをタップ
+5. 警告ダイアログが表示される
+6. 続行を選択
+7. ページがリロードされる
+8. StaticUINavigatorが表示される
 
 **成功基準**:
+- [ ] デバッグ機能が開発環境でのみ表示される
+- [ ] 警告ダイアログが表示される
 - [ ] 条件切り替えが正常に動作する
-- [ ] 切り替え後に適切なNavigatorが表示される
 
 ---
 
@@ -2100,11 +2328,12 @@ git commit -m "test(phase2): Add Phase 2 test suites
 
 ---
 
-**文書バージョン:** 1.0  
+**文書バージョン:** 1.1  
 **対象:** LLM実装エージェント  
-**総タスク数:** 82タスク  
+**総タスク数:** 83タスク  
 **推定実行期間:** 17-23日（3.5-4.5週間）
 
 **作成者**: AI Agent (Claude Sonnet 4.5)  
-**作成日**: 2025年10月18日
+**作成日**: 2025年10月18日  
+**最終更新**: 2025年10月19日（Step 4を手動割り当て方式に変更）
 

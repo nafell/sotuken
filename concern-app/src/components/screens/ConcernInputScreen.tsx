@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { sessionManager } from '../../services/session/SessionManager';
 import { flowStateManager } from '../../services/ConcernFlowStateManager';
+import { uiCacheService } from '../../services/UIGenerationCacheService';
 import { generateId } from '../../utils/uuid';
 
 interface LocationState {
@@ -17,6 +18,10 @@ export const ConcernInputScreen: React.FC = () => {
   const handleNext = async () => {
     if (concernText.trim().length >= 3) {
       try {
+        // Phase 2 Step 3.5: 新しい関心事開始時に全キャッシュをクリア ⭐️
+        uiCacheService.clearAllCaches();
+        console.log('🗑️ 全UIキャッシュをクリアしました（新規関心事開始）');
+        
         // セッション開始
         const sessionId = await sessionManager.startSession(concernText.trim());
         console.log('✅ セッション開始:', sessionId);

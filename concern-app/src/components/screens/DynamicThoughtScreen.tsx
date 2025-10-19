@@ -12,6 +12,7 @@ import { ContextService } from '../../services/context/ContextService';
 import { sessionManager } from '../../services/session/SessionManager';
 import { flowStateManager } from '../../services/ConcernFlowStateManager';
 import { taskGenerationService } from '../../services/TaskGenerationService';
+import { uiCacheService } from '../../services/UIGenerationCacheService';
 import { UIRenderer } from '../../services/ui-generation/UIRenderer';
 import type { UISpecDSL } from '../../../../server/src/types/UISpecDSL';
 import type { DataSchemaDSL } from '../../../../server/src/types/DataSchemaDSL';
@@ -55,6 +56,7 @@ export const DynamicThoughtScreen: React.FC<DynamicThoughtScreenProps> = ({
 
   /**
    * UI生成
+   * Phase 2 Step 3.5: キャッシュチェック追加
    */
   useEffect(() => {
     const generateUI = async () => {
@@ -62,6 +64,27 @@ export const DynamicThoughtScreen: React.FC<DynamicThoughtScreenProps> = ({
       setError(null);
 
       try {
+        // Phase 2 Step 3.5: キャッシュチェック ⭐️
+        const concernInfo = flowStateManager.getConcernInfo();
+        if (concernInfo) {
+          const cachedUI = uiCacheService.loadCache(stage, concernInfo.concernId);
+          
+          if (cachedUI) {
+            console.log('✅ キャッシュされたUIを使用:', stage);
+            
+            // キャッシュからUIを復元
+            setDataSchema(cachedUI.dataSchema);
+            setUiSpec(cachedUI.uiSpec);
+            setFormData(cachedUI.formData);
+            
+            setIsLoading(false);
+            return; // UI生成をスキップ
+          }
+        }
+        
+        // キャッシュがない場合は通常のUI生成を実行
+        console.log('🔄 新規UI生成:', stage);
+
         // イベント記録
         await apiService.sendEvent('dynamic_ui_generation_start', {
           stage,
@@ -99,6 +122,24 @@ export const DynamicThoughtScreen: React.FC<DynamicThoughtScreenProps> = ({
         // 初期データを設定
         const initialData = initializeFormData(data.dataSchema);
         setFormData(initialData);
+
+        // Phase 2 Step 3.5: キャッシュに保存 ⭐️
+        const concernInfoAfterGen = flowStateManager.getConcernInfo();
+        if (concernInfoAfterGen) {
+          uiCacheService.saveCache({
+            cacheId: `cache_${Date.now()}`,
+            stage,
+            concernId: concernInfoAfterGen.concernId,
+            uiSpec: data.uiSpec,
+            dataSchema: data.dataSchema,
+            generationId: data.generationId,
+            generatedAt: new Date(),
+            lastAccessedAt: new Date(),
+            formData: initialData
+          });
+          
+          console.log('💾 UIキャッシュを保存しました:', stage);
+        }
 
         // イベント記録
         await apiService.sendEvent('dynamic_ui_generation_complete', {
@@ -156,6 +197,7 @@ export const DynamicThoughtScreen: React.FC<DynamicThoughtScreenProps> = ({
 
   /**
    * データ変更ハンドラー
+   * Phase 2 Step 3.5: キャッシュ更新追加
    */
   const handleDataChange = useCallback((path: string, value: any) => {
     console.log('📝 データ変更:', path, value);
@@ -174,9 +216,47 @@ export const DynamicThoughtScreen: React.FC<DynamicThoughtScreenProps> = ({
       
       current[parts[parts.length - 1]] = value;
       
+      // Phase 2 Step 3.5: キャッシュを更新 ⭐️
+      const concernInfo = flowStateManager.getConcernInfo();
+      if (concernInfo && uiSpec && dataSchema) {
+        const cachedUI = uiCacheService.loadCache(stage, concernInfo.concernId);
+        if (cachedUI) {
+          // formDataのみ更新
+          cachedUI.formData = newData;
+          uiCacheService.saveCache(cachedUI);
+        }
+      }
+      
       return newData;
     });
-  }, []);
+  }, [stage, uiSpec, dataSchema]);
+
+  /**
+   * 戻るボタンハンドラー
+   * Phase 2 Step 3.5: キャッシュ保存してから前ステージへ戻る
+   */
+  const handleBack = () => {
+    console.log('🔙 戻るボタンクリック:', stage);
+    
+    // Phase 2 Step 3.5: 現在のフォームデータをキャッシュに保存してから戻る
+    const concernInfo = flowStateManager.getConcernInfo();
+    if (concernInfo && uiSpec && dataSchema) {
+      const cachedUI = uiCacheService.loadCache(stage, concernInfo.concernId);
+      if (cachedUI) {
+        cachedUI.formData = formData;
+        uiCacheService.saveCache(cachedUI);
+      }
+    }
+    
+    // 前のステージへナビゲート
+    if (stage === 'breakdown') {
+      navigate('/concern/plan', { state });
+    } else if (stage === 'plan') {
+      navigate('/concern/capture', { state });
+    } else if (stage === 'capture') {
+      navigate('/concern/input', { state: { prefillConcern: concernText } });
+    }
+  };
 
   /**
    * 次へ進む
@@ -255,6 +335,13 @@ export const DynamicThoughtScreen: React.FC<DynamicThoughtScreenProps> = ({
           const generationResult = await taskGenerationService.generateTasksFromBreakdown();
           console.log('✅ タスク生成完了:', generationResult.tasks.length, '件');
           
+          // Phase 2 Step 3.5: タスク生成完了後、キャッシュをクリア ⭐️
+          const concernInfoForCleanup = flowStateManager.getConcernInfo();
+          if (concernInfoForCleanup) {
+            uiCacheService.clearCache(concernInfoForCleanup.concernId);
+            console.log('🗑️ UIキャッシュをクリアしました');
+          }
+          
           // タスク推奨画面へ遷移
           navigate('/tasks/recommend', { 
             state: { 
@@ -266,6 +353,13 @@ export const DynamicThoughtScreen: React.FC<DynamicThoughtScreenProps> = ({
           });
         } catch (error) {
           console.error('❌ タスク生成エラー:', error);
+          
+          // Phase 2 Step 3.5: エラー時もキャッシュをクリア
+          const concernInfoForCleanup = flowStateManager.getConcernInfo();
+          if (concernInfoForCleanup) {
+            uiCacheService.clearCache(concernInfoForCleanup.concernId);
+            console.log('🗑️ UIキャッシュをクリアしました（エラー時）');
+          }
           
           // エラーが発生してもタスク推奨画面へ遷移（手動作成を促す）
           navigate('/tasks/recommend', { 
@@ -335,8 +429,8 @@ export const DynamicThoughtScreen: React.FC<DynamicThoughtScreenProps> = ({
         {/* ヘッダー */}
         <div className="mb-6">
           <button
-            onClick={() => navigate(-1)}
-            className="text-gray-500 hover:text-gray-700 mb-4"
+            onClick={handleBack}
+            className="text-gray-500 hover:text-gray-700 mb-4 flex items-center"
           >
             ← 戻る
           </button>

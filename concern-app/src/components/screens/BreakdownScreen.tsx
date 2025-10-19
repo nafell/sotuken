@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { apiService } from '../../services/api/ApiService';
 import { ContextService } from '../../services/context/ContextService';
 import { sessionManager } from '../../services/session/SessionManager';
+import { taskGenerationService } from '../../services/TaskGenerationService';
+import { flowStateManager } from '../../services/ConcernFlowStateManager';
 
 interface LocationState {
   concernText: string;
@@ -151,10 +153,61 @@ export const BreakdownScreen: React.FC = () => {
 
         console.log('🚀 アクション開始:', actionText);
         
+        // Phase 2 Step 4: Breakdown結果をConcernFlowStateManagerに保存
+        const flowState = flowStateManager.loadState();
+        if (flowState) {
+          // Breakdown結果を保存（簡易版）
+          flowStateManager.saveState({
+            ...flowState,
+            breakdownResult: {
+              tasks: [
+                {
+                  title: actionText,
+                  description: `${concernText}に関連するアクション`,
+                  importance: 3,
+                  urgency: 3,
+                  estimatedMinutes: 30
+                }
+              ]
+            }
+          });
+          
+          // Phase 2 Step 4: タスク生成を実行
+          try {
+            console.log('[BreakdownScreen] タスク生成開始...');
+            const result = await taskGenerationService.generateTasksFromBreakdown();
+            console.log('[BreakdownScreen] タスク生成完了:', result.tasks.length, '件');
+            
+            // Phase 2 Step 4: StaticTaskRecommendationScreenへ遷移（固定UI版）
+            navigate('/tasks/recommend/static', {
+              state: {
+                generatedTasks: result.tasks,
+                concernId: result.concernId,
+                fromBreakdown: true
+              }
+            });
+            return;
+          } catch (taskGenError) {
+            console.error('[BreakdownScreen] タスク生成エラー:', taskGenError);
+            // タスク生成に失敗した場合は従来のフィードバック画面へ
+            navigate('/feedback', {
+              state: {
+                ...state,
+                selectedAction: actionText,
+                startTime: new Date().toISOString(),
+                generationId,
+                taskGenerationError: taskGenError instanceof Error ? taskGenError.message : '不明なエラー'
+              }
+            });
+            return;
+          }
+        }
+        
       } catch (error) {
         console.error('❌ アクション開始記録エラー:', error);
       }
 
+      // フォールバック: 従来のフィードバック画面へ
       navigate('/feedback', {
         state: {
           ...state,

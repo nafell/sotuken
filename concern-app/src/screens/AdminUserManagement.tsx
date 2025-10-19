@@ -10,6 +10,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { experimentService } from '../services/ClientExperimentService';
 
 /**
  * ユーザー情報の型
@@ -63,7 +64,7 @@ export const AdminUserManagement: React.FC = () => {
     try {
       // TODO Phase 2 Step 5.3: 全ユーザー一覧を取得するAPI実装
       // 現時点では、localStorageから現在のユーザーのみを取得
-      const currentUserId = localStorage.getItem('anonymousUserId') || 'unknown';
+      const currentUserId = experimentService.getUserId();
       setUsers([{ userId: currentUserId }]);
 
       // 割り当て状況を取得

@@ -36,8 +36,8 @@ export const SettingsScreen: React.FC = () => {
     setIsLoading(true);
     
     try {
-      // ユーザーIDを取得
-      const storedUserId = localStorage.getItem('anonymousUserId') || 'unknown';
+      // ユーザーIDを取得（存在しない場合は自動生成）
+      const storedUserId = experimentService.getUserId();
       setUserId(storedUserId);
 
       // 実験条件を取得

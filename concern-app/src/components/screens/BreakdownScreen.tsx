@@ -63,7 +63,7 @@ export const BreakdownScreen: React.FC = () => {
           screen: 'breakdown',
           concernText: concernText.slice(0, 100),
           approach
-        }, sessionManager.getSessionId());
+        }, sessionManager.getSessionId() || undefined);
 
         // factors辞書収集
         const contextService = new ContextService();
@@ -75,7 +75,7 @@ export const BreakdownScreen: React.FC = () => {
         const uiResponse = await apiService.generateUI(
           concernText, 
           factors, 
-          sessionManager.getSessionId()
+          sessionManager.getSessionId() || undefined
         );
 
         console.log('✅ UI生成完了:', uiResponse);
@@ -90,7 +90,7 @@ export const BreakdownScreen: React.FC = () => {
           generationId: uiResponse.generationId,
           actionsCount: actions.length,
           fallbackUsed: uiResponse.generation?.fallbackUsed || false
-        }, sessionManager.getSessionId());
+        }, sessionManager.getSessionId() || undefined);
 
       } catch (error) {
         console.error('❌ 動的UI生成エラー:', error);
@@ -103,7 +103,7 @@ export const BreakdownScreen: React.FC = () => {
         await apiService.sendEvent('ui_generation_error', {
           error: error instanceof Error ? error.message : 'Unknown error',
           fallbackUsed: true
-        }, sessionManager.getSessionId()).catch(console.error);
+        }, sessionManager.getSessionId() || undefined).catch(console.error);
         
       } finally {
         setIsLoadingUI(false);
@@ -149,7 +149,7 @@ export const BreakdownScreen: React.FC = () => {
           selectedAction: actionText,
           generationId: generationId,
           isCustomAction: selectedAction === 'custom'
-        }, sessionManager.getSessionId());
+        }, sessionManager.getSessionId() || undefined);
 
         console.log('🚀 アクション開始:', actionText);
         
@@ -168,7 +168,8 @@ export const BreakdownScreen: React.FC = () => {
                   urgency: 3,
                   estimatedMinutes: 30
                 }
-              ]
+              ],
+              timestamp: new Date().toISOString()
             }
           });
           

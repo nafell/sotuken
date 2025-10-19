@@ -470,12 +470,43 @@ export const DynamicThoughtScreen: React.FC<DynamicThoughtScreenProps> = ({
           </button>
         </div>
 
+        {/* Phase 2 Step 3.5: キャッシュ情報表示（開発時のみ） */}
+        {import.meta.env.DEV && (
+          <div className="bg-yellow-50 border border-yellow-300 rounded p-3 mb-4">
+            <p className="text-xs font-mono font-semibold text-yellow-800 mb-2">
+              🔧 デバッグ情報（キャッシュ）
+            </p>
+            <p className="text-xs font-mono text-yellow-700">
+              Stage: {stage} | 
+              キャッシュ: {(() => {
+                const concernInfo = flowStateManager.getConcernInfo();
+                if (concernInfo) {
+                  return uiCacheService.loadCache(stage, concernInfo.concernId) ? '✅ あり' : '❌ なし';
+                }
+                return '⚠️ concernInfo未取得';
+              })()}
+            </p>
+            <button
+              onClick={() => {
+                const concernInfo = flowStateManager.getConcernInfo();
+                if (concernInfo) {
+                  uiCacheService.clearCache(concernInfo.concernId);
+                  window.location.reload();
+                }
+              }}
+              className="text-xs text-yellow-700 hover:text-yellow-900 mt-2 underline"
+            >
+              キャッシュをクリアして再読み込み
+            </button>
+          </div>
+        )}
+
         {/* デバッグ情報（開発時のみ） */}
         {process.env.NODE_ENV === 'development' && (
           <div className="mt-6 p-4 bg-gray-100 rounded-lg">
             <details>
               <summary className="cursor-pointer font-semibold text-gray-700">
-                🔍 デバッグ情報
+                🔍 デバッグ情報（詳細）
               </summary>
               <div className="mt-3 space-y-2 text-xs">
                 <div>

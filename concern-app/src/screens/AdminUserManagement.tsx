@@ -62,16 +62,28 @@ export const AdminUserManagement: React.FC = () => {
     setIsLoading(true);
     
     try {
-      // TODO Phase 2 Step 5.3: 全ユーザー一覧を取得するAPI実装
-      // 現時点では、localStorageから現在のユーザーのみを取得
-      const currentUserId = experimentService.getUserId();
-      setUsers([{ userId: currentUserId }]);
-
       // 割り当て状況を取得
       const assignmentsResponse = await fetch(`${serverUrl}/admin/assignments`);
       if (assignmentsResponse.ok) {
         const assignmentsData = await assignmentsResponse.json();
-        setAssignments(assignmentsData.assignments || []);
+        const assignments = assignmentsData.assignments || [];
+        setAssignments(assignments);
+        
+        // 割り当て済みのユーザーIDからユーザー一覧を作成
+        const assignedUserIds = assignments.map((a: ExperimentAssignment) => a.userId);
+        const usersFromAssignments = assignedUserIds.map((userId: string) => ({ userId }));
+        
+        // 現在のユーザーも追加（割り当て済みでない場合）
+        const currentUserId = experimentService.getUserId();
+        if (!assignedUserIds.includes(currentUserId)) {
+          usersFromAssignments.push({ userId: currentUserId });
+        }
+        
+        setUsers(usersFromAssignments);
+      } else {
+        // APIが失敗した場合は現在のユーザーのみ表示
+        const currentUserId = experimentService.getUserId();
+        setUsers([{ userId: currentUserId }]);
       }
 
       // 条件別の人数を取得
@@ -84,6 +96,10 @@ export const AdminUserManagement: React.FC = () => {
     } catch (error) {
       console.error('[AdminUserManagement] データ取得エラー:', error);
       alert('データの取得に失敗しました');
+      
+      // エラー時は現在のユーザーのみ表示
+      const currentUserId = experimentService.getUserId();
+      setUsers([{ userId: currentUserId }]);
     } finally {
       setIsLoading(false);
     }

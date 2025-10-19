@@ -83,6 +83,8 @@ export class ClientExperimentService {
     try {
       // ユーザーIDを取得（存在しない場合は自動生成）
       const userId = this.getUserId();
+      
+      console.log('[ClientExperimentService] サーバーから条件を取得中...', { userId });
 
       // /v1/config APIから取得
       const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';

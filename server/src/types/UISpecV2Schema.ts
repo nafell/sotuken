@@ -193,7 +193,7 @@ const UISpecV2Schema = z.object({
   version: z.literal("2.0"),
   stage: UIStageSchema,
   sections: z.array(UISectionSchema).min(1, "最低1つのセクションが必要です"),
-  actions: z.array(UIActionSchema).min(1, "最低1つのアクションが必要です"),
+  actions: z.array(UIActionSchema), // v2.1: actionsは空配列OK（メタUIはクライアント管理）
   metadata: UIMetadataSchema.optional()
 });
 
@@ -320,13 +320,15 @@ export const UISpecV2WithRefinementsSchema = UISpecV2Schema.refine(
       }
     }
 
-    // アクションIDの重複チェック
-    const actionIds = new Set<string>();
-    for (const action of spec.actions) {
-      if (actionIds.has(action.id)) {
-        return false; // 重複ID発見
+    // アクションIDの重複チェック（v2.1: 空配列の場合はスキップ）
+    if (spec.actions && spec.actions.length > 0) {
+      const actionIds = new Set<string>();
+      for (const action of spec.actions) {
+        if (actionIds.has(action.id)) {
+          return false; // 重複ID発見
+        }
+        actionIds.add(action.id);
       }
-      actionIds.add(action.id);
     }
 
     return true;

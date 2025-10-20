@@ -20,6 +20,9 @@ import { FeedbackScreen } from '../components/screens/FeedbackScreen';
 // Phase 1C: 動的思考整理画面
 import { DynamicThoughtScreen } from '../components/screens/DynamicThoughtScreen';
 
+// Phase 3: UISpec v2.0対応の動的思考整理画面
+import { DynamicThoughtScreenV2 } from '../components/screens/DynamicThoughtScreenV2';
+
 // Phase 2: タスク管理画面
 import { TaskRecommendationScreen } from '../screens/TaskRecommendationScreen';
 import { StaticTaskRecommendationScreen } from '../screens/StaticTaskRecommendationScreen';
@@ -74,46 +77,60 @@ export const DynamicUINavigator: React.FC = () => {
       {/* 思考整理フロー（Phase 1C + Phase 2） */}
       {/* ==================== */}
       
-      {/* Capture Stage: 関心事の捕捉・明確化 */}
-      <Route 
-        path="/concern/capture" 
+      {/* Capture Stage: 関心事の捕捉・明確化 - Phase 3: UISpec v2.0 */}
+      <Route
+        path="/concern/capture"
+        element={<DynamicThoughtScreenV2 stage="capture" />}
+      />
+
+      {/* Plan Stage: 計画立案 - Phase 3: UISpec v2.0 */}
+      <Route
+        path="/concern/plan"
+        element={<DynamicThoughtScreenV2 stage="plan" />}
+      />
+
+      {/* Breakdown Stage: タスク分解 - Phase 3: UISpec v2.0 */}
+      <Route
+        path="/concern/breakdown"
+        element={<DynamicThoughtScreenV2 stage="breakdown" />}
+      />
+
+      {/* v1版（開発・デバッグ用） */}
+      <Route
+        path="/concern/capture/v1"
         element={
-          <DynamicThoughtScreen 
-            stage="capture" 
-            concernId="" 
+          <DynamicThoughtScreen
+            stage="capture"
+            concernId=""
             onComplete={(_result: any) => {
               console.log('[DynamicUINavigator] Capture completed:', _result);
-            }} 
+            }}
           />
-        } 
+        }
       />
-      
-      {/* Plan Stage: 計画立案 */}
-      <Route 
-        path="/concern/plan" 
+      <Route
+        path="/concern/plan/v1"
         element={
-          <DynamicThoughtScreen 
-            stage="plan" 
-            concernId="" 
+          <DynamicThoughtScreen
+            stage="plan"
+            concernId=""
             onComplete={(_result: any) => {
               console.log('[DynamicUINavigator] Plan completed:', _result);
-            }} 
+            }}
           />
-        } 
+        }
       />
-      
-      {/* Breakdown Stage: タスク分解 */}
-      <Route 
-        path="/concern/breakdown" 
+      <Route
+        path="/concern/breakdown/v1"
         element={
-          <DynamicThoughtScreen 
-            stage="breakdown" 
-            concernId="" 
+          <DynamicThoughtScreen
+            stage="breakdown"
+            concernId=""
             onComplete={(_result: any) => {
               console.log('[DynamicUINavigator] Breakdown completed:', _result);
-            }} 
+            }}
           />
-        } 
+        }
       />
 
       {/* ==================== */}

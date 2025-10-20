@@ -189,9 +189,9 @@ JSONのみを出力してください。説明は不要です。`;
 2. context: 追加情報（任意）
    - 制約条件や背景情報を1-2個のフィールドで収集
 
-### 必須アクション
-- next: 次へ進む（type: "submit", target: "plan", style: "primary"）
-- save_draft: 下書き保存（type: "save", style: "secondary"）`;
+### 注意事項
+- actionsは生成しない（ナビゲーションはクライアントが管理）
+- フィールドのみに集中してください`;
   }
 
   /**
@@ -213,9 +213,9 @@ JSONのみを出力してください。説明は不要です。`;
    - 2-3個のsliderで優先度や力の入れ方を調整
    - 例: "スピード vs 品質", "力の入れ方", "一人で vs みんなで"
 
-### 必須アクション
-- confirm: この方針で決定（type: "submit", target: "breakdown", style: "primary"）
-- back: 戻る（type: "navigate", target: "capture", style: "secondary"）
+### 注意事項
+- actionsは生成しない（ナビゲーションはクライアントが管理）
+- フィールドのみに集中してください
 
 ### カード内容の指針
 各カードには具体的な行動イメージを含めてください。`;
@@ -244,14 +244,14 @@ JSONのみを出力してください。説明は不要です。`;
    - task_count: タスク数（computed: "count(task_list) + ' 個'"）
    - first_action: 最初の一歩（computed: "task_list[0].title"）
 
+### 注意事項
+- actionsは生成しない（ナビゲーションはクライアントが管理）
+- フィールドのみに集中してください
+
 ### タスク生成指針
 - 最初のタスクは5分以内でできる小さなアクション
 - 具体的で実行可能な行動を記述
-- 3-7個程度のタスク
-
-### 必須アクション
-- start: タスクを開始する（type: "submit", target: "execution", style: "primary"）
-- save: 保存して後で（type: "save", style: "secondary"）`;
+- 3-7個程度のタスク`;
   }
 
   /**

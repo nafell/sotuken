@@ -19,7 +19,7 @@ export const SummaryListWidget: React.FC<SummaryListWidgetProps> = ({
   summaryName,
   summaryValue,
   renderItem,
-  editable,
+  editable: _editable,
   className = ''
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);

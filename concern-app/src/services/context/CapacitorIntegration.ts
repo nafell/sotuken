@@ -3,7 +3,7 @@
  * Phase 0 Day 4 - デバイス情報・位置情報・モーション統合
  */
 
-import type { FactorValue, FactorsDict } from '../../types/database.js';
+import type { FactorsDict } from '../../types/database.js';
 
 // Capacitor型定義（Web環境対応）
 interface DeviceInfo {
@@ -373,7 +373,7 @@ export class CapacitorIntegration {
   /**
    * 位置情報を家/職場/その他に分類
    */
-  private categorizeLocation(position: Position): LocationCategory {
+  private categorizeLocation(_position: Position): LocationCategory {
     // Phase 0では時間ベースの簡易分類
     const hour = new Date().getHours();
     const dayOfWeek = new Date().getDay();

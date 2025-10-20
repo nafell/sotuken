@@ -179,11 +179,12 @@ export class ExpressionEngine {
 
   /**
    * 配列をマップ（指定キーの値を抽出）
+   * 現在未使用だが将来の拡張用に保持
    */
-  private map = (arr: any[] | undefined, key: string): any[] => {
-    if (!Array.isArray(arr)) return [];
-    return arr.map(item => this.getNestedValue(item, key));
-  };
+  // private _map = (arr: any[] | undefined, key: string): any[] => {
+  //   if (!Array.isArray(arr)) return [];
+  //   return arr.map(item => this.getNestedValue(item, key));
+  // };
 
   /**
    * ネストされた値を取得

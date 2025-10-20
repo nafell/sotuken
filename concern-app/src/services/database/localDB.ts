@@ -377,7 +377,7 @@ export class LocalDatabase extends Dexie {
   /**
    * 条件別着手率計算（クライアント側）
    */
-  async calculateEngagementRate(userId: string, condition: 'dynamic_ui' | 'static_ui'): Promise<number> {
+  async calculateEngagementRate(_userId: string, condition: 'dynamic_ui' | 'static_ui'): Promise<number> {
     // 推奨表示イベント数
     const shownCount = await this.interactionEvents
       .where('eventType')

@@ -204,7 +204,7 @@ export const ListFieldV2: React.FC<ListFieldV2Props> = ({
         <button
           type="button"
           onClick={handleAddItem}
-          disabled={options.maxItems && value.length >= options.maxItems}
+          disabled={!!(options.maxItems && value.length >= options.maxItems)}
           className="w-full px-4 py-2 text-sm font-medium text-blue-600 border-2 border-blue-600 border-dashed rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           + {options.addButton || '項目を追加'}

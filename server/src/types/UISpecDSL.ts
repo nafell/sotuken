@@ -358,17 +358,8 @@ export class UISpecValidator {
       
       if (!customSpec.component) {
         errors.push(`${entityPath}: Missing 'component' field for custom render`);
-      } else {
-        // サポートされているカスタムコンポーネントのチェック
-        const supportedComponents = [
-          "tradeoff_slider",
-          "counterfactual_toggles",
-          "strategy_preview_picker"
-        ];
-        
-        // 完全一致でなくても警告のみ（将来の拡張を許容）
-        // エラーにはしない
       }
+      // サポートされているカスタムコンポーネントのチェックは将来の拡張を許容するため省略
     }
 
     // 未知のrenderタイプ

@@ -18,7 +18,7 @@ export const ActionReportModal: React.FC<ActionReportModalProps> = ({
   isOpen,
   onClose,
   task,
-  reportId,
+  reportId: _reportId,
   onComplete,
 }) => {
   const [elapsedSec, setElapsedSec] = useState<number>(0);

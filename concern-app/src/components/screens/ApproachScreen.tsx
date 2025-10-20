@@ -22,7 +22,6 @@ export const ApproachScreen: React.FC = () => {
 
   const concernText = state?.concernText || '';
   const categoryLabel = state?.categoryLabel || '';
-  const suggestedApproaches = state?.suggestedApproaches || [];
 
   const approaches = [
     {

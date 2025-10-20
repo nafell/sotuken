@@ -116,40 +116,53 @@
 
 ## 🚀 実装優先度・フェーズ（10週間計画）
 
-### Phase 0: 環境構築・設計（Week 1-2）
-1. Capacitor + React + TypeScript環境構築
-2. PWA基本セットアップ
-3. Bun/Honoサーバー構築
-4. 5画面フロー詳細設計完成
-5. データベーススキーマ確定
+### Phase 0: 環境構築・設計（Week 1-2）✅ **完了**
+1. ✅ Capacitor + React + TypeScript環境構築
+2. ✅ PWA基本セットアップ
+3. ✅ Bun/Honoサーバー構築（PostgreSQL移行済み）
+4. ✅ 5画面フロー詳細設計完成
+5. ✅ データベーススキーマ確定
 
-### Phase 1: 基盤開発（Week 3-4）
-1. 5画面UI実装（React Components）
-2. ローカルデータ管理（IndexedDB）
-3. サーバー連携基盤
-4. factors辞書システム実装
-5. 基本的なCRUD操作
+### Phase 1: 基盤開発（Week 3-4）✅ **完了**
+1. ✅ 5画面UI実装（React Components）
+2. ✅ ローカルデータ管理（IndexedDB v2）
+3. ✅ サーバー連携基盤
+4. ✅ factors辞書システム実装
+5. ✅ 基本的なCRUD操作
 
-### Phase 2: 固定UI版（Week 5-6）
-1. 細分化フェーズの促しUI（静的デザイン）
-2. 2分ルールアクション生成
-3. 行動報告システム
-4. スッキリ度測定機能
-5. A/Bテスト機構実装
+### Phase 2: 測定システム実装（Week 5-6）✅ **完了**
+1. ✅ タスク推奨画面（動的UI版）
+2. ✅ 着手率測定機能（timeToStartSec）
+3. ✅ 行動報告システム（ActionReportModal）
+4. ✅ スッキリ度測定機能（ClarityFeedbackModal）
+5. ✅ メトリクスAPI・AdminDashboard
+6. ⚠️ A/Bテスト機構（緊急対応中: 全ユーザー動的UI固定）
 
-### Phase 3: 動的UI版（Week 7-8）
-1. LLM-DSL API連携
-2. UI生成エンジン実装
-3. 新規性レベル制御
-4. エラーハンドリング・フォールバック機構
-5. プライバシー保護機能
+**Phase 2の実装方針変更**:
+- 当初計画: 固定UI版を先に実装
+- 実際の実装: 動的UI版を先行実装（研究の核心機能を優先）
+- A/Bテスト: データベース永続化未実装のため緊急対応中（Phase 4で対応予定）
 
-### Phase 4: 統合・バッファ（Week 9-10）
-1. 統合テスト・デバッグ
-2. パフォーマンス最適化
-3. ユーザーテスト準備
-4. ドキュメント整備
-5. バグ修正・最終調整
+### Phase 3: 動的UI堅牢性向上（Week 7-8）🔄 **進行中**
+**重点目標**: 動的UI生成のユーザビリティと堅牢性向上
+
+1. 🔄 TypeScriptビルドエラー調査・修正判断
+2. 🔄 UIRenderer堅牢性強化（LLM出力の不完全性対応）
+3. 🔄 エラーハンドリング・フォールバック機構の改善
+4. 🔄 新規性レベル制御の調整
+5. 🔄 ユーザビリティ改善（UX調査・設計議論）
+
+**Phase 3での重要決定事項**:
+- 既存のTypeScriptビルドエラー（約25件）の修正要否判断
+- 動的UI生成の安定性向上（防御的処理の拡充）
+- UX改善のための調査と設計議論
+
+### Phase 4: 統合・PoC完成（Week 9-10）⏳ **未着手**
+1. ⏳ A/Bテスト機構の根本的再設計（データベース永続化）
+2. ⏳ 認証・認可機構実装（管理者機能）
+3. ⏳ 統合テスト・デバッグ
+4. ⏳ パフォーマンス最適化
+5. ⏳ ドキュメント整備・PoC準備
 
 ### 低優先度機能（時間に余裕があれば実装）
 - アクション実行画面（タイマー機能統合版）
@@ -164,8 +177,9 @@
 - **クライアント**: Capacitor + React + TypeScript
 - **ビルド**: Vite + PWA
 - **サーバー**: Bun + Hono
-- **データベース**: IndexedDB（ローカル）+ SQLite（サーバー）
-- **LLM**: Gemini 2.5 Mini
+- **データベース**: IndexedDB（ローカル）+ PostgreSQL（サーバー）※Phase 0でSQLiteから移行
+- **LLM**: Google Gemini 2.5 Flash（mini→flash変更）
+- **ORM**: Drizzle ORM
 - **将来拡張**: ネイティブアプリ移行対応
 
 ### 技術選択理由
@@ -176,11 +190,18 @@
 
 ### API設計
 ```
-POST /v1/ui/generate  - UI DSL生成
-POST /v1/score/rank   - 優先スコア計算  
-POST /v1/events/batch - イベントログ送信
-GET  /v1/config       - 設定配布・実験条件
-POST /v1/replay/generate - デバッグ用リプレイ
+# 実装済みAPI
+POST /v1/ui/generate      - UI DSL生成
+POST /v1/thought/generate - 思考整理UI生成
+POST /v1/task/rank        - タスク優先度ランキング
+POST /v1/events/batch     - イベントログバッチ送信
+GET  /v1/config           - 設定配布・実験条件
+GET  /v1/metrics/engagement - 着手率・スッキリ度メトリクス取得
+
+# Phase 4実装予定
+GET  /v1/users            - 全ユーザー取得（管理者用）
+POST /v1/users            - ユーザー登録
+POST /admin/assignments   - 実験条件手動割り当て
 ```
 
 ### セキュリティ・プライバシー
@@ -248,6 +269,24 @@ factors: Record<string, {
 
 ---
 
-*作成日: 2025年9月15日*  
-*最終更新: 2025年9月17日*  
-*バージョン: v2.0（Capacitor + React + factors辞書対応）*
+*作成日: 2025年9月15日*
+*最終更新: 2025年10月19日*
+*バージョン: v2.1（Phase 2完了・現状反映版）*
+
+---
+
+## 📝 更新履歴
+
+**v2.1 (2025-10-19)**
+- Phase 0-2の実装完了状況を反映
+- データベースをPostgreSQLに変更（Phase 0で移行）
+- LLMをGemini 2.5 Flashに変更
+- A/Bテスト機構の緊急対応状況を記載
+- Phase 3の重点目標を明確化（動的UI堅牢性向上）
+- 実装済みAPI一覧を更新
+
+**v2.0 (2025-09-17)**
+- Capacitor + React + factors辞書対応
+
+**v1.0 (2025-09-15)**
+- 初版作成

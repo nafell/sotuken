@@ -61,9 +61,14 @@ export class UISpecGeneratorV2 {
         const validation = validateUISpecV2(uiSpec);
 
         if (!validation.success) {
-          const errors = formatValidationErrors(validation.errors!);
-          lastError = `Validation failed: ${errors.join(", ")}`;
-          console.error(`試行 ${attempt} バリデーション失敗:`, errors);
+          if (validation.errors) {
+            const errors = formatValidationErrors(validation.errors);
+            lastError = `Validation failed: ${errors.join(", ")}`;
+            console.error(`試行 ${attempt} バリデーション失敗:`, errors);
+          } else {
+            lastError = 'Validation failed: Unknown error';
+            console.error(`試行 ${attempt} バリデーション失敗: Unknown error`);
+          }
           continue;
         }
 
@@ -129,15 +134,7 @@ JSONのみを出力してください。説明は不要です。`;
       ]
     }
   ],
-  "actions": [
-    {
-      "id": "action_id",
-      "type": "submit|save|navigate|compute",
-      "label": "ボタンラベル（日本語）",
-      "position": "bottom",
-      "style": "primary|secondary"
-    }
-  ]
+  "actions": []
 }
 
 ## 使用可能なフィールドタイプ
@@ -295,8 +292,10 @@ JSONのみを出力してください。説明は不要です。`;
       }));
     }
 
-    // actionsの補完
-    if (filled.actions) {
+    // actionsの補完（v2.1: デフォルトで空配列）
+    if (!filled.actions) {
+      filled.actions = [];
+    } else {
       filled.actions = filled.actions.map(action => ({
         ...action,
         position: action.position ?? "bottom",

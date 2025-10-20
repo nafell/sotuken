@@ -1,19 +1,22 @@
 /**
  * ConcernFlowStateManager
- * 
+ *
  * Phase 2 Step 3: 関心事フロー全体のstate管理
- * 
+ * Phase 3 v2.1: FormData保存とリアルタイム永続化対応
+ *
  * 責務:
  * - 関心事入力からタスク生成までのフロー状態を保持
- * - SessionStorageを使った永続化
+ * - SessionStorage + LocalStorageを使った永続化
  * - フロー間のデータ受け渡し
+ * - 各ステージのフォーム入力データの保存（v2.1）
  */
 
 import type { Task } from '../types/database';
+import type { FormData } from '../../../server/src/types/UISpecV2';
 
 /**
  * ConcernFlowState
- * 
+ *
  * 関心事フロー全体の状態
  */
 export interface ConcernFlowState {
@@ -21,20 +24,27 @@ export interface ConcernFlowState {
   concernId: string;
   concernText: string;
   userId: string;
-  
-  // 各ステージの結果
+
+  // v2.1: 各ステージの生のフォームデータ
+  stages?: {
+    capture?: FormData;
+    plan?: FormData;
+    breakdown?: FormData;
+  };
+
+  // 各ステージの結果（後方互換性のため保持）
   captureResult?: {
     clarifiedConcern: string;
     keyPoints: string[];
     timestamp: string;
   };
-  
+
   planResult?: {
     approach: string;
     steps: string[];
     timestamp: string;
   };
-  
+
   breakdownResult?: {
     tasks: Array<{
       title: string;
@@ -45,14 +55,15 @@ export interface ConcernFlowState {
     }>;
     timestamp: string;
   };
-  
+
   // 生成されたタスク（IndexedDBに保存後）
   generatedTasks?: Task[];
-  
+
   // フローのメタ情報
   currentStage?: 'capture' | 'plan' | 'breakdown' | 'tasks';
   startedAt?: string;
   completedAt?: string;
+  updatedAt?: string;  // v2.1: 最終更新日時
   uiCondition?: 'dynamic_ui' | 'static_ui';
 }
 
@@ -277,6 +288,135 @@ export class ConcernFlowStateManager {
   isFlowCompleted(): boolean {
     const state = this.loadState();
     return !!state?.completedAt;
+  }
+
+  /**
+   * v2.1: ステージのフォームデータを保存
+   */
+  saveStageFormData(stage: 'capture' | 'plan' | 'breakdown', formData: FormData): void {
+    const state = this.loadState();
+
+    if (!state) {
+      throw new Error('No flow state found. Call startNewFlow() first.');
+    }
+
+    const stages = state.stages || {};
+    stages[stage] = formData;
+
+    this.saveState({
+      ...state,
+      stages,
+      updatedAt: new Date().toISOString()
+    });
+  }
+
+  /**
+   * v2.1: ステージのフォームデータを読み込み
+   */
+  loadStageFormData(stage: 'capture' | 'plan' | 'breakdown'): FormData | null {
+    const state = this.loadState();
+
+    if (!state || !state.stages) {
+      return null;
+    }
+
+    return state.stages[stage] || null;
+  }
+
+  /**
+   * v2.1: 現在のステージを更新
+   */
+  updateCurrentStage(stage: 'capture' | 'plan' | 'breakdown' | 'tasks'): void {
+    const state = this.loadState();
+
+    if (!state) {
+      throw new Error('No flow state found. Call startNewFlow() first.');
+    }
+
+    this.saveState({
+      ...state,
+      currentStage: stage,
+      updatedAt: new Date().toISOString()
+    });
+  }
+
+  /**
+   * v2.1: LocalStorageへの下書き保存（永続化）
+   */
+  saveDraft(): void {
+    try {
+      const state = this.loadState();
+
+      if (!state) {
+        console.warn('[ConcernFlowStateManager] No state to save as draft');
+        return;
+      }
+
+      // LocalStorageに保存（ブラウザ閉じても残る）
+      const draftKey = `draft_${state.concernId}`;
+      localStorage.setItem(draftKey, JSON.stringify({
+        ...state,
+        savedAt: new Date().toISOString()
+      }));
+
+      console.log('[ConcernFlowStateManager] Draft saved to localStorage:', draftKey);
+    } catch (error) {
+      console.error('[ConcernFlowStateManager] Failed to save draft:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * v2.1: LocalStorageから下書きを読み込み
+   */
+  loadDraft(concernId: string): ConcernFlowState | null {
+    try {
+      const draftKey = `draft_${concernId}`;
+      const stored = localStorage.getItem(draftKey);
+
+      if (!stored) {
+        console.log('[ConcernFlowStateManager] No draft found for:', concernId);
+        return null;
+      }
+
+      const draft = JSON.parse(stored) as ConcernFlowState;
+      console.log('[ConcernFlowStateManager] Draft loaded:', draft);
+      return draft;
+    } catch (error) {
+      console.error('[ConcernFlowStateManager] Failed to load draft:', error);
+      return null;
+    }
+  }
+
+  /**
+   * v2.1: 下書き一覧を取得
+   */
+  listDrafts(): Array<{ concernId: string; concernText: string; savedAt: string }> {
+    try {
+      const drafts: Array<{ concernId: string; concernText: string; savedAt: string }> = [];
+
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+
+        if (key && key.startsWith('draft_')) {
+          const stored = localStorage.getItem(key);
+
+          if (stored) {
+            const draft = JSON.parse(stored) as ConcernFlowState & { savedAt: string };
+            drafts.push({
+              concernId: draft.concernId,
+              concernText: draft.concernText,
+              savedAt: draft.savedAt
+            });
+          }
+        }
+      }
+
+      return drafts.sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime());
+    } catch (error) {
+      console.error('[ConcernFlowStateManager] Failed to list drafts:', error);
+      return [];
+    }
   }
 
   /**

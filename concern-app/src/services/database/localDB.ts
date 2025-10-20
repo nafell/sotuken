@@ -115,11 +115,11 @@ export class LocalDatabase extends Dexie {
 
   async getSessionHistory(userId: string, limit: number = 10): Promise<ConcernSession[]> {
     return await this.concernSessions
-      .where({ userId })
-      .orderBy('startTime')
+      .where('userId')
+      .equals(userId)
       .reverse()
-      .limit(limit)
-      .toArray();
+      .sortBy('startTime')
+      .then(sessions => sessions.slice(0, limit));
   }
 
   /**
@@ -139,7 +139,7 @@ export class LocalDatabase extends Dexie {
   async getUnsyncedEvents(limit: number = 50): Promise<InteractionEvent[]> {
     return await this.interactionEvents
       .where('syncedToServer')
-      .equals(false)
+      .equals(0)
       .limit(limit)
       .toArray();
   }
@@ -184,7 +184,7 @@ export class LocalDatabase extends Dexie {
   async getSyncStatus(): Promise<ServerSyncStatus> {
     const pendingEventCount = await this.interactionEvents
       .where('syncedToServer')
-      .equals(false)
+      .equals(0)
       .count();
 
     return {
@@ -284,11 +284,11 @@ export class LocalDatabase extends Dexie {
   async getStaleTasks(userId: string, daysThreshold: number = 3): Promise<Task[]> {
     const thresholdDate = new Date();
     thresholdDate.setDate(thresholdDate.getDate() - daysThreshold);
-    
+
     return await this.tasks
       .where('[userId+status]')
       .equals([userId, 'active'])
-      .filter(task => task.lastTouchAt && task.lastTouchAt < thresholdDate)
+      .filter(task => task.lastTouchAt !== undefined && task.lastTouchAt < thresholdDate)
       .toArray();
   }
 

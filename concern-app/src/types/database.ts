@@ -16,10 +16,10 @@ export interface FactorValue {
 }
 
 export interface FactorsDict {
-  [factorName: string]: FactorValue;
+  [factorName: string]: FactorValue | undefined;
 }
 
-// 基本factors
+// 基本factors - FactorsDictと互換性を持たせる
 export interface BaseFactors extends FactorsDict {
   time_of_day: FactorValue & { value: 'morning' | 'afternoon' | 'evening' | 'night' };
   day_of_week: FactorValue & { value: number }; // 0=日曜
@@ -108,6 +108,9 @@ export interface ConcernSession {
     nextConcern?: string;
     totalTimeSpentMin?: number;
     screenTransitions?: number;
+    completionTime?: Date;
+    mentalLoadChange?: number;
+    executionMemo?: string;
   };
 }
 

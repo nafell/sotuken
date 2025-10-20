@@ -66,36 +66,22 @@ export const FactorsTest: React.FC = () => {
       const currentFactors = await contextService.collectCurrentFactors();
       
       // 4. UI生成テスト
-      const uiResponse = await apiService.generateUI({
-        sessionId: 'test-session-' + Date.now(),
-        uiVariant: 'dynamic',
-        userExplicitInput: {
-          concernText: 'factors辞書システムのテスト',
-          selectedCategory: 'test',
-          urgencyChoice: 'test'
-        },
-        systemInferredContext: {
-          timeOfDay: currentFactors.time_of_day?.value as string || 'unknown',
-          availableTimeMin: currentFactors.available_time_min?.value as number,
-          factors: contextService.sanitizeForServer(currentFactors)
-        },
-        noveltyLevel: 'low'
-      });
-      
+      const uiResponse = await apiService.generateUI(
+        'factors辞書システムのテスト',
+        contextService.sanitizeForServer(currentFactors),
+        'test-session-' + Date.now()
+      );
+
       // 5. イベント送信テスト
-      await apiService.sendEvents({
-        events: [{
-          eventId: 'test-event-' + Date.now(),
-          sessionId: 'test-session-' + Date.now(),
-          anonymousUserId: apiService.getAnonymousUserId(),
-          eventType: 'factors_test',
-          timestamp: new Date().toISOString(),
-          metadata: {
-            factorCount: Object.keys(currentFactors).length,
-            testType: 'api_integration'
-          }
-        }]
-      });
+      await apiService.sendEvents([{
+        eventType: 'factors_test',
+        eventData: {
+          factorCount: Object.keys(currentFactors).length,
+          testType: 'api_integration'
+        },
+        timestamp: new Date().toISOString(),
+        sessionId: 'test-session-' + Date.now()
+      }]);
       
       setApiResult({
         health,
@@ -189,47 +175,47 @@ export const FactorsTest: React.FC = () => {
           <p className="text-gray-500">まだFactorsが収集されていません</p>
         ) : (
           <div className="space-y-4">
-            {Object.entries(factors).map(([key, factor]) => (
+            {Object.entries(factors).filter(([, factor]) => factor !== undefined).map(([key, factor]) => (
               <div key={key} className="border border-gray-200 rounded-lg p-4">
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-medium text-gray-800">{key}</h3>
                   <div className="flex space-x-2">
                     <span className={`px-2 py-1 text-xs rounded-full ${
-                      (factor.confidence ?? 0) >= 0.8 ? 'bg-green-100 text-green-800' :
-                      (factor.confidence ?? 0) >= 0.5 ? 'bg-yellow-100 text-yellow-800' :
+                      (factor!.confidence ?? 0) >= 0.8 ? 'bg-green-100 text-green-800' :
+                      (factor!.confidence ?? 0) >= 0.5 ? 'bg-yellow-100 text-yellow-800' :
                       'bg-red-100 text-red-800'
                     }`}>
-                      信頼度: {factor.confidence ? (factor.confidence * 100).toFixed(0) + '%' : 'N/A'}
+                      信頼度: {factor!.confidence ? (factor!.confidence * 100).toFixed(0) + '%' : 'N/A'}
                     </span>
                     <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded-full">
-                      {factor.source}
+                      {factor!.source}
                     </span>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <span className="text-sm font-medium text-gray-600">値:</span>
                     <p className="text-gray-800 mt-1">
-                      {typeof factor.value === 'object' 
-                        ? JSON.stringify(factor.value, null, 2)
-                        : String(factor.value)
+                      {typeof factor!.value === 'object'
+                        ? JSON.stringify(factor!.value, null, 2)
+                        : String(factor!.value)
                       }
                     </p>
                   </div>
-                  
-                  {factor.timestamp && (
+
+                  {factor!.timestamp && (
                     <div>
                       <span className="text-sm font-medium text-gray-600">取得時刻:</span>
                       <p className="text-gray-800 mt-1">
-                        {new Date(factor.timestamp).toLocaleString('ja-JP')}
+                        {new Date(factor!.timestamp).toLocaleString('ja-JP')}
                       </p>
                     </div>
                   )}
-                  
+
                   <div>
                     <span className="text-sm font-medium text-gray-600">データソース:</span>
-                    <p className="text-gray-800 mt-1">{factor.source || 'unknown'}</p>
+                    <p className="text-gray-800 mt-1">{factor!.source || 'unknown'}</p>
                   </div>
                 </div>
               </div>
@@ -342,34 +328,34 @@ export const FactorsTest: React.FC = () => {
           
           <div className="bg-green-50 rounded-lg p-4">
             <div className="text-2xl font-bold text-green-600">
-              {Object.values(factors).filter(f => (f.confidence ?? 0) >= 0.8).length}
+              {Object.values(factors).filter(f => f && (f.confidence ?? 0) >= 0.8).length}
             </div>
             <div className="text-sm text-green-800">高信頼度 (&ge;80%)</div>
           </div>
-          
+
           <div className="bg-yellow-50 rounded-lg p-4">
             <div className="text-2xl font-bold text-yellow-600">
-              {Object.values(factors).filter(f => (f.confidence ?? 0) >= 0.5 && (f.confidence ?? 0) < 0.8).length}
+              {Object.values(factors).filter(f => f && (f.confidence ?? 0) >= 0.5 && (f.confidence ?? 0) < 0.8).length}
             </div>
             <div className="text-sm text-yellow-800">中信頼度 (50-79%)</div>
           </div>
-          
+
           <div className="bg-red-50 rounded-lg p-4">
             <div className="text-2xl font-bold text-red-600">
-              {Object.values(factors).filter(f => (f.confidence ?? 0) < 0.5).length}
+              {Object.values(factors).filter(f => f && (f.confidence ?? 0) < 0.5).length}
             </div>
             <div className="text-sm text-red-800">低信頼度 (&lt;50%)</div>
           </div>
         </div>
-        
+
         <div className="mt-4">
           <h3 className="font-medium text-gray-700 mb-2">データソース別内訳</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            {Array.from(new Set(Object.values(factors).map(f => f.source))).map(source => (
+            {Array.from(new Set(Object.values(factors).filter(f => f !== undefined).map(f => f!.source))).map(source => (
               <div key={source} className="bg-gray-50 rounded px-3 py-2">
                 <span className="text-sm font-medium">{source}: </span>
                 <span className="text-sm text-gray-600">
-                  {Object.values(factors).filter(f => f.source === source).length}件
+                  {Object.values(factors).filter(f => f && f.source === source).length}件
                 </span>
               </div>
             ))}

@@ -226,29 +226,102 @@ JSONのみを出力してください。説明は不要です。`;
 
 関心事「${concernText}」を解決するための具体的なタスクリストを生成してください。
 
-### 必須セクション
-1. tasks: タスクリスト
-   - task_list (list, reorderable: true)
-   - itemTemplate:
-     * title: タスク名（text）
-     * duration: 所要時間（number, unit: "分"）
-     * priority: 優先度（number, 1-5）
-     * done: 完了チェック（toggle）
-   - value: 3-5個の具体的なタスクを初期値として設定
+### 必須セクション構造
 
-2. summary: サマリー（すべてreadonly, computed使用）
-   - total_time: 合計時間（computed: "sum(task_list.*.duration) + ' 分'"）
-   - task_count: タスク数（computed: "count(task_list) + ' 個'"）
-   - first_action: 最初の一歩（computed: "task_list[0].title"）
+**セクション1: tasks （タスクリスト）**
 
-### 注意事項
-- actionsは生成しない（ナビゲーションはクライアントが管理）
-- フィールドのみに集中してください
+フィールド定義:
+{
+  "id": "task_list",
+  "label": "タスク",
+  "type": "list",
+  "value": [
+    {
+      "title": "具体的なタスク名1",
+      "duration": 5,
+      "priority": 5,
+      "done": false
+    },
+    {
+      "title": "具体的なタスク名2",
+      "duration": 10,
+      "priority": 4,
+      "done": false
+    }
+    // ... 3-5個のタスク
+  ],
+  "options": {
+    "reorderable": true,
+    "addButton": "項目を追加",
+    "itemTemplate": {
+      "title": {
+        "type": "text",
+        "label": "タスク名",
+        "placeholder": "何をしますか？"
+      },
+      "duration": {
+        "type": "number",
+        "label": "所要時間（分）",
+        "placeholder": "5"
+      },
+      "priority": {
+        "type": "number",
+        "label": "優先度（1-5）",
+        "placeholder": "3"
+      },
+      "done": {
+        "type": "toggle",
+        "label": "完了"
+      }
+    }
+  }
+}
+
+**セクション2: summary （サマリー）**
+
+重要: サマリーフィールドは計算式のみを使用。valueフィールドは設定しない。
+
+フィールド定義:
+{
+  "id": "total_time",
+  "label": "合計所要時間",
+  "type": "text",
+  "options": {
+    "readonly": true,
+    "computed": "sum(task_list.*.duration) + ' 分'"
+  }
+}
+
+{
+  "id": "task_count",
+  "label": "タスク数",
+  "type": "text",
+  "options": {
+    "readonly": true,
+    "computed": "count(task_list) + ' 個'"
+  }
+}
+
+{
+  "id": "first_action",
+  "label": "最初の一歩",
+  "type": "text",
+  "options": {
+    "readonly": true,
+    "computed": "task_list[0].title"
+  }
+}
+
+### 重要な注意事項
+1. **itemTemplateの構造**: 必ず上記の形式に従うこと
+2. **value配列**: task_listのvalueには、3-5個の具体的なタスクオブジェクトの配列を設定
+3. **computed vs value**: computedを使うフィールドではvalueを設定しない
+4. **actionsは空配列**: ナビゲーションはクライアント側で管理
 
 ### タスク生成指針
 - 最初のタスクは5分以内でできる小さなアクション
 - 具体的で実行可能な行動を記述
-- 3-7個程度のタスク`;
+- 3-5個程度のタスクを生成`;
   }
 
   /**

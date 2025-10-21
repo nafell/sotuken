@@ -197,13 +197,35 @@ export interface Task {
 }
 
 /**
- * ランキングリクエスト
+ * Factor値の形式
+ */
+export interface FactorValue<T = any> {
+  value: T;
+}
+
+/**
+ * ランキングリクエスト（API入力）
  */
 export interface RankingRequest {
+  tasks: Task[];
+  factors: {
+    time_of_day: FactorValue<"morning" | "afternoon" | "evening" | "night">;
+    location_category: FactorValue<"home" | "work" | "transit" | "other">;
+    available_time_min: FactorValue<number>;
+    mood?: FactorValue<"happy" | "neutral" | "stressed" | "tired">;
+    energy_level?: FactorValue<number>;
+    [key: string]: any;  // 将来のfactors拡張
+  };
+}
+
+/**
+ * 内部処理用ランキングリクエスト（ScoreRankingService用）
+ */
+export interface InternalRankingRequest {
   available_time: number;  // 分単位
   factors: {
     time_of_day: "morning" | "afternoon" | "evening" | "night";
-    location_category: "home" | "work" | "other";
+    location_category: "home" | "work" | "transit" | "other";
     [key: string]: any;  // 将来のfactors拡張
   };
   tasks: Task[];

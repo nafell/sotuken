@@ -47,6 +47,7 @@ export class GeminiService {
 
       const result = await this.model.generateContent(fullPrompt);
       const response = await result.response;
+      console.log('🔍 GeminiService generateJSON response:', response);
       const text = response.text();
 
       // JSONをパース

@@ -1,0 +1,278 @@
+{
+  "examples": [
+    {
+      "scenario": "転職の悩み（具体的な入力）",
+      "initial_input": "今の会社で5年働いていますが、成長を感じられなくなり転職を考えています。しかし、安定を捨てるリスクも怖いです。",
+      "analysis": {
+        "depth": "specific",
+        "indicators": {
+          "hasSpecificProblem": true,
+          "hasEmotionalWords": true,
+          "hasMultipleIssues": true,
+          "hasUncertainty": false
+        }
+      },
+      "stage_1_questions": [
+        {
+          "id": "q1_timeline",
+          "text": "転職を考え始めてどのくらい経ちますか？",
+          "type": "select",
+          "options": ["1ヶ月未満", "1-3ヶ月", "3-6ヶ月", "半年以上"]
+        },
+        {
+          "id": "q2_trigger",
+          "text": "成長を感じられなくなった具体的なきっかけは何ですか？",
+          "type": "text_area",
+          "placeholder": "例：同じ業務の繰り返し、昇進の見込みがない等"
+        },
+        {
+          "id": "q3_attempts",
+          "text": "現職で改善を試みたことはありますか？",
+          "type": "radio",
+          "options": ["はい、上司に相談した", "はい、部署異動を希望した", "いいえ、特に何もしていない", "その他"]
+        }
+      ],
+      "stage_2_diagnosis": {
+        "questions": [
+          {
+            "id": "diag_fear",
+            "text": "「安定を捨てるリスク」について、最も心配なことは何ですか？",
+            "type": "multi_select",
+            "options": ["収入の減少", "新しい環境への適応", "失敗した時の後悔", "家族への影響"]
+          },
+          {
+            "id": "diag_options",
+            "text": "転職先の候補はありますか？",
+            "type": "radio",
+            "options": ["具体的な企業がある", "業界・職種は決めている", "まだ何も決めていない"]
+          }
+        ],
+        "detected_bottleneck": {
+          "primary": "fear_of_decision",
+          "secondary": ["emotional_block"],
+          "confidence": 0.85
+        }
+      },
+      "output": {
+        "concern": {
+          "description": "5年勤めた会社で成長を感じられず転職を検討しているが、安定を失うリスクが怖い",
+          "context": ["勤続5年", "成長実感なし", "安定重視"],
+          "constraints": ["収入維持", "リスク最小化"],
+          "attemptedSolutions": []
+        },
+        "bottleneckAnalysis": {
+          "primaryType": "fear_of_decision",
+          "secondaryTypes": ["emotional_block"],
+          "confidence": 0.85,
+          "diagnosticResponses": {
+            "main_fear": ["収入の減少", "失敗した時の後悔"],
+            "readiness": "業界・職種は決めている"
+          }
+        },
+        "userCharacteristics": {
+          "thinkingStyle": "analytical",
+          "decisionPattern": "deliberate",
+          "emotionalState": "anxious",
+          "engagementLevel": "high"
+        }
+      }
+    },
+    {
+      "scenario": "人間関係の悩み（曖昧な入力）",
+      "initial_input": "なんとなく職場の雰囲気が合わない気がする",
+      "analysis": {
+        "depth": "vague",
+        "indicators": {
+          "hasSpecificProblem": false,
+          "hasEmotionalWords": false,
+          "hasMultipleIssues": false,
+          "hasUncertainty": true
+        }
+      },
+      "stage_1_questions": [
+        {
+          "id": "q1_specifics",
+          "text": "「雰囲気が合わない」と感じる具体的な場面を教えてください",
+          "type": "text_area",
+          "placeholder": "例：会議での発言しづらさ、休憩時間の過ごし方等"
+        },
+        {
+          "id": "q2_duration",
+          "text": "いつ頃からそう感じるようになりましたか？",
+          "type": "select",
+          "options": ["最近（1ヶ月以内）", "数ヶ月前から", "半年以上前から", "入社当初から"]
+        },
+        {
+          "id": "q3_impact",
+          "text": "この状況が仕事のパフォーマンスに影響していますか？",
+          "type": "radio",
+          "options": ["大きく影響している", "多少影響している", "ほとんど影響ない", "わからない"]
+        }
+      ],
+      "stage_2_diagnosis": {
+        "questions": [
+          {
+            "id": "diag_pattern",
+            "text": "特に違和感を感じるのはどんな時ですか？",
+            "type": "multi_select",
+            "options": ["価値観の違いを感じる時", "コミュニケーションスタイルの違い", "仕事の進め方の違い", "プライベートな話題の時"]
+          },
+          {
+            "id": "diag_attempts",
+            "text": "状況を改善するために何か試みましたか？",
+            "type": "radio",
+            "options": ["積極的に関わろうとした", "距離を置いた", "特に何もしていない", "誰かに相談した"]
+          },
+          {
+            "id": "diag_ideal",
+            "text": "理想的な職場環境はどのようなものですか？",
+            "type": "text",
+            "placeholder": "簡潔にお答えください"
+          }
+        ],
+        "detected_bottleneck": {
+          "primary": "no_starting_point",
+          "secondary": ["insufficient_info", "fixed_perspective"],
+          "confidence": 0.65
+        }
+      },
+      "output": {
+        "concern": {
+          "description": "職場の雰囲気が合わないと感じているが、具体的な問題点が明確でない",
+          "context": ["違和感あり", "具体性欠如"],
+          "constraints": [],
+          "attemptedSolutions": ["特になし"]
+        },
+        "bottleneckAnalysis": {
+          "primaryType": "no_starting_point",
+          "secondaryTypes": ["insufficient_info", "fixed_perspective"],
+          "confidence": 0.65,
+          "diagnosticResponses": {
+            "main_issue": "価値観とコミュニケーションスタイルの違い",
+            "improvement_attempts": "none"
+          }
+        },
+        "userCharacteristics": {
+          "thinkingStyle": "intuitive",
+          "decisionPattern": "avoidant",
+          "emotionalState": "frustrated",
+          "engagementLevel": "low"
+        }
+      }
+    },
+    {
+      "scenario": "複雑な家族問題",
+      "initial_input": "親の介護と仕事と子育てのバランスが取れず、どれも中途半端になっている。優先順位をつけたいが、全部大事で決められない。",
+      "analysis": {
+        "depth": "specific",
+        "indicators": {
+          "hasSpecificProblem": true,
+          "hasEmotionalWords": false,
+          "hasMultipleIssues": true,
+          "hasUncertainty": false
+        }
+      },
+      "stage_1_questions": [
+        {
+          "id": "q1_current",
+          "text": "現在最も負担に感じているのはどれですか？",
+          "type": "radio",
+          "options": ["親の介護", "仕事", "子育て", "全て同じくらい"]
+        },
+        {
+          "id": "q2_support",
+          "text": "周囲からのサポートはありますか？",
+          "type": "multi_select",
+          "options": ["配偶者", "兄弟姉妹", "親戚", "友人", "公的サービス", "なし"]
+        },
+        {
+          "id": "q3_consequences",
+          "text": "このまま続けた場合、最も心配なことは何ですか？",
+          "type": "text_area"
+        }
+      ],
+      "stage_2_diagnosis": {
+        "questions": [
+          {
+            "id": "diag_interdependency",
+            "text": "一つの負担を減らすと、他に影響が出ますか？",
+            "type": "radio",
+            "options": ["はい、全て連動している", "部分的に影響する", "それぞれ独立している"]
+          },
+          {
+            "id": "diag_values",
+            "text": "あなたにとって最も譲れない価値観は？",
+            "type": "radio",
+            "options": ["家族の健康と安全", "経済的安定", "自己実現", "全て同じくらい重要"]
+          }
+        ],
+        "detected_bottleneck": {
+          "primary": "entangled_problems",
+          "secondary": ["no_prioritization", "too_many_options"],
+          "confidence": 0.9
+        }
+      },
+      "output": {
+        "concern": {
+          "description": "介護・仕事・子育ての三重負担で優先順位がつけられない",
+          "context": ["多重責任", "時間不足", "体力限界"],
+          "constraints": ["全て重要", "相互依存"],
+          "attemptedSolutions": []
+        },
+        "bottleneckAnalysis": {
+          "primaryType": "entangled_problems",
+          "secondaryTypes": ["no_prioritization", "too_many_options"],
+          "confidence": 0.9,
+          "diagnosticResponses": {
+            "interdependency": "high",
+            "core_value": "family_health_safety"
+          }
+        },
+        "userCharacteristics": {
+          "thinkingStyle": "analytical",
+          "decisionPattern": "deliberate",
+          "emotionalState": "anxious",
+          "engagementLevel": "medium"
+        }
+      }
+    }
+  ],
+  "diagnostic_question_patterns": {
+    "high_confidence_patterns": [
+      {
+        "input_features": ["specific_situation", "emotional_words", "clear_conflict"],
+        "recommended_questions": ["fear_based", "value_clarification"],
+        "expected_bottleneck": "fear_of_decision"
+      },
+      {
+        "input_features": ["multiple_issues", "interdependency_mentioned", "resource_constraints"],
+        "recommended_questions": ["dependency_mapping", "priority_exploration"],
+        "expected_bottleneck": "entangled_problems"
+      }
+    ],
+    "low_confidence_patterns": [
+      {
+        "input_features": ["vague_description", "uncertain_language", "no_specifics"],
+        "recommended_questions": ["clarification", "example_seeking", "timeline"],
+        "expected_bottleneck": "no_starting_point"
+      }
+    ]
+  },
+  "adaptive_strategies": {
+    "high_engagement": {
+      "question_count": 5,
+      "question_depth": "detailed",
+      "optional_questions": true
+    },
+    "medium_engagement": {
+      "question_count": 3,
+      "question_depth": "balanced",
+      "optional_questions": false
+    },
+    "low_engagement": {
+      "question_count": 2,
+      "question_depth": "simple",
+      "optional_questions": false
+    }
+  }
+}

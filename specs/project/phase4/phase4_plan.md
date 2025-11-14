@@ -23,6 +23,7 @@
 実装タスクリスト (tasks.md)
 
 ## Part1: DSL仕様書の3層分割 (Day 1-2)
+details:L46-L343
 
 ### Task 1.1: 基盤言語仕様の抽出
 
@@ -52,6 +53,7 @@
 git commit: "feat: DSL v3.0 3層構造仕様書を作成"
 
 ## Part2: Captureフェーズの拡張実装 (Day 3-4)
+details:L345-902
 
 ### Task 2.1: ボトルネック診断ロジックの設計
 
@@ -80,6 +82,7 @@ git commit: "feat: DSL v3.0 3層構造仕様書を作成"
 git commit: "feat: Captureフェーズにボトルネック診断機能を追加"
 
 ## Part3: Capture→Plan連携の強化 (Day 4)
+details:L904-L1133
 
 ### Task 3.1: 情報受け渡しインターフェースの拡張
 
@@ -96,6 +99,7 @@ git commit: "feat: Captureフェーズにボトルネック診断機能を追加
 git commit: "feat: Capture→Plan フェーズ間の情報連携を強化"
 
 ## Part4: Planフェーズのプロンプト最適化 (Day 5)
+details:L1135-1905
 
 ### Task 4.1: UIコンポーネント選択アルゴリズム実装
 
@@ -118,6 +122,7 @@ git commit: "feat: Capture→Plan フェーズ間の情報連携を強化"
 git commit: "feat: Planフェーズのプロンプトを最適化"
 
 ## Part5: Breakdownフェーズの簡略化 (Day 6)
+details:L1907-L2417
 
 ### Task 5.1: 固定UIテンプレートの実装
 
@@ -139,6 +144,7 @@ git commit: "feat: Planフェーズのプロンプトを最適化"
 git commit: "feat: Breakdownフェーズを固定UI化"
 
 ## Part6: テストとデバッグ (Day 7)
+details:L2419-L2978
 
 ### Task 6.1: ユニットテストの追加
 
@@ -160,6 +166,7 @@ git commit: "feat: Breakdownフェーズを固定UI化"
 git commit: "test: DSL v3.0実装のテストを追加"
 
 ## Part7: ドキュメントと実験準備 (Day 8)
+details:L2980-L3430
 
 ### Task 7.1: 実装ドキュメントの作成
 

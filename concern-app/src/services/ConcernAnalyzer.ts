@@ -9,6 +9,10 @@ export type ConcernDepth = 'specific' | 'moderate' | 'vague';
 export class ConcernAnalyzer {
   /**
    * 初期入力の深さを分析して診断レベルを決定
+   *
+   * Phase 4 修正: 判定ロジックを見直し
+   * - 「具体的」= 期限・数値・固有名詞など客観的に具体的な要素
+   * - 「診断必要」= 悩みの表現（不安、迷い、分からないなど）
    */
   static analyzeConcernDepth(initialInput: string): {
     depth: ConcernDepth;
@@ -17,39 +21,43 @@ export class ConcernAnalyzer {
   } {
     const indicators: string[] = [];
 
-    // 具体的な記述のパターン
+    // 本当に具体的な記述のパターン（狭く定義）
     const specificPatterns = [
-      /選択肢|オプション|どちら/,
-      /不安|心配|怖い/,
-      /分からない|見当がつかない/,
-      /複雑|絡み合って|関連/,
-      /迷っている|悩んでいる/
+      /\d+[年月日週間ヶケ]/,       // 期限（例: 3ヶ月、来週、2年）
+      /\d+[点円%個回時分]/,        // 数値目標（例: 800点、10万円、50%）
+      /具体的に|明確に|はっきり/,  // メタ表現
+      /[A-Z]{2,}/,                 // 固有名詞・略語（TOEIC, ITなど）
     ];
 
-    // 曖昧な記述のパターン
-    const vaguePatterns = [
-      /なんとなく/,
-      /モヤモヤ/,
-      /よくわからない/,
-      /漠然と/,
-      /気になる/
+    // 診断が必要な記述のパターン（広く定義）
+    const needsDiagnosticPatterns = [
+      /選択肢|オプション|どちら|どれ/,  // 選択の悩み
+      /不安|心配|怖い|恐れ/,            // 感情的ブロック
+      /分からない|わからない|見当がつかない/, // 情報不足
+      /複雑|絡み合って|関連/,          // 問題の複雑さ
+      /迷っている|悩んでいる|困って/,  // 決断の困難
+      /なんとなく|何となく/,           // 曖昧な表現
+      /モヤモヤ/,                       // 曖昧な表現
+      /よくわからない/,                // 曖昧な表現
+      /漠然と/,                        // 曖昧な表現
+      /気になる/                       // 曖昧な表現
     ];
 
     let specificCount = 0;
-    let vagueCount = 0;
+    let needsDiagnosticCount = 0;
 
     // パターンマッチング
     specificPatterns.forEach(pattern => {
       if (pattern.test(initialInput)) {
         specificCount++;
-        indicators.push(`具体的: ${pattern.source}`);
+        indicators.push(`具体的要素: ${pattern.source}`);
       }
     });
 
-    vaguePatterns.forEach(pattern => {
+    needsDiagnosticPatterns.forEach(pattern => {
       if (pattern.test(initialInput)) {
-        vagueCount++;
-        indicators.push(`曖昧: ${pattern.source}`);
+        needsDiagnosticCount++;
+        indicators.push(`診断必要: ${pattern.source}`);
       }
     });
 
@@ -57,25 +65,32 @@ export class ConcernAnalyzer {
     const length = initialInput.length;
     if (length > 100) {
       specificCount++;
-      indicators.push('詳細な記述');
-    } else if (length < 30) {
-      vagueCount++;
-      indicators.push('簡潔すぎる記述');
+      indicators.push('詳細な記述（100文字超）');
+    } else if (length < 20) {
+      // 30文字 → 20文字に変更（より厳しく）
+      needsDiagnosticCount++;
+      indicators.push('簡潔な記述（20文字未満）');
     }
 
-    // 深さの判定
+    // 深さの判定（修正版）
     let depth: ConcernDepth;
     let suggestedLevel: DiagnosticLevel;
 
-    if (specificCount >= 2) {
+    if (specificCount >= 3 && needsDiagnosticCount === 0) {
+      // 非常に具体的（期限、数値、固有名詞が多い）かつ診断不要
       depth = 'specific';
-      suggestedLevel = 'minimal';  // 具体的なら追加診断は最小限
-    } else if (vagueCount >= 2) {
-      depth = 'vague';
-      suggestedLevel = 'standard';  // 曖昧なら標準的な診断
+      suggestedLevel = 'minimal';
+      indicators.push('判定: 十分に具体的、診断スキップ');
+    } else if (needsDiagnosticCount >= 1) {
+      // 診断が必要なパターンが1つでもあれば診断実行
+      depth = needsDiagnosticCount >= 3 ? 'vague' : 'moderate';
+      suggestedLevel = 'standard';
+      indicators.push(`判定: 診断が必要（${needsDiagnosticCount}個のシグナル）`);
     } else {
+      // どちらでもない場合は診断実行（安全側に倒す）
       depth = 'moderate';
       suggestedLevel = 'standard';
+      indicators.push('判定: デフォルトで診断実行');
     }
 
     return {

@@ -221,13 +221,19 @@ export const DynamicThoughtScreenV2: React.FC<DynamicThoughtScreenV2Props> = ({ 
    * Captureステージのみ、診断質問への遷移を判定
    */
   const handleStage1Complete = useCallback(async () => {
+    console.log('=== DEBUG: handleStage1Complete called ===');
+    console.log('Current stage:', stage);
+
     // Capture以外は既存フロー
     if (stage !== 'capture') {
+      console.log('Not capture stage, skipping diagnostic');
       return false; // 診断不要
     }
 
     // concernTextを取得
     const concernInput = (formData['concern_text'] as string) || concernText;
+    console.log('Concern input:', concernInput);
+    console.log('Input length:', concernInput?.length);
 
     if (!concernInput || concernInput.length < 10) {
       console.log('⚠️ Concern text too short, skipping diagnostic');
@@ -240,12 +246,19 @@ export const DynamicThoughtScreenV2: React.FC<DynamicThoughtScreenV2Props> = ({ 
 
     console.log('📊 Concern Analysis:', analysis);
     console.log('🔍 Inferred Bottleneck:', inferredType);
+    console.log('suggestedLevel:', analysis.suggestedLevel);
+    console.log('skipDiagnostic:', skipDiagnostic);
 
-    // minimal level OR ユーザーがスキップを選択済みならスキップ
-    if (analysis.suggestedLevel === 'minimal' || skipDiagnostic) {
-      console.log('⏭️ Skipping diagnostic (minimal level or user skip)');
+    // TODO: 研究用に一時的にauto-skipを無効化（常に診断を表示）
+    // 本来のロジック: analysis.suggestedLevel === 'minimal' でスキップ
+    // ユーザーによる手動スキップは引き続き有効
+    if (skipDiagnostic) {
+      console.log('⏭️ User manually skipped diagnostic');
       return false;
     }
+
+    // 研究用: minimalレベルでも診断を表示（詳細なデータ収集のため）
+    console.log('🔬 Research mode: Showing diagnostic regardless of level');
 
     // 診断質問を選択
     const questions = DiagnosticQuestionService.selectQuestions(

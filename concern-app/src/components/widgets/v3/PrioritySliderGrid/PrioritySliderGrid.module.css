@@ -1,0 +1,372 @@
+/**
+ * PrioritySliderGrid.module.css
+ * 優先度スライダーグリッドWidgetのスタイル
+ */
+
+.container {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 0.5rem 0;
+}
+
+.description {
+  font-size: 0.9rem;
+  color: #666;
+  margin: 0;
+}
+
+/* アイテム追加セクション */
+.addItemSection {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.addItemInput {
+  flex: 1;
+  padding: 0.75rem;
+  font-size: 1rem;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.addItemInput:focus {
+  border-color: #007bff;
+}
+
+.addButton {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  background-color: #007bff;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.addButton:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.addButton:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* 統計情報 */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.statLabel {
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.statValue {
+  font-size: 1.25rem;
+  color: #333;
+  font-weight: 700;
+}
+
+/* アイテムグリッド */
+.gridContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+  min-height: 200px;
+}
+
+.emptyState {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #999;
+  font-size: 1rem;
+}
+
+/* アイテムカード */
+.item {
+  padding: 1rem;
+  background-color: #ffffff;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.item:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.priority-high {
+  border-color: #dc3545;
+  background-color: #fff5f5;
+}
+
+.priority-medium {
+  border-color: #ffc107;
+  background-color: #fffbf0;
+}
+
+.priority-low {
+  border-color: #6c757d;
+  background-color: #f8f9fa;
+}
+
+.itemHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.rank {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #007bff;
+  color: #ffffff;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.itemLabel {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deleteButton {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background-color: #dc3545;
+  color: #ffffff;
+  border: none;
+  border-radius: 50%;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+}
+
+.deleteButton:hover {
+  background-color: #c82333;
+}
+
+/* スライダー */
+.sliderContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sliderLabel {
+  font-size: 0.9rem;
+  color: #555;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.slider {
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  outline: none;
+  -webkit-appearance: none;
+  background: linear-gradient(
+    to right,
+    #6c757d 0%,
+    #ffc107 40%,
+    #dc3545 70%,
+    #dc3545 100%
+  );
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  border: 3px solid #007bff;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+}
+
+.slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  border: 3px solid #007bff;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.slider::-moz-range-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+}
+
+.sliderLabels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: #999;
+}
+
+/* サマリー */
+.summary {
+  text-align: center;
+  padding: 1rem;
+  background-color: #e7f3ff;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.summary p {
+  margin: 0;
+  font-size: 1rem;
+  color: #333;
+}
+
+/* アクション */
+.actions {
+  display: flex;
+  justify-content: center;
+}
+
+.completeButton {
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: #007bff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.completeButton:hover:not(:disabled) {
+  background-color: #0056b3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+}
+
+.completeButton:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.completeButton:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.completeButton:focus {
+  outline: 3px solid #0056b3;
+  outline-offset: 2px;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .gridContainer {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .title {
+    font-size: 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .addItemSection {
+    flex-direction: column;
+  }
+
+  .stats {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .item {
+    padding: 0.75rem;
+  }
+
+  .rank {
+    width: 28px;
+    height: 28px;
+    font-size: 0.8rem;
+  }
+}

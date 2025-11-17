@@ -1,0 +1,12 @@
+https://deanm.ai/blog/2025/5/24/toward-data-driven-multi-model-enterprise-ai-7e545-sw6c2
+
+The DSL is dead. Long live the LLM-hardened DSL
+What Is a DSL? A DSL is a programming or specification language tailored to a well-scoped domain, trading Turing completeness and generality for domain-relevant expressiveness, verifiability, and semantic clarity. Traditional DSLs are human-centric by design, emphasizing readability, concise syntax, and an assumed author with domain knowledge and explicitly modeled intent.
+
+What Makes a DSL Hardened? An LLM-hardened DSL is a DSL intentionally co-designed with the assumption that: a non-deterministic agent (LLM) will co-author its expressions; generation is statistical, not causal; verification must be embedded, not post-hoc; and syntax and semantics must actively constrain generation entropy.
+
+Most DSLs today were designed for a pre-generative context, optimized for human authorship, interpretability, and manual intent modeling, not for resilience against hallucinated or invalid code paths. Traditional DSLs assume a human programmer with intention, discipline, and domain expertise. But when LLMs write or assist in generating code, we are no longer dealing with conscious authorship. We’re interacting with inference traces from models that were not trained with safety as a first-class concern, and that operate in a fundamentally non-causal paradigm.
+
+LLM-hardened DSLs must invert this assumption. They must be constructed from first principles with the presupposition that a large fraction of their instantiations will be proposed by systems that generate code through statistical pattern matching rather than explicit logical reasoning. This changes the entire notion of what a DSL should do. It is no longer merely a constrained vocabulary for expression but becomes an interlingua between human intent, machine reasoning, and executable verification. This triadic role mirrors compiler front-ends, which bridge human-readable code and low-level execution—except here, the compiler must also account for probabilistic corruption at the input layer.
+
+DSLs in this context become adversarial surfaces, or defensive interfaces. The job of the language designer is to anticipate how a non-deterministic code generator will interact with syntax, grammar, semantics, and constraints, and to build a language that fails loudly and early, or—better—can encode its own rejection of invalid or unsafe constructs as part of its canonical form.

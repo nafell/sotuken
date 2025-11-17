@@ -3,7 +3,7 @@
  * DependencyExecutorクラスのテスト
  */
 
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, beforeEach } from 'vitest';
 import { DependencyExecutor } from '../DependencyExecutor';
 import type { DependencySpec } from '../../../types/ui-spec.types';
 

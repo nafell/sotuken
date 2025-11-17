@@ -14,7 +14,6 @@ import type {
 import type {
   UpdateResult,
   TransformResult,
-  ValidationResult,
 } from '../../types/dependency.types';
 import type { RankingItem, MappingItem } from '../../types/result.types';
 

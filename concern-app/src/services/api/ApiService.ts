@@ -47,6 +47,20 @@ export interface UIGenerationResponse {
 }
 
 /**
+ * UISpec v3生成オプション (Phase 4 Full-Flow)
+ */
+export interface UISpecV3GenerationOptions {
+  /** 実装済みWidgetのみに制限 */
+  restrictToImplementedWidgets?: boolean;
+  /** テキストモード（Widget無しステージ用） */
+  textOnlyMode?: boolean;
+  /** 前ステージの結果（コンテキスト用） */
+  previousStageResults?: Record<string, any>;
+  /** ボトルネック情報 */
+  bottleneckType?: string;
+}
+
+/**
  * UISpec v3生成リクエスト (Phase 4 Day 3-4)
  */
 export interface UISpecV3GenerationRequest {
@@ -54,6 +68,7 @@ export interface UISpecV3GenerationRequest {
   concernText: string;
   stage?: 'diverge' | 'organize' | 'converge' | 'summary';
   factors?: FactorsDict;
+  options?: UISpecV3GenerationOptions;
 }
 
 /**
@@ -62,6 +77,8 @@ export interface UISpecV3GenerationRequest {
 export interface UISpecV3GenerationResponse {
   success: boolean;
   uiSpec?: any;
+  textSummary?: string;
+  mode?: 'widget' | 'text';
   generation?: {
     model: string;
     generatedAt: string;
@@ -187,17 +204,22 @@ export class ApiService {
     concernText: string,
     stage: 'diverge' | 'organize' | 'converge' | 'summary' = 'diverge',
     sessionId?: string,
-    factors?: FactorsDict
+    factors?: FactorsDict,
+    options?: UISpecV3GenerationOptions
   ): Promise<UISpecV3GenerationResponse> {
     console.log('🎨 UISpec v3生成リクエスト送信開始');
     console.log('📄 concernText:', concernText);
     console.log('🎯 stage:', stage);
+    if (options?.restrictToImplementedWidgets) {
+      console.log('🔒 Widget制限: 実装済みのみ');
+    }
 
     const requestBody: UISpecV3GenerationRequest = {
       sessionId: sessionId || this.generateSessionId(),
       concernText,
       stage,
       factors,
+      options,
     };
 
     try {
@@ -217,8 +239,9 @@ export class ApiService {
         return result;
       }
 
-      console.log('✅ UISpec v3生成成功:', result);
+      console.log(`✅ UISpec v3生成成功 (mode: ${result.mode}):`, result);
       console.log('📊 メトリクス:', {
+        mode: result.mode,
         model: result.generation?.model,
         processingTimeMs: result.generation?.processingTimeMs,
         promptTokens: result.generation?.promptTokens,

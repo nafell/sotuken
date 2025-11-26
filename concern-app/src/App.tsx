@@ -8,7 +8,7 @@
  * - condition === null → UnassignedScreen（未割り当て）
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { DynamicUINavigator } from './navigators/DynamicUINavigator';
 import { StaticUINavigator } from './navigators/StaticUINavigator';
@@ -18,6 +18,10 @@ import { AdminDashboard } from './screens/AdminDashboard';
 import { DatabaseTest } from './components/DatabaseTest';
 import { FactorsTest } from './components/FactorsTest';
 import { experimentService, type ExperimentCondition } from './services/ClientExperimentService';
+
+// Phase 4 Day 3-4: 開発用デモページ（lazy load）
+const WidgetP4D3Page = lazy(() => import('./pages/dev-demo/WidgetP4D3Page'));
+const E2EP4D3Page = lazy(() => import('./pages/dev-demo/E2EP4D3Page'));
 
 function App() {
   const [condition, setCondition] = useState<ExperimentCondition>(null);
@@ -80,7 +84,25 @@ function App() {
           {/* 開発・デバッグ用ルート（直接アクセス） */}
           <Route path="/dev/database" element={<DatabaseTest />} />
           <Route path="/dev/factors" element={<FactorsTest />} />
-          
+
+          {/* Phase 4 Day 3-4: 開発用デモページ（本番には含めない） */}
+          <Route
+            path="/dev-demo/widget-p4d3"
+            element={
+              <Suspense fallback={<div style={{ padding: '20px' }}>Loading Widget Demo...</div>}>
+                <WidgetP4D3Page />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/dev-demo/e2e-p4d3"
+            element={
+              <Suspense fallback={<div style={{ padding: '20px' }}>Loading E2E Demo...</div>}>
+                <E2EP4D3Page />
+              </Suspense>
+            }
+          />
+
           {/* Phase 2 Step 5: 条件別ルーティング */}
           {condition === null ? (
             /* 未割り当てユーザー */

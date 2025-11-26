@@ -287,8 +287,8 @@ describe('MatrixPlacementController', () => {
 
       const result = customController.getResult('widget_1');
 
-      expect(result.data.mapping?.axes.x.label).toBe('重要度');
-      expect(result.data.mapping?.axes.y.label).toBe('緊急度');
+      expect(result.data.composite?.axes.x.label).toBe('重要度');
+      expect(result.data.composite?.axes.y.label).toBe('緊急度');
     });
 
     test('メタデータに象限カウントが含まれる', () => {

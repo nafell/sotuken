@@ -6,7 +6,7 @@
  */
 
 import { describe, test, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { EmotionPalette } from '../EmotionPalette/EmotionPalette';
 import { BrainstormCards } from '../BrainstormCards/BrainstormCards';
 import { MatrixPlacement } from '../MatrixPlacement/MatrixPlacement';

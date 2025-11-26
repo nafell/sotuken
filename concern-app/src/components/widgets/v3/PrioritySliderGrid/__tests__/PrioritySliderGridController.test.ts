@@ -284,7 +284,7 @@ describe('PrioritySliderGridController', () => {
       expect(result.data.ranking?.items).toHaveLength(3);
 
       // 優先度順にランク付けされている
-      expect(result.data.ranking?.items[0].rank).toBe(1);
+      expect(result.data.ranking?.items[0].metadata?.rank).toBe(1);
       expect(result.data.ranking?.items[0].label).toBe('タスク1');
       expect(result.data.ranking?.items[0].score).toBe(0.9);
     });
@@ -309,10 +309,10 @@ describe('PrioritySliderGridController', () => {
 
       const result = controller.getResult('widget_1');
 
-      expect(result.data.ranking?.criteria).toBeDefined();
-      expect(result.data.ranking?.criteria.name).toBe('優先度');
-      expect(result.data.ranking?.criteria.min).toBe(0);
-      expect(result.data.ranking?.criteria.max).toBe(1);
+      expect(result.data.composite?.criteria).toBeDefined();
+      expect(result.data.composite?.criteria.name).toBe('優先度');
+      expect(result.data.composite?.criteria.min).toBe(0);
+      expect(result.data.composite?.criteria.max).toBe(1);
     });
   });
 

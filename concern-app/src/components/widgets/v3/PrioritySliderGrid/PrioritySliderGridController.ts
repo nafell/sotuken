@@ -222,15 +222,17 @@ export class PrioritySliderGridController {
         type: 'ranking',
         ranking: {
           items: sortedItems.map((item, index) => ({
-            rank: index + 1,
+            id: item.id,
             label: item.label,
             score: item.priority,
             metadata: {
-              id: item.id,
+              rank: index + 1,
               createdAt: item.createdAt,
               updatedAt: item.updatedAt,
             },
           })),
+        },
+        composite: {
           criteria: {
             name: '優先度',
             min: 0,

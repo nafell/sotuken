@@ -181,7 +181,9 @@ export class BrainstormCardsController {
         type: 'text',
         text: {
           content: this.state.cards.map((c) => c.text).join('\n'),
-          items: this.state.cards.map((c) => c.text),
+          structured: {
+            items: this.state.cards.map((c) => c.text),
+          },
         },
       },
       interactions: [],

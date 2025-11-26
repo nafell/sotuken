@@ -12,7 +12,6 @@ import type { WidgetResult } from '../../../../types/result.types';
 import {
   MatrixPlacementController,
   type MatrixItem,
-  type MatrixAxis,
 } from './MatrixPlacementController';
 import styles from './MatrixPlacement.module.css';
 

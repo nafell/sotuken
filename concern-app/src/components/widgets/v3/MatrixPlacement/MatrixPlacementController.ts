@@ -248,6 +248,8 @@ export class MatrixPlacementController {
         type: 'mapping',
         mapping: {
           items: mappingItems,
+        },
+        composite: {
           axes: {
             x: {
               label: this.state.xAxis.label,

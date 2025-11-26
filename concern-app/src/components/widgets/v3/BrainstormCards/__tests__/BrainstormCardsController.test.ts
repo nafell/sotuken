@@ -255,7 +255,7 @@ describe('BrainstormCardsController', () => {
       expect(result.component).toBe('brainstorm_cards');
       expect(result.summary).toBe('アイデアがまだありません');
       expect(result.data.type).toBe('text');
-      expect(result.data.text?.items).toEqual([]);
+      expect(result.data.text?.structured?.items).toEqual([]);
     });
 
     test('カードがある場合の結果', () => {
@@ -268,7 +268,7 @@ describe('BrainstormCardsController', () => {
       expect(result.component).toBe('brainstorm_cards');
       expect(result.timestamp).toBeGreaterThan(0);
       expect(result.data.type).toBe('text');
-      expect(result.data.text?.items).toEqual(['アイデア1', 'アイデア2']);
+      expect(result.data.text?.structured?.items).toEqual(['アイデア1', 'アイデア2']);
       expect(result.data.text?.content).toBe('アイデア1\nアイデア2');
     });
 

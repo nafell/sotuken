@@ -218,7 +218,7 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
   }, [spec.id, state]);
 
   return (
-    <div className={styles.container} role="region" aria-label="構造化まとめ">
+    <div className={styles.container} role="region" aria-label="構造化まとめ" data-testid="struct-summary-container">
       <div className={styles.header}>
         <input
           type="text"
@@ -226,6 +226,7 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
           value={state.title}
           onChange={(e) => handleTitleChange(e.target.value)}
           placeholder="タイトルを入力..."
+          data-testid="struct-summary-title"
         />
         <p className={styles.description}>
           各セクションに内容を入力して、思考を整理しましょう
@@ -241,6 +242,7 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
               key={section.id}
               className={styles.section}
               style={{ backgroundColor: `${config.color}10` }}
+              data-testid={`struct-summary-section-${section.id}`}
             >
               <div className={styles.sectionHeader}>
                 <span className={styles.sectionIcon}>{config.icon}</span>
@@ -251,6 +253,7 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
                   onChange={(e) =>
                     handleSectionTitleChange(section.id, e.target.value)
                   }
+                  data-testid={`struct-summary-section-title-${section.id}`}
                 />
                 <div className={styles.sectionActions}>
                   {index > 0 && (
@@ -272,6 +275,7 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
                   <button
                     className={`${styles.sectionButton} ${styles.deleteButton}`}
                     onClick={() => handleRemoveSection(section.id)}
+                    data-testid={`struct-summary-section-delete-${section.id}`}
                   >
                     ×
                   </button>
@@ -286,55 +290,58 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
                     handleSectionContentChange(section.id, e.target.value)
                   }
                   placeholder={config.placeholder}
+                  data-testid={`struct-summary-section-content-${section.id}`}
                 />
 
                 {/* Items list for certain section types */}
                 {(section.type === 'action_items' ||
                   section.type === 'next_steps' ||
                   section.type === 'options') && (
-                  <div className={styles.itemsList}>
-                    {section.items?.map((item, itemIndex) => (
-                      <div key={itemIndex} className={styles.item}>
+                    <div className={styles.itemsList}>
+                      {section.items?.map((item, itemIndex) => (
+                        <div key={itemIndex} className={styles.item}>
+                          <input
+                            type="checkbox"
+                            className={styles.itemCheckbox}
+                          />
+                          <span className={styles.itemText}>{item}</span>
+                          <button
+                            className={styles.itemDeleteButton}
+                            onClick={() =>
+                              handleRemoveItem(section.id, itemIndex)
+                            }
+                            data-testid={`struct-summary-item-delete-${section.id}-${itemIndex}`}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      <form
+                        className={styles.addItemForm}
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          handleAddItem(section.id);
+                        }}
+                      >
                         <input
-                          type="checkbox"
-                          className={styles.itemCheckbox}
-                        />
-                        <span className={styles.itemText}>{item}</span>
-                        <button
-                          className={styles.itemDeleteButton}
-                          onClick={() =>
-                            handleRemoveItem(section.id, itemIndex)
+                          type="text"
+                          className={styles.addItemInput}
+                          value={newItems[section.id] || ''}
+                          onChange={(e) =>
+                            setNewItems((prev) => ({
+                              ...prev,
+                              [section.id]: e.target.value,
+                            }))
                           }
-                        >
-                          ×
+                          placeholder="項目を追加..."
+                          data-testid={`struct-summary-item-input-${section.id}`}
+                        />
+                        <button type="submit" className={styles.addItemButton} data-testid={`struct-summary-item-add-${section.id}`}>
+                          追加
                         </button>
-                      </div>
-                    ))}
-                    <form
-                      className={styles.addItemForm}
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        handleAddItem(section.id);
-                      }}
-                    >
-                      <input
-                        type="text"
-                        className={styles.addItemInput}
-                        value={newItems[section.id] || ''}
-                        onChange={(e) =>
-                          setNewItems((prev) => ({
-                            ...prev,
-                            [section.id]: e.target.value,
-                          }))
-                        }
-                        placeholder="項目を追加..."
-                      />
-                      <button type="submit" className={styles.addItemButton}>
-                        追加
-                      </button>
-                    </form>
-                  </div>
-                )}
+                      </form>
+                    </div>
+                  )}
               </div>
             </div>
           );
@@ -351,6 +358,7 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
               className={styles.addSectionButton}
               style={{ borderColor: config.color, color: config.color }}
               onClick={() => handleAddSection(type)}
+              data-testid={`struct-summary-add-section-${type}`}
             >
               {config.icon} {config.label}
             </button>
@@ -366,6 +374,7 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
           value={state.conclusion}
           onChange={(e) => handleConclusionChange(e.target.value)}
           placeholder="最終的な結論やまとめを記述..."
+          data-testid="struct-summary-conclusion"
         />
       </div>
 
@@ -388,6 +397,7 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
         <button
           className={styles.previewButton}
           onClick={() => setShowPreview(!showPreview)}
+          data-testid="struct-summary-preview-btn"
         >
           {showPreview ? '編集に戻る' : 'プレビュー表示'}
         </button>
@@ -412,6 +422,7 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
           className={styles.completeButton}
           onClick={handleComplete}
           disabled={!isComplete}
+          data-testid="struct-summary-complete-btn"
         >
           {isComplete ? '完了' : '2つ以上のセクションに入力してください'}
         </button>

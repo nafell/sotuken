@@ -163,7 +163,7 @@ export const CardSorting: React.FC<BaseWidgetProps> = ({
   }, [spec.id, state]);
 
   return (
-    <div className={styles.container} role="region" aria-label="カード仕分け">
+    <div className={styles.container} role="region" aria-label="カード仕分け" data-testid="card-sorting-container">
       <div className={styles.header}>
         <h2 className={styles.title}>
           {spec.config.title || 'カードを分類してください'}
@@ -174,7 +174,7 @@ export const CardSorting: React.FC<BaseWidgetProps> = ({
       </div>
 
       {/* Progress */}
-      <div className={styles.progressContainer}>
+      <div className={styles.progressContainer} data-testid="card-sorting-progress">
         <div className={styles.progressBar}>
           <div
             className={styles.progressFill}
@@ -195,6 +195,7 @@ export const CardSorting: React.FC<BaseWidgetProps> = ({
           style={{
             backgroundColor: dragOverCategory === null ? '#f1f5f9' : '#f8fafc',
           }}
+          data-testid="card-sorting-unsorted"
         >
           <h3 className={styles.sectionTitle}>
             未分類のカード
@@ -209,14 +210,14 @@ export const CardSorting: React.FC<BaseWidgetProps> = ({
               unsortedCards.map((card) => (
                 <div
                   key={card.id}
-                  className={`${styles.card} ${
-                    draggedCardId === card.id ? styles.cardDragging : ''
-                  }`}
+                  className={`${styles.card} ${draggedCardId === card.id ? styles.cardDragging : ''
+                    }`}
                   draggable
                   onDragStart={() => handleDragStart(card.id)}
                   onDragEnd={handleDragEnd}
                   style={{ backgroundColor: card.color }}
                   title={card.description}
+                  data-testid={`card-sorting-card-${card.id}`}
                 >
                   {card.label}
                 </div>
@@ -234,17 +235,17 @@ export const CardSorting: React.FC<BaseWidgetProps> = ({
             return (
               <div
                 key={category.id}
-                className={`${styles.categoryBox} ${
-                  dragOverCategory === category.id
+                className={`${styles.categoryBox} ${dragOverCategory === category.id
                     ? styles.categoryBoxDragOver
                     : ''
-                }`}
+                  }`}
                 style={{
                   backgroundColor: `${category.color}20`,
                   borderColor: category.color,
                 }}
                 onDragOver={(e) => handleDragOver(e, category.id)}
                 onDrop={() => handleDrop(category.id)}
+                data-testid={`card-sorting-category-${category.id}`}
               >
                 <div className={styles.categoryHeader}>
                   <h4 className={styles.categoryLabel}>{category.label}</h4>
@@ -263,14 +264,14 @@ export const CardSorting: React.FC<BaseWidgetProps> = ({
                     cardsInCategory.map((card) => (
                       <div
                         key={card.id}
-                        className={`${styles.card} ${styles.cardInCategory} ${
-                          draggedCardId === card.id ? styles.cardDragging : ''
-                        }`}
+                        className={`${styles.card} ${styles.cardInCategory} ${draggedCardId === card.id ? styles.cardDragging : ''
+                          }`}
                         draggable
                         onDragStart={() => handleDragStart(card.id)}
                         onDragEnd={handleDragEnd}
                         style={{ color: category.color }}
                         title={card.description}
+                        data-testid={`card-sorting-card-${card.id}`}
                       >
                         {card.label}
                         <button
@@ -296,6 +297,7 @@ export const CardSorting: React.FC<BaseWidgetProps> = ({
           className={styles.resetButton}
           onClick={handleReset}
           aria-label="分類をリセット"
+          data-testid="card-sorting-reset-btn"
         >
           リセット
         </button>
@@ -304,6 +306,7 @@ export const CardSorting: React.FC<BaseWidgetProps> = ({
           onClick={handleComplete}
           disabled={!isAllSorted}
           aria-label="完了"
+          data-testid="card-sorting-complete-btn"
         >
           {isAllSorted ? '完了' : '全てのカードを分類してください'}
         </button>

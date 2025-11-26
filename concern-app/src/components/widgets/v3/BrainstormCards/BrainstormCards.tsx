@@ -158,19 +158,19 @@ export const BrainstormCards: React.FC<BaseWidgetProps> = ({
   }, [spec.id, cards]);
 
   return (
-    <div className={styles.container} role="region" aria-label="ブレインストーム">
+    <div className={styles.container} role="region" aria-label="ブレインストーム" data-testid="brainstorm-cards-container">
       <div className={styles.header}>
         <h2 className={styles.title}>アイデアを自由に書き出してください</h2>
         <p className={styles.description}>
           思いついたことをどんどんカードに書き出しましょう
         </p>
-        <div className={styles.counter}>
+        <div className={styles.counter} data-testid="brainstorm-cards-count">
           {cards.length} / {spec.config?.maxCards || 20} カード
         </div>
       </div>
 
       {/* カード一覧 */}
-      <div className={styles.cardsGrid} role="list" aria-label="アイデアカード一覧">
+      <div className={styles.cardsGrid} role="list" aria-label="アイデアカード一覧" data-testid="brainstorm-cards-list">
         {cards.map((card) => (
           <CardItem
             key={card.id}
@@ -197,12 +197,14 @@ export const BrainstormCards: React.FC<BaseWidgetProps> = ({
               placeholder="新しいアイデアを入力..."
               className={styles.newCardInput}
               aria-label="新しいアイデア"
+              data-testid="brainstorm-cards-input"
             />
             <button
               onClick={handleAddCard}
               disabled={newCardText.trim() === ''}
               className={styles.addButton}
               aria-label="カードを追加"
+              data-testid="brainstorm-cards-add-btn"
             >
               + 追加
             </button>
@@ -224,6 +226,7 @@ export const BrainstormCards: React.FC<BaseWidgetProps> = ({
           disabled={cards.length === 0}
           className={styles.completeButton}
           aria-label="完了"
+          data-testid="brainstorm-cards-complete-btn"
         >
           完了
         </button>
@@ -259,7 +262,7 @@ const CardItem: React.FC<CardItemProps> = ({
   onEditKeyDown,
 }) => {
   return (
-    <div className={styles.card} role="listitem">
+    <div className={styles.card} role="listitem" data-testid={`brainstorm-cards-item-${card.id}`}>
       {isEditing ? (
         <div className={styles.editMode}>
           <input
@@ -270,6 +273,7 @@ const CardItem: React.FC<CardItemProps> = ({
             autoFocus
             className={styles.editInput}
             aria-label="カードを編集"
+            data-testid="brainstorm-cards-edit-input"
           />
           <div className={styles.editActions}>
             <button
@@ -296,6 +300,7 @@ const CardItem: React.FC<CardItemProps> = ({
               onClick={() => onStartEdit(card)}
               className={styles.editButton}
               aria-label={`カード「${card.text}」を編集`}
+              data-testid={`brainstorm-cards-edit-btn-${card.id}`}
             >
               編集
             </button>
@@ -303,6 +308,7 @@ const CardItem: React.FC<CardItemProps> = ({
               onClick={() => onDelete(card.id)}
               className={styles.deleteButton}
               aria-label={`カード「${card.text}」を削除`}
+              data-testid={`brainstorm-cards-delete-btn-${card.id}`}
             >
               削除
             </button>

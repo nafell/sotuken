@@ -161,7 +161,7 @@ export const SwotAnalysis: React.FC<BaseWidgetProps> = ({
   const counts = controllerRef.current.getQuadrantCounts();
 
   return (
-    <div className={styles.container} role="region" aria-label="SWOT分析">
+    <div className={styles.container} role="region" aria-label="SWOT分析" data-testid="swot-container">
       <div className={styles.header}>
         <h2 className={styles.title}>
           {spec.config.title || 'SWOT分析'}
@@ -178,12 +178,12 @@ export const SwotAnalysis: React.FC<BaseWidgetProps> = ({
           {(Object.keys(IMPORTANCE_COLORS) as SwotItem['importance'][]).map((imp) => (
             <button
               key={imp}
-              className={`${styles.importanceButton} ${
-                selectedImportance === imp ? styles.importanceButtonActive : ''
-              }`}
+              className={`${styles.importanceButton} ${selectedImportance === imp ? styles.importanceButtonActive : ''
+                }`}
               style={{ backgroundColor: IMPORTANCE_COLORS[imp] }}
               onClick={() => setSelectedImportance(imp)}
               title={IMPORTANCE_LABELS[imp]}
+              data-testid={`swot-importance-btn-${imp}`}
             />
           ))}
         </div>
@@ -198,6 +198,7 @@ export const SwotAnalysis: React.FC<BaseWidgetProps> = ({
               key={quadrant.id}
               className={styles.quadrant}
               style={{ backgroundColor: `${quadrant.color}20` }}
+              data-testid={`swot-${quadrant.id}`}
             >
               <div className={styles.quadrantHeader}>
                 <span className={styles.quadrantIcon}>{quadrant.icon}</span>
@@ -214,8 +215,8 @@ export const SwotAnalysis: React.FC<BaseWidgetProps> = ({
                     項目を追加してください
                   </div>
                 ) : (
-                  items.map((item) => (
-                    <div key={item.id} className={styles.item}>
+                  items.map((item, index) => (
+                    <div key={item.id} className={styles.item} data-testid={`swot-${quadrant.id}-item-${index}`}>
                       <div
                         className={styles.itemImportance}
                         style={{ backgroundColor: IMPORTANCE_COLORS[item.importance] }}
@@ -241,6 +242,7 @@ export const SwotAnalysis: React.FC<BaseWidgetProps> = ({
                           className={`${styles.itemButton} ${styles.deleteButton}`}
                           onClick={() => handleRemoveItem(item.id)}
                           title="削除"
+                          data-testid={`swot-${quadrant.id}-delete-${index}`}
                         >
                           ×
                         </button>
@@ -269,11 +271,13 @@ export const SwotAnalysis: React.FC<BaseWidgetProps> = ({
                       [quadrant.id]: e.target.value,
                     }))
                   }
+                  data-testid={`swot-${quadrant.id}-input`}
                 />
                 <button
                   type="submit"
                   className={styles.addItemButton}
                   style={{ backgroundColor: quadrant.color }}
+                  data-testid={`swot-${quadrant.id}-add-btn`}
                 >
                   追加
                 </button>
@@ -320,6 +324,7 @@ export const SwotAnalysis: React.FC<BaseWidgetProps> = ({
           className={styles.completeButton}
           onClick={handleComplete}
           disabled={!isComplete}
+          data-testid="swot-complete-btn"
         >
           {isComplete ? '完了' : '各象限に1つ以上追加してください'}
         </button>

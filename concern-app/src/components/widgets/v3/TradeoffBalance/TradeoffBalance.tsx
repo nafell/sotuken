@@ -79,7 +79,9 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
    */
   const handleAddItem = useCallback(
     (side: 'left' | 'right') => {
+      console.log('handleAddItem called', side);
       const text = side === 'left' ? newLeftItem : newRightItem;
+      console.log('text to add', text);
       if (!text.trim()) return;
 
       controllerRef.current.addItem(text.trim(), side, 50);
@@ -172,7 +174,7 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
   const canComplete = leftItems.length > 0 && rightItems.length > 0;
 
   return (
-    <div className={styles.container} role="region" aria-label="トレードオフ天秤">
+    <div className={styles.container} role="region" aria-label="トレードオフ天秤" data-testid="tradeoff-container">
       <div className={styles.header}>
         <h2 className={styles.title}>
           {spec.config.title || 'トレードオフ天秤'}
@@ -184,7 +186,7 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
 
       {/* Balance visualization */}
       <div className={styles.balanceVisualization}>
-        <div className={styles.balanceBeam}>
+        <div className={styles.balanceBeam} data-testid="tradeoff-balance-beam">
           <div className={styles.pivot} />
           <div
             className={styles.beam}
@@ -206,19 +208,19 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
 
         <div className={styles.balanceIndicator}>
           <div
-            className={`${styles.balanceScore} ${
-              balanceDirection === 'left'
-                ? styles.balanceScoreLeft
-                : balanceDirection === 'right'
+            className={`${styles.balanceScore} ${balanceDirection === 'left'
+              ? styles.balanceScoreLeft
+              : balanceDirection === 'right'
                 ? styles.balanceScoreRight
                 : styles.balanceScoreBalanced
-            }`}
+              }`}
+            data-testid="tradeoff-balance-score"
           >
             {balanceDirection === 'balanced'
               ? '均衡'
               : balanceDirection === 'left'
-              ? `← ${leftLabel}`
-              : `${rightLabel} →`}
+                ? `← ${leftLabel}`
+                : `${rightLabel} →`}
           </div>
           <p className={styles.recommendation}>{recommendation}</p>
         </div>
@@ -235,6 +237,7 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
               value={leftLabel}
               onChange={(e) => handleLabelChange('left', e.target.value)}
               placeholder="選択肢A"
+              data-testid="tradeoff-left-label"
             />
             <span className={styles.sideTotal}>
               計: {controllerRef.current.getSideTotal('left')}
@@ -246,8 +249,8 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
               <div className={styles.emptyState}>項目を追加してください</div>
             ) : (
               leftItems.map((item) => (
-                <div key={item.id} className={styles.item}>
-                  <div className={styles.itemHeader}>
+                <div key={item.id} className={styles.item} data-testid={`tradeoff-left-item-${item.id}`}>
+                  <div className={styles.itemHeader} data-testid={`tradeoff-left-item-header-${item.id}`}>
                     <span className={styles.itemText}>{item.text}</span>
                     <span className={styles.itemWeight}>{item.weight}</span>
                     <button
@@ -285,8 +288,9 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
               value={newLeftItem}
               onChange={(e) => setNewLeftItem(e.target.value)}
               placeholder="項目を追加..."
+              data-testid="tradeoff-left-input"
             />
-            <button type="submit" className={styles.addItemButton}>
+            <button type="submit" className={styles.addItemButton} data-testid="tradeoff-left-add-btn">
               追加
             </button>
           </form>
@@ -301,6 +305,7 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
               value={rightLabel}
               onChange={(e) => handleLabelChange('right', e.target.value)}
               placeholder="選択肢B"
+              data-testid="tradeoff-right-label"
             />
             <span className={styles.sideTotal}>
               計: {controllerRef.current.getSideTotal('right')}
@@ -312,8 +317,8 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
               <div className={styles.emptyState}>項目を追加してください</div>
             ) : (
               rightItems.map((item) => (
-                <div key={item.id} className={styles.item}>
-                  <div className={styles.itemHeader}>
+                <div key={item.id} className={styles.item} data-testid={`tradeoff-right-item-${item.id}`}>
+                  <div className={styles.itemHeader} data-testid={`tradeoff-right-item-header-${item.id}`}>
                     <span className={styles.itemText}>{item.text}</span>
                     <span className={styles.itemWeight}>{item.weight}</span>
                     <button
@@ -351,8 +356,9 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
               value={newRightItem}
               onChange={(e) => setNewRightItem(e.target.value)}
               placeholder="項目を追加..."
+              data-testid="tradeoff-right-input"
             />
-            <button type="submit" className={styles.addItemButton}>
+            <button type="submit" className={styles.addItemButton} data-testid="tradeoff-right-add-btn">
               追加
             </button>
           </form>
@@ -368,6 +374,7 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
           className={styles.completeButton}
           onClick={handleComplete}
           disabled={!canComplete}
+          data-testid="tradeoff-complete-btn"
         >
           {canComplete ? '完了' : '両方に項目を追加してください'}
         </button>

@@ -193,7 +193,7 @@ export const MatrixPlacement: React.FC<BaseWidgetProps> = ({
   const state = controllerRef.current.getState();
 
   return (
-    <div className={styles.container} role="region" aria-label="マトリックス配置">
+    <div className={styles.container} role="region" aria-label="マトリックス配置" data-testid="matrix-container">
       <div className={styles.header}>
         <h2 className={styles.title}>アイテムをマトリックス上に配置してください</h2>
         <p className={styles.description}>
@@ -221,6 +221,7 @@ export const MatrixPlacement: React.FC<BaseWidgetProps> = ({
             onMouseLeave={handleMouseUp}
             role="grid"
             aria-label="マトリックスグリッド"
+            data-testid="matrix-grid"
           >
             {/* 象限背景 */}
             <div className={`${styles.quadrant} ${styles.topLeft}`} />
@@ -240,6 +241,7 @@ export const MatrixPlacement: React.FC<BaseWidgetProps> = ({
                 isDragging={draggingItemId === item.id}
                 onMouseDown={handleMouseDown}
                 onDelete={handleDeleteItem}
+                data-testid={`matrix-item-${item.id}`}
               />
             ))}
           </div>
@@ -263,12 +265,14 @@ export const MatrixPlacement: React.FC<BaseWidgetProps> = ({
           placeholder="新しいアイテムを入力..."
           className={styles.addItemInput}
           aria-label="新しいアイテム"
+          data-testid="matrix-item-input"
         />
         <button
           onClick={handleAddItem}
           disabled={newItemLabel.trim() === ''}
           className={styles.addButton}
           aria-label="アイテムを追加"
+          data-testid="matrix-add-btn"
         >
           + 追加
         </button>
@@ -288,6 +292,7 @@ export const MatrixPlacement: React.FC<BaseWidgetProps> = ({
           disabled={items.length === 0}
           className={styles.completeButton}
           aria-label="完了"
+          data-testid="matrix-complete-btn"
         >
           完了
         </button>
@@ -304,6 +309,7 @@ interface MatrixItemComponentProps {
   isDragging: boolean;
   onMouseDown: (itemId: string) => void;
   onDelete: (itemId: string) => void;
+  'data-testid'?: string;
 }
 
 const MatrixItemComponent: React.FC<MatrixItemComponentProps> = ({
@@ -311,14 +317,14 @@ const MatrixItemComponent: React.FC<MatrixItemComponentProps> = ({
   isDragging,
   onMouseDown,
   onDelete,
+  ...props
 }) => {
   const isHighPriority = item.position.x > 0.5 && item.position.y > 0.5;
 
   return (
     <div
-      className={`${styles.item} ${isDragging ? styles.itemDragging : ''} ${
-        isHighPriority ? styles.itemHighPriority : ''
-      }`}
+      className={`${styles.item} ${isDragging ? styles.itemDragging : ''} ${isHighPriority ? styles.itemHighPriority : ''
+        }`}
       style={{
         left: `${item.position.x * 100}%`,
         bottom: `${item.position.y * 100}%`,
@@ -329,6 +335,7 @@ const MatrixItemComponent: React.FC<MatrixItemComponentProps> = ({
       }}
       role="gridcell"
       aria-label={`アイテム: ${item.label}`}
+      data-testid={props['data-testid']}
     >
       <span className={styles.itemLabel}>{item.label}</span>
       <button
@@ -338,6 +345,7 @@ const MatrixItemComponent: React.FC<MatrixItemComponentProps> = ({
         }}
         className={styles.deleteButton}
         aria-label={`${item.label}を削除`}
+        data-testid={`matrix-delete-${item.id}`}
       >
         ×
       </button>

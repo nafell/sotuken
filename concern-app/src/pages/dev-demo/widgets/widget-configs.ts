@@ -82,9 +82,9 @@ export const WIDGET_SHOWCASE_CONFIGS: Record<WidgetComponentType, WidgetShowcase
         label: 'Default (3 questions)',
         config: {
           questions: [
-            { type: 'open', text: 'なぜそう思いますか？' },
-            { type: 'why', text: '具体的にはどういうことですか？' },
-            { type: 'what_if', text: '他に考えられることはありますか？' },
+            { id: 'q1', category: 'why', question: 'なぜそう思いますか？', depth: 0 },
+            { id: 'q2', category: 'what', question: '具体的にはどういうことですか？', depth: 1 },
+            { id: 'q3', category: 'how', question: '他に考えられることはありますか？', depth: 1 },
           ],
         },
       },
@@ -93,11 +93,11 @@ export const WIDGET_SHOWCASE_CONFIGS: Record<WidgetComponentType, WidgetShowcase
         label: 'Deep Dive (5 questions)',
         config: {
           questions: [
-            { type: 'open', text: '何が問題だと感じていますか？' },
-            { type: 'why', text: 'それはなぜですか？' },
-            { type: 'why', text: 'さらに深く考えると？' },
-            { type: 'what_if', text: 'もし○○だったら？' },
-            { type: 'open', text: '結論として何が言えますか？' },
+            { id: 'q1', category: 'what', question: '何が問題だと感じていますか？', depth: 0 },
+            { id: 'q2', category: 'why', question: 'それはなぜですか？', depth: 1 },
+            { id: 'q3', category: 'why', question: 'さらに深く考えると？', depth: 2 },
+            { id: 'q4', category: 'how', question: 'もし○○だったら？', depth: 2 },
+            { id: 'q5', category: 'what', question: '結論として何が言えますか？', depth: 3 },
           ],
         },
       },

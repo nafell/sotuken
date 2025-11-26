@@ -52,11 +52,10 @@ const NodeComponent: React.FC<NodeComponentProps> = ({
   };
 
   return (
-    <div className={styles.nodeContainer}>
+    <div className={styles.nodeContainer} data-testid={`mindmap-node-${node.id}`}>
       <div
-        className={`${styles.node} ${
-          selectedNodeId === node.id ? styles.nodeSelected : ''
-        }`}
+        className={`${styles.node} ${selectedNodeId === node.id ? styles.nodeSelected : ''
+          }`}
         style={{ borderLeftColor: node.color }}
         onClick={() => onSelect(node.id)}
       >
@@ -88,6 +87,7 @@ const NodeComponent: React.FC<NodeComponentProps> = ({
               onBlur={handleSaveEdit}
               autoFocus
               onClick={(e) => e.stopPropagation()}
+              data-testid={`mindmap-node-input-${node.id}`}
             />
           </form>
         ) : (
@@ -97,6 +97,7 @@ const NodeComponent: React.FC<NodeComponentProps> = ({
               setEditText(node.text);
               setIsEditing(true);
             }}
+            data-testid={`mindmap-node-text-${node.id}`}
           >
             {node.text}
           </span>
@@ -110,6 +111,7 @@ const NodeComponent: React.FC<NodeComponentProps> = ({
               onAddChild(node.id);
             }}
             title="子ノードを追加"
+            data-testid={`mindmap-node-add-${node.id}`}
           >
             +
           </button>
@@ -120,6 +122,7 @@ const NodeComponent: React.FC<NodeComponentProps> = ({
               onDelete(node.id);
             }}
             title="削除"
+            data-testid={`mindmap-node-delete-${node.id}`}
           >
             ×
           </button>
@@ -313,7 +316,7 @@ export const MindMap: React.FC<BaseWidgetProps> = ({
   }, [spec.id, state]);
 
   return (
-    <div className={styles.container} role="region" aria-label="マインドマップ">
+    <div className={styles.container} role="region" aria-label="マインドマップ" data-testid="mindmap-container">
       <div className={styles.header}>
         <h2 className={styles.title}>
           {spec.config.title || 'マインドマップ'}
@@ -332,6 +335,7 @@ export const MindMap: React.FC<BaseWidgetProps> = ({
             value={centerTopic}
             onChange={(e) => handleCenterTopicChange(e.target.value)}
             placeholder="中心テーマを入力"
+            data-testid="mindmap-center-topic"
           />
         </div>
       </div>
@@ -339,7 +343,7 @@ export const MindMap: React.FC<BaseWidgetProps> = ({
       {/* Mind map area */}
       <div className={styles.mindMapArea}>
         {rootNodes.length === 0 ? (
-          <button className={styles.addRootButton} onClick={handleAddRoot}>
+          <button className={styles.addRootButton} onClick={handleAddRoot} data-testid="mindmap-add-root-btn">
             + 最初のアイデアを追加
           </button>
         ) : (
@@ -364,6 +368,7 @@ export const MindMap: React.FC<BaseWidgetProps> = ({
               className={styles.addNodeButton}
               onClick={handleAddRoot}
               style={{ margin: '1rem auto', display: 'flex' }}
+              data-testid="mindmap-add-node-btn"
             >
               + 新しい枝を追加
             </button>
@@ -406,6 +411,7 @@ export const MindMap: React.FC<BaseWidgetProps> = ({
           className={styles.completeButton}
           onClick={handleComplete}
           disabled={nodeCount === 0}
+          data-testid="mindmap-complete-btn"
         >
           {nodeCount > 0 ? '完了' : 'アイデアを追加してください'}
         </button>

@@ -138,6 +138,7 @@ export const PrioritySliderGrid: React.FC<BaseWidgetProps> = ({
       className={styles.container}
       role="region"
       aria-label="優先度スライダーグリッド"
+      data-testid="psg-container"
     >
       <div className={styles.header}>
         <h2 className={styles.title}>アイテムに優先度を設定してください</h2>
@@ -156,12 +157,14 @@ export const PrioritySliderGrid: React.FC<BaseWidgetProps> = ({
           placeholder="新しいアイテムを入力..."
           className={styles.addItemInput}
           aria-label="新しいアイテム"
+          data-testid="psg-input"
         />
         <button
           onClick={handleAddItem}
           disabled={newItemLabel.trim() === ''}
           className={styles.addButton}
           aria-label="アイテムを追加"
+          data-testid="psg-add-btn"
         >
           + 追加
         </button>
@@ -169,7 +172,7 @@ export const PrioritySliderGrid: React.FC<BaseWidgetProps> = ({
 
       {/* 統計情報 */}
       {items.length > 0 && (
-        <div className={styles.stats}>
+        <div className={styles.stats} data-testid="psg-stats">
           <div className={styles.statItem}>
             <span className={styles.statLabel}>平均優先度</span>
             <span className={styles.statValue}>{avgPriority}%</span>
@@ -190,7 +193,7 @@ export const PrioritySliderGrid: React.FC<BaseWidgetProps> = ({
       )}
 
       {/* アイテムグリッド */}
-      <div className={styles.gridContainer} role="list">
+      <div className={styles.gridContainer} role="list" data-testid="psg-item-list">
         {sortedItems.length === 0 ? (
           <div className={styles.emptyState}>
             アイテムを追加して優先度を設定しましょう
@@ -222,6 +225,7 @@ export const PrioritySliderGrid: React.FC<BaseWidgetProps> = ({
           disabled={items.length === 0}
           className={styles.completeButton}
           aria-label="完了"
+          data-testid="psg-complete-btn"
         >
           完了
         </button>
@@ -254,6 +258,7 @@ const PriorityItemComponent: React.FC<PriorityItemComponentProps> = ({
     <div
       className={`${styles.item} ${styles[`priority-${priorityLevel}`]}`}
       role="listitem"
+      data-testid={`psg-item-${item.id}`}
     >
       <div className={styles.itemHeader}>
         <span className={styles.rank}>#{rank}</span>
@@ -262,6 +267,7 @@ const PriorityItemComponent: React.FC<PriorityItemComponentProps> = ({
           onClick={() => onDelete(item.id)}
           className={styles.deleteButton}
           aria-label={`${item.label}を削除`}
+          data-testid={`psg-delete-${item.id}`}
         >
           ×
         </button>
@@ -280,6 +286,7 @@ const PriorityItemComponent: React.FC<PriorityItemComponentProps> = ({
           onChange={(e) => onPriorityChange(item.id, parseInt(e.target.value))}
           className={styles.slider}
           aria-label={`${item.label}の優先度`}
+          data-testid={`psg-slider-${item.id}`}
         />
         <div className={styles.sliderLabels}>
           <span>低</span>

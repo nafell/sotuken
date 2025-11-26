@@ -88,7 +88,7 @@ export const EmotionPalette: React.FC<BaseWidgetProps> = ({
   }, [spec.id, selectedEmotion, intensity]);
 
   return (
-    <div className={styles.container} role="region" aria-label="感情選択">
+    <div className={styles.container} role="region" aria-label="感情選択" data-testid="emotion-palette-container">
       <div className={styles.header}>
         <h2 className={styles.title}>今の気持ちを選んでください</h2>
         <p className={styles.description}>
@@ -101,6 +101,7 @@ export const EmotionPalette: React.FC<BaseWidgetProps> = ({
         className={styles.emotionGrid}
         role="radiogroup"
         aria-label="感情選択"
+        data-testid="emotion-palette-options"
       >
         {EMOTIONS.map((emotion) => (
           <EmotionButton
@@ -130,6 +131,7 @@ export const EmotionPalette: React.FC<BaseWidgetProps> = ({
             aria-valuemax={100}
             aria-valuenow={Math.round(intensity * 100)}
             aria-label="感情の強度"
+            data-testid="emotion-palette-intensity-slider"
           />
           <div className={styles.intensityMarkers}>
             <span>弱い</span>
@@ -141,7 +143,7 @@ export const EmotionPalette: React.FC<BaseWidgetProps> = ({
 
       {/* サマリー表示 */}
       {selectedEmotion && (
-        <div className={styles.summary} role="status" aria-live="polite">
+        <div className={styles.summary} role="status" aria-live="polite" data-testid="emotion-palette-selected-display">
           <p>{controllerRef.current.generateSummary()}</p>
         </div>
       )}
@@ -153,6 +155,7 @@ export const EmotionPalette: React.FC<BaseWidgetProps> = ({
           disabled={!selectedEmotion}
           className={styles.completeButton}
           aria-label="選択を完了"
+          data-testid="emotion-palette-complete-btn"
         >
           完了
         </button>
@@ -178,9 +181,8 @@ const EmotionButton: React.FC<EmotionButtonProps> = ({
   return (
     <button
       onClick={() => onSelect(emotion.id)}
-      className={`${styles.emotionButton} ${
-        isSelected ? styles.emotionButtonSelected : ''
-      }`}
+      className={`${styles.emotionButton} ${isSelected ? styles.emotionButtonSelected : ''
+        }`}
       style={{
         backgroundColor: emotion.color,
         opacity: isSelected ? 1 : 0.7,
@@ -189,6 +191,7 @@ const EmotionButton: React.FC<EmotionButtonProps> = ({
       aria-checked={isSelected}
       aria-label={`${emotion.label} - ${emotion.description}`}
       title={emotion.description}
+      data-testid={`emotion-palette-btn-${emotion.id}`}
     >
       <span className={styles.emotionLabel}>{emotion.label}</span>
     </button>

@@ -175,7 +175,7 @@ export const TimelineSlider: React.FC<BaseWidgetProps> = ({
   }, [spec.id, state]);
 
   return (
-    <div className={styles.container} role="region" aria-label="タイムライン">
+    <div className={styles.container} role="region" aria-label="タイムライン" data-testid="timeline-container">
       <div className={styles.header}>
         <h2 className={styles.title}>
           {spec.config.title || '時間軸スライダー'}
@@ -190,10 +190,10 @@ export const TimelineSlider: React.FC<BaseWidgetProps> = ({
         {(Object.keys(TIME_UNIT_CONFIG) as TimeUnit[]).map((unit) => (
           <button
             key={unit}
-            className={`${styles.timeUnitButton} ${
-              state.timeUnit === unit ? styles.timeUnitButtonActive : ''
-            }`}
+            className={`${styles.timeUnitButton} ${state.timeUnit === unit ? styles.timeUnitButtonActive : ''
+              }`}
             onClick={() => handleTimeUnitChange(unit)}
+            data-testid={`timeline-unit-${unit}`}
           >
             {TIME_UNIT_CONFIG[unit].label}
           </button>
@@ -201,7 +201,7 @@ export const TimelineSlider: React.FC<BaseWidgetProps> = ({
       </div>
 
       {/* Timeline area */}
-      <div className={styles.timelineArea}>
+      <div className={styles.timelineArea} data-testid="timeline-track">
         <div className={styles.timelineTrack}>
           <div className={styles.trackLine} />
 
@@ -220,13 +220,13 @@ export const TimelineSlider: React.FC<BaseWidgetProps> = ({
             {sortedEvents.map((event, index) => (
               <div
                 key={event.id}
-                className={`${styles.eventMarker} ${
-                  state.selectedEventId === event.id
+                className={`${styles.eventMarker} ${state.selectedEventId === event.id
                     ? styles.eventMarkerSelected
                     : ''
-                }`}
+                  }`}
                 style={{ left: `${event.position}%` }}
                 onClick={() => handleSelectEvent(event.id)}
+                data-testid={`timeline-marker-${event.id}`}
               >
                 <div className={styles.eventLabel}>{event.text}</div>
                 <div
@@ -248,6 +248,7 @@ export const TimelineSlider: React.FC<BaseWidgetProps> = ({
             value={newEventText}
             onChange={(e) => setNewEventText(e.target.value)}
             placeholder="イベント名を入力..."
+            data-testid="timeline-input"
           />
           <input
             type="range"
@@ -257,6 +258,7 @@ export const TimelineSlider: React.FC<BaseWidgetProps> = ({
             value={newEventPosition}
             onChange={(e) => setNewEventPosition(Number(e.target.value))}
             title={controllerRef.current.getPositionLabel(newEventPosition)}
+            data-testid="timeline-position-slider"
           />
           <select
             className={styles.prioritySelect}
@@ -269,7 +271,7 @@ export const TimelineSlider: React.FC<BaseWidgetProps> = ({
             <option value="medium">中</option>
             <option value="low">低</option>
           </select>
-          <button type="submit" className={styles.addButton}>
+          <button type="submit" className={styles.addButton} data-testid="timeline-add-btn">
             追加
           </button>
         </form>
@@ -289,13 +291,13 @@ export const TimelineSlider: React.FC<BaseWidgetProps> = ({
             {sortedEvents.map((event) => (
               <div
                 key={event.id}
-                className={`${styles.eventItem} ${
-                  state.selectedEventId === event.id
+                className={`${styles.eventItem} ${state.selectedEventId === event.id
                     ? styles.eventItemSelected
                     : ''
-                }`}
+                  }`}
                 style={{ borderLeftColor: event.color }}
                 onClick={() => handleSelectEvent(event.id)}
+                data-testid={`timeline-item-${event.id}`}
               >
                 <div
                   className={styles.eventPriorityDot}
@@ -322,6 +324,7 @@ export const TimelineSlider: React.FC<BaseWidgetProps> = ({
                     e.stopPropagation();
                     handleRemoveEvent(event.id);
                   }}
+                  data-testid={`timeline-delete-${event.id}`}
                 >
                   ×
                 </button>
@@ -357,6 +360,7 @@ export const TimelineSlider: React.FC<BaseWidgetProps> = ({
           className={styles.completeButton}
           onClick={handleComplete}
           disabled={sortedEvents.length === 0}
+          data-testid="timeline-complete-btn"
         >
           {sortedEvents.length > 0 ? '完了' : 'イベントを追加してください'}
         </button>

@@ -52,8 +52,10 @@ export const QuestionCardChain: React.FC<BaseWidgetProps> = ({
 
   // 現在の質問の既存回答を取得
   useEffect(() => {
+    console.log('useEffect triggered', { currentIndex, questionId: currentQuestion?.id });
     if (currentQuestion) {
       const existingAnswer = controllerRef.current.getAnswerForQuestion(currentQuestion.id);
+      console.log('existingAnswer', existingAnswer);
       setCurrentAnswer(existingAnswer?.text || '');
     }
   }, [currentIndex, currentQuestion?.id]);
@@ -143,7 +145,7 @@ export const QuestionCardChain: React.FC<BaseWidgetProps> = ({
   }, [spec.id, state]);
 
   return (
-    <div className={styles.container} role="region" aria-label="質問カード">
+    <div className={styles.container} role="region" aria-label="質問カード" data-testid="qcc-container">
       <div className={styles.header}>
         <h2 className={styles.title}>
           {spec.config.title || '思考を深める質問'}
@@ -154,7 +156,7 @@ export const QuestionCardChain: React.FC<BaseWidgetProps> = ({
       </div>
 
       {/* Progress bar */}
-      <div className={styles.progressContainer}>
+      <div className={styles.progressContainer} data-testid="qcc-progress-bar">
         <div className={styles.progressBar}>
           <div
             className={styles.progressFill}
@@ -183,11 +185,11 @@ export const QuestionCardChain: React.FC<BaseWidgetProps> = ({
               >
                 {CATEGORY_LABELS[currentQuestion.category]}
               </span>
-              <span className={styles.questionNumber}>
+              <span className={styles.questionNumber} data-testid="qcc-question-number">
                 質問 {currentIndex + 1} / {state.questions.length}
               </span>
             </div>
-            <p className={styles.questionText}>{currentQuestion.question}</p>
+            <p className={styles.questionText} data-testid="qcc-question-text">{currentQuestion.question}</p>
             {currentQuestion.hint && (
               <p className={styles.hint}>{currentQuestion.hint}</p>
             )}
@@ -198,6 +200,7 @@ export const QuestionCardChain: React.FC<BaseWidgetProps> = ({
                 onChange={(e) => handleAnswerChange(e.target.value)}
                 placeholder="ここに回答を入力..."
                 aria-label={`質問「${currentQuestion.question}」への回答`}
+                data-testid="qcc-answer-textarea"
               />
               <div className={styles.charCount}>
                 {currentAnswer.length} 文字
@@ -214,13 +217,13 @@ export const QuestionCardChain: React.FC<BaseWidgetProps> = ({
               return (
                 <button
                   key={q.id}
-                  className={`${styles.dot} ${
-                    idx === currentIndex ? styles.dotActive : ''
-                  } ${hasAnswer && idx !== currentIndex ? styles.dotAnswered : ''}`}
+                  className={`${styles.dot} ${idx === currentIndex ? styles.dotActive : ''
+                    } ${hasAnswer && idx !== currentIndex ? styles.dotAnswered : ''}`}
                   onClick={() => handleGoTo(idx)}
                   aria-label={`質問${idx + 1}へ移動${hasAnswer ? '（回答済み）' : ''}`}
                   role="tab"
                   aria-selected={idx === currentIndex}
+                  data-testid={`qcc-nav-dot-${idx}`}
                 />
               );
             })}
@@ -233,6 +236,7 @@ export const QuestionCardChain: React.FC<BaseWidgetProps> = ({
               onClick={handlePrev}
               disabled={currentIndex === 0}
               aria-label="前の質問"
+              data-testid="qcc-prev-btn"
             >
               前へ
             </button>
@@ -244,6 +248,7 @@ export const QuestionCardChain: React.FC<BaseWidgetProps> = ({
                   ? '回答を確認'
                   : '次の質問'
               }
+              data-testid="qcc-next-btn"
             >
               {currentIndex === state.questions.length - 1 ? '確認' : '次へ'}
             </button>
@@ -285,6 +290,7 @@ export const QuestionCardChain: React.FC<BaseWidgetProps> = ({
             onClick={handleComplete}
             disabled={!isAllAnswered}
             aria-label="完了"
+            data-testid="qcc-complete-btn"
             style={{
               marginTop: '1rem',
               opacity: isAllAnswered ? 1 : 0.5,

@@ -225,7 +225,7 @@ export const DependencyMapping: React.FC<BaseWidgetProps> = ({
   }, [spec.id, state]);
 
   return (
-    <div className={styles.container} role="region" aria-label="依存関係マッピング">
+    <div className={styles.container} role="region" aria-label="依存関係マッピング" data-testid="dep-map-container">
       <div className={styles.header}>
         <h2 className={styles.title}>
           {spec.config.title || '依存関係を整理する'}
@@ -238,19 +238,19 @@ export const DependencyMapping: React.FC<BaseWidgetProps> = ({
       {/* Toolbar */}
       <div className={styles.toolbar}>
         <div className={styles.toolbarLeft}>
-          <button className={`${styles.toolButton} ${styles.addNodeButton}`} onClick={handleAddNode}>
+          <button className={`${styles.toolButton} ${styles.addNodeButton}`} onClick={handleAddNode} data-testid="dep-map-add-node-btn">
             + ノード追加
           </button>
           <button
-            className={`${styles.toolButton} ${styles.addEdgeButton} ${
-              isAddingEdge ? styles.addEdgeButtonActive : ''
-            }`}
+            className={`${styles.toolButton} ${styles.addEdgeButton} ${isAddingEdge ? styles.addEdgeButtonActive : ''
+              }`}
             onClick={() => {
               setIsAddingEdge(!isAddingEdge);
               setEdgeSourceId(null);
               controllerRef.current.selectNode(null);
               forceUpdate({});
             }}
+            data-testid="dep-map-connect-btn"
           >
             {isAddingEdge ? '接続中...' : '→ 接続'}
           </button>
@@ -258,18 +258,18 @@ export const DependencyMapping: React.FC<BaseWidgetProps> = ({
             className={`${styles.toolButton} ${styles.deleteButton}`}
             onClick={handleDeleteNode}
             disabled={!state.selectedNodeId}
+            data-testid="dep-map-delete-btn"
           >
             削除
           </button>
         </div>
-        <div className={styles.edgeTypeSelector}>
+        <div className={styles.edgeTypeSelector} data-testid="dep-map-edge-type-select">
           <span className={styles.edgeTypeLabel}>接続タイプ:</span>
           {(Object.keys(EDGE_TYPE_COLORS) as DependencyEdge['type'][]).map((type) => (
             <button
               key={type}
-              className={`${styles.edgeTypeButton} ${
-                currentEdgeType === type ? styles.edgeTypeButtonActive : ''
-              }`}
+              className={`${styles.edgeTypeButton} ${currentEdgeType === type ? styles.edgeTypeButtonActive : ''
+                }`}
               style={{
                 borderColor: EDGE_TYPE_COLORS[type],
                 backgroundColor: currentEdgeType === type ? EDGE_TYPE_COLORS[type] : 'white',
@@ -290,6 +290,7 @@ export const DependencyMapping: React.FC<BaseWidgetProps> = ({
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
+          data-testid="dep-map-canvas"
         >
           <defs>
             <marker
@@ -342,12 +343,12 @@ export const DependencyMapping: React.FC<BaseWidgetProps> = ({
           {state.nodes.map((node) => (
             <g
               key={node.id}
-              className={`${styles.node} ${
-                state.selectedNodeId === node.id ? styles.nodeSelected : ''
-              }`}
+              className={`${styles.node} ${state.selectedNodeId === node.id ? styles.nodeSelected : ''
+                }`}
               transform={`translate(${node.x || 0}, ${node.y || 0})`}
               onMouseDown={(e) => handleNodeDragStart(e, node.id)}
               onClick={() => handleNodeClick(node.id)}
+              data-testid={`dep-map-node-${node.id}`}
             >
               <circle
                 className={styles.nodeCircle}
@@ -356,8 +357,8 @@ export const DependencyMapping: React.FC<BaseWidgetProps> = ({
                   edgeSourceId === node.id
                     ? '#f59e0b'
                     : criticalPath.includes(node.id)
-                    ? '#22c55e'
-                    : '#3b82f6'
+                      ? '#22c55e'
+                      : '#3b82f6'
                 }
               />
               <text className={styles.nodeLabel} dy="5">
@@ -408,6 +409,7 @@ export const DependencyMapping: React.FC<BaseWidgetProps> = ({
           className={styles.completeButton}
           onClick={handleComplete}
           disabled={state.edges.length === 0}
+          data-testid="dep-map-complete-btn"
         >
           完了
         </button>

@@ -24,6 +24,10 @@ const WidgetP4D3Page = lazy(() => import('./pages/dev-demo/WidgetP4D3Page'));
 const E2EP4D3Page = lazy(() => import('./pages/dev-demo/E2EP4D3Page'));
 const FullFlowDemoPage = lazy(() => import('./pages/dev-demo/FullFlowDemoPage'));
 
+// Widget Showcase（Playwright MCPテスト用）
+const WidgetShowcaseIndex = lazy(() => import('./pages/dev-demo/widgets/WidgetShowcaseIndex'));
+const WidgetShowcasePage = lazy(() => import('./pages/dev-demo/widgets/WidgetShowcasePage'));
+
 function App() {
   const [condition, setCondition] = useState<ExperimentCondition>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -108,6 +112,24 @@ function App() {
             element={
               <Suspense fallback={<div style={{ padding: '20px' }}>Loading Full-Flow Demo...</div>}>
                 <FullFlowDemoPage />
+              </Suspense>
+            }
+          />
+
+          {/* Widget Showcase（Playwright MCPテスト用） */}
+          <Route
+            path="/dev-demo/widgets"
+            element={
+              <Suspense fallback={<div style={{ padding: '20px' }}>Loading Widget Index...</div>}>
+                <WidgetShowcaseIndex />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/dev-demo/widgets/:widgetType"
+            element={
+              <Suspense fallback={<div style={{ padding: '20px' }}>Loading Widget Showcase...</div>}>
+                <WidgetShowcasePage />
               </Suspense>
             }
           />

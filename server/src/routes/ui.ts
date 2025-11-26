@@ -264,6 +264,9 @@ uiRoutes.post('/generate-v3', async (c) => {
     console.log(`🎨 UISpec v3 generation request for session: ${body.sessionId}`);
     console.log(`📝 Concern: "${body.concernText.slice(0, 50)}..."`);
     console.log(`🎯 Stage: ${stage}`);
+    if (body.options?.restrictToImplementedWidgets) {
+      console.log(`🔒 Widget restriction: implemented only`);
+    }
 
     // UISpecGeneratorV3でUISpec生成
     const gemini = getGeminiService();
@@ -274,6 +277,7 @@ uiRoutes.post('/generate-v3', async (c) => {
       concernText: body.concernText,
       stage,
       factors: body.factors,
+      options: body.options,
     };
 
     const result = await generator.generateUISpec(request);
@@ -297,11 +301,13 @@ uiRoutes.post('/generate-v3', async (c) => {
       );
     }
 
-    console.log(`✅ UISpec v3 generated successfully`);
+    console.log(`✅ UISpec v3 generated successfully (mode: ${result.mode})`);
 
     return c.json({
       success: true,
       uiSpec: result.uiSpec,
+      textSummary: result.textSummary,
+      mode: result.mode,
       generation: {
         model: gemini.getModelName(),
         generatedAt: new Date().toISOString(),

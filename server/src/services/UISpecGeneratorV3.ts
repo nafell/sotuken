@@ -32,6 +32,20 @@ export type WidgetComponentType =
   | 'structured_summary';
 
 /**
+ * UISpec v3生成オプション
+ */
+export interface UISpecV3GenerationOptions {
+  /** 実装済みWidgetのみに制限 */
+  restrictToImplementedWidgets?: boolean;
+  /** テキストモード（Widget無しステージ用） */
+  textOnlyMode?: boolean;
+  /** 前ステージの結果（コンテキスト用） */
+  previousStageResults?: Record<string, any>;
+  /** ボトルネック情報 */
+  bottleneckType?: string;
+}
+
+/**
  * UISpec v3生成リクエスト
  */
 export interface UISpecV3GenerationRequest {
@@ -39,6 +53,7 @@ export interface UISpecV3GenerationRequest {
   concernText: string;
   stage: StageType;
   factors?: Record<string, any>;
+  options?: UISpecV3GenerationOptions;
 }
 
 /**
@@ -47,10 +62,20 @@ export interface UISpecV3GenerationRequest {
 export interface UISpecV3GenerationResponse {
   success: boolean;
   uiSpec?: any; // UISpec v3 JSON
+  textSummary?: string; // テキストモード時のサマリー
   metrics?: GeminiResponseMetrics;
   error?: string;
   retryCount?: number;
+  mode?: 'widget' | 'text'; // 生成モード
 }
+
+/** 実装済みWidgetの一覧 */
+const IMPLEMENTED_WIDGETS: WidgetComponentType[] = [
+  'emotion_palette',
+  'brainstorm_cards',
+  'matrix_placement',
+  'priority_slider_grid',
+];
 
 /**
  * UISpec Generator v3
@@ -68,6 +93,30 @@ export class UISpecGeneratorV3 {
   async generateUISpec(
     request: UISpecV3GenerationRequest
   ): Promise<UISpecV3GenerationResponse> {
+    const options = request.options || {};
+
+    // テキストモードまたはWidget無しステージの場合
+    const availableWidgets = this.getWidgetsForStage(
+      request.stage,
+      options.restrictToImplementedWidgets
+    );
+
+    if (options.textOnlyMode || availableWidgets.length === 0) {
+      console.log(`📝 テキストモードで生成: ${request.stage}`);
+      return this.generateTextSummary(request);
+    }
+
+    // 通常のWidget生成モード
+    return this.generateWidgetUISpec(request, availableWidgets);
+  }
+
+  /**
+   * Widget UISpecを生成
+   */
+  private async generateWidgetUISpec(
+    request: UISpecV3GenerationRequest,
+    availableWidgets: WidgetComponentType[]
+  ): Promise<UISpecV3GenerationResponse> {
     const maxRetries = 3;
     let lastError: string | undefined;
     let lastMetrics: GeminiResponseMetrics | undefined;
@@ -78,7 +127,7 @@ export class UISpecGeneratorV3 {
         console.log(`📝 UISpec v3.0 生成試行 ${attempt}/${maxRetries}...`);
 
         // プロンプト構築
-        const prompt = this.buildPrompt(request);
+        const prompt = this.buildPrompt(request, availableWidgets);
 
         // LLM実行
         const response = await this.geminiService.generateJSON(prompt);
@@ -111,7 +160,7 @@ export class UISpecGeneratorV3 {
         uiSpec = this.fillRequiredFields(uiSpec, request);
 
         // 簡易バリデーション
-        const validationResult = this.validateUISpec(uiSpec);
+        const validationResult = this.validateUISpec(uiSpec, availableWidgets);
 
         if (!validationResult.valid) {
           lastError = `Validation failed: ${validationResult.errors.join(', ')}`;
@@ -126,6 +175,7 @@ export class UISpecGeneratorV3 {
           uiSpec,
           metrics: response.metrics,
           retryCount: attempt - 1,
+          mode: 'widget',
         };
       } catch (error) {
         lastError = error instanceof Error ? error.message : 'Unknown error';
@@ -140,14 +190,103 @@ export class UISpecGeneratorV3 {
       error: `Failed to generate valid UISpec v3.0 after ${maxRetries} attempts. Last error: ${lastError}`,
       metrics: lastMetrics,
       retryCount,
+      mode: 'widget',
     };
+  }
+
+  /**
+   * テキストサマリーを生成（organize/summaryステージ用）
+   */
+  private async generateTextSummary(
+    request: UISpecV3GenerationRequest
+  ): Promise<UISpecV3GenerationResponse> {
+    try {
+      const prompt = this.buildTextPrompt(request);
+
+      const response = await this.geminiService.generateText(prompt);
+
+      // メトリクスをログ
+      if (response.metrics) {
+        logMetrics(request.sessionId, response.metrics, {
+          model: this.geminiService.getModelName(),
+          stage: request.stage,
+          inputTextLength: request.concernText.length,
+          success: response.success,
+          validationPassed: response.success,
+          retryCount: 0,
+          error: response.error,
+        });
+      }
+
+      if (!response.success || !response.data) {
+        return {
+          success: false,
+          error: response.error || 'Failed to generate text summary',
+          metrics: response.metrics,
+          mode: 'text',
+        };
+      }
+
+      console.log(`✅ テキストサマリー生成成功: ${request.stage}`);
+      return {
+        success: true,
+        textSummary: response.data,
+        metrics: response.metrics,
+        mode: 'text',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        mode: 'text',
+      };
+    }
+  }
+
+  /**
+   * テキストモード用プロンプトを構築
+   */
+  private buildTextPrompt(request: UISpecV3GenerationRequest): string {
+    const stageInstructions: Record<StageType, string> = {
+      diverge: 'ユーザーの悩みに関連するアイデアや視点を広げてください。',
+      organize:
+        'これまでの情報を整理し、構造化してください。関連する要素をグループ化し、関係性を明確にしてください。',
+      converge:
+        'これまでの検討内容から、重要なポイントを絞り込み、優先順位をつけてください。',
+      summary:
+        'これまでの検討内容を総括し、次のアクションにつながる形でまとめてください。',
+    };
+
+    const previousContext = request.options?.previousStageResults
+      ? `\n\n## これまでの検討内容\n${JSON.stringify(request.options.previousStageResults, null, 2)}`
+      : '';
+
+    return `あなたはユーザーの悩み解決を支援するAIアシスタントです。
+
+## ユーザーの悩み
+「${request.concernText}」
+
+## 現在のステージ
+${request.stage}（${this.getStageDescription(request.stage)}）
+${previousContext}
+
+## タスク
+${stageInstructions[request.stage]}
+
+以下の形式で回答してください：
+- 見出しを使って構造化
+- 箇条書きで要点を整理
+- 具体的で実行可能な内容
+- 日本語で回答`;
   }
 
   /**
    * プロンプトを構築
    */
-  private buildPrompt(request: UISpecV3GenerationRequest): string {
-    const availableWidgets = this.getWidgetsForStage(request.stage);
+  private buildPrompt(
+    request: UISpecV3GenerationRequest,
+    availableWidgets: WidgetComponentType[]
+  ): string {
     const widgetDescriptions = this.getWidgetDescriptions(availableWidgets);
 
     return `あなたはユーザーの悩み解決を支援するUI設計AIです。
@@ -214,8 +353,13 @@ ${widgetDescriptions}
 
   /**
    * ステージに応じた利用可能Widgetを取得
+   * @param stage ステージ
+   * @param restrictToImplemented 実装済みWidgetのみに制限
    */
-  private getWidgetsForStage(stage: StageType): WidgetComponentType[] {
+  private getWidgetsForStage(
+    stage: StageType,
+    restrictToImplemented = false
+  ): WidgetComponentType[] {
     const stageWidgets: Record<StageType, WidgetComponentType[]> = {
       diverge: ['emotion_palette', 'brainstorm_cards', 'question_card_chain'],
       organize: ['card_sorting', 'dependency_mapping', 'swot_analysis', 'mind_map'],
@@ -227,7 +371,14 @@ ${widgetDescriptions}
       ],
       summary: ['structured_summary'],
     };
-    return stageWidgets[stage] || [];
+
+    let widgets = stageWidgets[stage] || [];
+
+    if (restrictToImplemented) {
+      widgets = widgets.filter((w) => IMPLEMENTED_WIDGETS.includes(w));
+    }
+
+    return widgets;
   }
 
   /**
@@ -328,8 +479,13 @@ ${widgetDescriptions}
 
   /**
    * 簡易バリデーション
+   * @param uiSpec 検証対象のUISpec
+   * @param availableWidgets 利用可能なWidgetリスト（指定時は検証）
    */
-  private validateUISpec(uiSpec: any): { valid: boolean; errors: string[] } {
+  private validateUISpec(
+    uiSpec: any,
+    availableWidgets?: WidgetComponentType[]
+  ): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
 
     if (!uiSpec.sessionId) errors.push('sessionId is required');
@@ -342,6 +498,10 @@ ${widgetDescriptions}
       uiSpec.widgets.forEach((widget: any, index: number) => {
         if (!widget.component) {
           errors.push(`widget[${index}].component is required`);
+        } else if (availableWidgets && !availableWidgets.includes(widget.component)) {
+          errors.push(
+            `widget[${index}].component "${widget.component}" is not in available widgets`
+          );
         }
       });
     }

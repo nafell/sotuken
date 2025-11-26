@@ -71,6 +71,6 @@
           - generic [ref=e75]:
             - generic [ref=e76]:
               - generic [ref=e77]: showcase_tradeoff_balance_default
-              - generic [ref=e78]: 2:23:49 AM
+              - generic [ref=e78]: 2:29:33 AM
             - generic [ref=e79]: "{ \"type\": \"composite\", \"composite\": { \"leftLabel\": \"Option A\", \"rightLabel\": \"Option B\", \"leftItems\": [ { \"text\": \"Left Item\", \"weight\": 50 } ], \"rightItems\": [], \"leftTotal\": 50, \"rightTotal\": 0, \"balanceScore\": -100, \"balanceDirection\": \"left\", \"tiltAngle\": -15, \"recommendation\": \"「Option A」が大きく優勢です。\" }, \"ranking\": { \"items\": [ { \"id\": \"balance_item_1\", \"label\": \"[Option A] Left Item\", \"score\": 50, \"metadata\": { \"side\": \"left\" } } ] } }"
 ```

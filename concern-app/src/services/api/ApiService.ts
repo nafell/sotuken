@@ -46,6 +46,39 @@ export interface UIGenerationResponse {
   };
 }
 
+/**
+ * UISpec v3生成リクエスト (Phase 4 Day 3-4)
+ */
+export interface UISpecV3GenerationRequest {
+  sessionId: string;
+  concernText: string;
+  stage?: 'diverge' | 'organize' | 'converge' | 'summary';
+  factors?: FactorsDict;
+}
+
+/**
+ * UISpec v3生成レスポンス (Phase 4 Day 3-4)
+ */
+export interface UISpecV3GenerationResponse {
+  success: boolean;
+  uiSpec?: any;
+  generation?: {
+    model: string;
+    generatedAt: string;
+    processingTimeMs: number;
+    promptTokens: number;
+    responseTokens: number;
+    totalTokens: number;
+    retryCount: number;
+  };
+  error?: {
+    code: string;
+    message: string;
+    retryCount?: number;
+  };
+  metrics?: any;
+}
+
 export class ApiService {
   private static instance: ApiService | null = null;
   private baseUrl: string;
@@ -137,12 +170,72 @@ export class ApiService {
 
       const result = await response.json();
       console.log('✅ UI生成成功:', result);
-      
+
       return result;
-      
+
     } catch (error) {
       console.error('❌ UI生成エラー:', error);
       throw error;
+    }
+  }
+
+  /**
+   * UISpec v3生成API (Phase 4 Day 3-4)
+   * LLMを使用して12種プリセットWidgetからUISpecを生成
+   */
+  async generateUIV3(
+    concernText: string,
+    stage: 'diverge' | 'organize' | 'converge' | 'summary' = 'diverge',
+    sessionId?: string,
+    factors?: FactorsDict
+  ): Promise<UISpecV3GenerationResponse> {
+    console.log('🎨 UISpec v3生成リクエスト送信開始');
+    console.log('📄 concernText:', concernText);
+    console.log('🎯 stage:', stage);
+
+    const requestBody: UISpecV3GenerationRequest = {
+      sessionId: sessionId || this.generateSessionId(),
+      concernText,
+      stage,
+      factors,
+    };
+
+    try {
+      const response = await fetch(`${this.baseUrl}/ui/generate-v3`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-ID': this.anonymousUserId,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const result: UISpecV3GenerationResponse = await response.json();
+
+      if (!response.ok || !result.success) {
+        console.error('❌ UISpec v3生成エラー:', result.error);
+        return result;
+      }
+
+      console.log('✅ UISpec v3生成成功:', result);
+      console.log('📊 メトリクス:', {
+        model: result.generation?.model,
+        processingTimeMs: result.generation?.processingTimeMs,
+        promptTokens: result.generation?.promptTokens,
+        responseTokens: result.generation?.responseTokens,
+        totalTokens: result.generation?.totalTokens,
+      });
+
+      return result;
+    } catch (error) {
+      console.error('❌ UISpec v3生成ネットワークエラー:', error);
+      return {
+        success: false,
+        error: {
+          code: 'NETWORK_ERROR',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        },
+      };
     }
   }
 

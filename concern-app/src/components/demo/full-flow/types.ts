@@ -24,25 +24,25 @@ export const PLAN_STAGE_CONFIGS: PlanStageConfig[] = [
   {
     stage: 'diverge',
     mode: 'widget',
-    availableWidgets: ['emotion_palette', 'brainstorm_cards'],
+    availableWidgets: ['emotion_palette', 'brainstorm_cards', 'question_card_chain'],
     description: '発散フェーズ - アイデアを広げ、感情を表現する',
   },
   {
     stage: 'organize',
-    mode: 'text',
-    availableWidgets: [],
+    mode: 'widget',
+    availableWidgets: ['card_sorting', 'dependency_mapping', 'swot_analysis', 'mind_map'],
     description: '整理フェーズ - 情報を構造化し、関係性を明確にする',
   },
   {
     stage: 'converge',
     mode: 'widget',
-    availableWidgets: ['matrix_placement', 'priority_slider_grid'],
+    availableWidgets: ['matrix_placement', 'priority_slider_grid', 'tradeoff_balance', 'timeline_slider'],
     description: '収束フェーズ - 優先順位をつけ、決断に向かう',
   },
   {
     stage: 'summary',
-    mode: 'text',
-    availableWidgets: [],
+    mode: 'widget',
+    availableWidgets: ['structured_summary'],
     description: 'まとめフェーズ - 結論を構造化して出力する',
   },
 ];
@@ -151,12 +151,12 @@ export const PHASE_DESCRIPTIONS: Record<Phase, string> = {
 
 // Bottleneck to recommended widgets mapping
 export const BOTTLENECK_WIDGET_RECOMMENDATIONS: Record<BottleneckType, string[]> = {
-  tooManyOptions: ['matrix_placement', 'priority_slider_grid'],
-  emotionalBlock: ['emotion_palette', 'brainstorm_cards'],
-  noStartingPoint: ['brainstorm_cards'],
-  entangledProblems: ['brainstorm_cards', 'matrix_placement'],
-  lackOfInformation: ['brainstorm_cards'],
-  fearOfDecision: ['emotion_palette', 'matrix_placement'],
-  fixedPerspective: ['brainstorm_cards'],
-  noPrioritization: ['priority_slider_grid', 'matrix_placement'],
+  tooManyOptions: ['matrix_placement', 'priority_slider_grid', 'card_sorting', 'tradeoff_balance'],
+  emotionalBlock: ['emotion_palette', 'brainstorm_cards', 'question_card_chain'],
+  noStartingPoint: ['brainstorm_cards', 'question_card_chain', 'mind_map'],
+  entangledProblems: ['brainstorm_cards', 'matrix_placement', 'dependency_mapping', 'swot_analysis'],
+  lackOfInformation: ['brainstorm_cards', 'question_card_chain', 'mind_map'],
+  fearOfDecision: ['emotion_palette', 'matrix_placement', 'tradeoff_balance', 'timeline_slider'],
+  fixedPerspective: ['brainstorm_cards', 'swot_analysis', 'mind_map'],
+  noPrioritization: ['priority_slider_grid', 'matrix_placement', 'card_sorting', 'timeline_slider'],
 };

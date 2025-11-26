@@ -69,12 +69,25 @@ export interface UISpecV3GenerationResponse {
   mode?: 'widget' | 'text'; // 生成モード
 }
 
-/** 実装済みWidgetの一覧 */
+/** 実装済みWidgetの一覧（全12種） */
 const IMPLEMENTED_WIDGETS: WidgetComponentType[] = [
+  // Phase 1 - Basic Widgets
   'emotion_palette',
   'brainstorm_cards',
   'matrix_placement',
   'priority_slider_grid',
+  // Phase 2 - Extended Widgets (diverge)
+  'question_card_chain',
+  // Phase 2 - Extended Widgets (organize)
+  'card_sorting',
+  'dependency_mapping',
+  'swot_analysis',
+  'mind_map',
+  // Phase 2 - Extended Widgets (converge)
+  'tradeoff_balance',
+  'timeline_slider',
+  // Phase 2 - Extended Widgets (summary)
+  'structured_summary',
 ];
 
 /**

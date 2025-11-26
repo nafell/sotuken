@@ -10,18 +10,41 @@ import React, { useCallback, useMemo } from 'react';
 import type { UISpec, WidgetSpec } from '../../types/ui-spec.types';
 import type { BaseWidgetProps, WidgetSpecObject } from '../../types/widget.types';
 
-// v3 Widget Components
+// v3 Widget Components - Phase 1 (Basic)
 import { EmotionPalette } from '../../components/widgets/v3/EmotionPalette/EmotionPalette';
 import { BrainstormCards } from '../../components/widgets/v3/BrainstormCards/BrainstormCards';
 import { MatrixPlacement } from '../../components/widgets/v3/MatrixPlacement/MatrixPlacement';
 import { PrioritySliderGrid } from '../../components/widgets/v3/PrioritySliderGrid/PrioritySliderGrid';
 
+// v3 Widget Components - Phase 2 (Extended)
+import { QuestionCardChain } from '../../components/widgets/v3/QuestionCardChain/QuestionCardChain';
+import { CardSorting } from '../../components/widgets/v3/CardSorting/CardSorting';
+import { DependencyMapping } from '../../components/widgets/v3/DependencyMapping/DependencyMapping';
+import { SwotAnalysis } from '../../components/widgets/v3/SwotAnalysis/SwotAnalysis';
+import { MindMap } from '../../components/widgets/v3/MindMap/MindMap';
+import { TradeoffBalance } from '../../components/widgets/v3/TradeoffBalance/TradeoffBalance';
+import { TimelineSlider } from '../../components/widgets/v3/TimelineSlider/TimelineSlider';
+import { StructuredSummary } from '../../components/widgets/v3/StructuredSummary/StructuredSummary';
+
 // Widget Component Registry
 const WIDGET_COMPONENTS: Record<string, React.FC<BaseWidgetProps>> = {
+  // Phase 1 - Basic Widgets
   emotion_palette: EmotionPalette,
   brainstorm_cards: BrainstormCards,
   matrix_placement: MatrixPlacement,
   priority_slider_grid: PrioritySliderGrid,
+  // Phase 2 - Extended Widgets (diverge)
+  question_card_chain: QuestionCardChain,
+  // Phase 2 - Extended Widgets (organize)
+  card_sorting: CardSorting,
+  dependency_mapping: DependencyMapping,
+  swot_analysis: SwotAnalysis,
+  mind_map: MindMap,
+  // Phase 2 - Extended Widgets (converge)
+  tradeoff_balance: TradeoffBalance,
+  timeline_slider: TimelineSlider,
+  // Phase 2 - Extended Widgets (summary)
+  structured_summary: StructuredSummary,
 };
 
 // Props

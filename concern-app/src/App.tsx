@@ -22,6 +22,7 @@ import { experimentService, type ExperimentCondition } from './services/ClientEx
 // Phase 4 Day 3-4: 開発用デモページ（lazy load）
 const WidgetP4D3Page = lazy(() => import('./pages/dev-demo/WidgetP4D3Page'));
 const E2EP4D3Page = lazy(() => import('./pages/dev-demo/E2EP4D3Page'));
+const FullFlowDemoPage = lazy(() => import('./pages/dev-demo/FullFlowDemoPage'));
 
 function App() {
   const [condition, setCondition] = useState<ExperimentCondition>(null);
@@ -99,6 +100,14 @@ function App() {
             element={
               <Suspense fallback={<div style={{ padding: '20px' }}>Loading E2E Demo...</div>}>
                 <E2EP4D3Page />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/dev-demo/full-flow"
+            element={
+              <Suspense fallback={<div style={{ padding: '20px' }}>Loading Full-Flow Demo...</div>}>
+                <FullFlowDemoPage />
               </Suspense>
             }
           />

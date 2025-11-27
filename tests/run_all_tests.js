@@ -22,7 +22,7 @@ class TestSuiteRunner {
         timeout: 30000
       },
       {
-        name: 'ApiService単体テスト', 
+        name: 'ApiService単体テスト',
         file: 'unit_api_service.js',
         category: 'unit',
         priority: 'high',
@@ -31,7 +31,7 @@ class TestSuiteRunner {
       {
         name: 'データベース操作単体テスト',
         file: 'unit_database_operations.js',
-        category: 'unit', 
+        category: 'unit',
         priority: 'high',
         timeout: 60000
       },
@@ -64,7 +64,54 @@ class TestSuiteRunner {
         timeout: 300000
       }
     ];
-    
+
+    // レガシーテスト（DSL v1/v2時代のテスト）
+    // --include-legacy フラグで有効化
+    this.legacySuites = [
+      {
+        name: '[LEGACY] Phase 1C E2E (DSL v1)',
+        file: 'legacy/dsl-versions/phase1c_e2e_test.js',
+        category: 'legacy',
+        priority: 'low',
+        timeout: 180000
+      },
+      {
+        name: '[LEGACY] Phase 3 E2E (DSL v2)',
+        file: 'legacy/dsl-versions/phase3_e2e_test.js',
+        category: 'legacy',
+        priority: 'low',
+        timeout: 180000
+      },
+      {
+        name: '[LEGACY] データベース統合テスト',
+        file: 'legacy/root-level/test_database.js',
+        category: 'legacy',
+        priority: 'low',
+        timeout: 60000
+      },
+      {
+        name: '[LEGACY] コンテキスト要因テスト',
+        file: 'legacy/root-level/test_factors.js',
+        category: 'legacy',
+        priority: 'low',
+        timeout: 60000
+      },
+      {
+        name: '[LEGACY] PWA機能テスト',
+        file: 'legacy/root-level/test_pwa.js',
+        category: 'legacy',
+        priority: 'low',
+        timeout: 60000
+      },
+      {
+        name: '[LEGACY] 統合テスト',
+        file: 'legacy/root-level/integration_test.js',
+        category: 'legacy',
+        priority: 'low',
+        timeout: 120000
+      }
+    ];
+
     this.results = [];
     this.startTime = null;
     this.endTime = null;
@@ -389,6 +436,7 @@ async function main() {
     parallel: args.includes('--parallel'),
     failFast: args.includes('--fail-fast'),
     saveReport: !args.includes('--no-report'),
+    includeLegacy: args.includes('--include-legacy'),
     category: args.find(arg => arg.startsWith('--category='))?.split('=')[1],
     priority: args.find(arg => arg.startsWith('--priority='))?.split('=')[1]
   };
@@ -397,11 +445,17 @@ async function main() {
   console.log(`  • 並行実行: ${options.parallel ? 'ON' : 'OFF'}`);
   console.log(`  • 失敗時中止: ${options.failFast ? 'ON' : 'OFF'}`);
   console.log(`  • レポート保存: ${options.saveReport ? 'ON' : 'OFF'}`);
+  console.log(`  • レガシーテスト: ${options.includeLegacy ? 'ON' : 'OFF'}`);
   if (options.category) console.log(`  • カテゴリ絞込: ${options.category}`);
   if (options.priority) console.log(`  • 優先度絞込: ${options.priority}`);
 
   const runner = new TestSuiteRunner();
-  
+
+  // レガシーテストの追加（--include-legacy または --category=legacy の場合）
+  if (options.includeLegacy || options.category === 'legacy') {
+    runner.testSuites = [...runner.testSuites, ...runner.legacySuites];
+  }
+
   // フィルタリング
   if (options.category) {
     runner.testSuites = runner.testSuites.filter(t => t.category === options.category);
@@ -440,15 +494,23 @@ function showHelp() {
   --parallel         並行実行モード（高速だが、リソース消費多）
   --fail-fast        最初の失敗でテスト中止
   --no-report        詳細レポートを保存しない
-  --category=TYPE    指定カテゴリのみ実行（unit|detailed|security|performance）
+  --include-legacy   レガシーテスト（DSL v1/v2時代）を含める
+  --category=TYPE    指定カテゴリのみ実行（unit|detailed|security|performance|legacy）
   --priority=LEVEL   指定優先度のみ実行（high|medium|low）
   --help            このヘルプを表示
 
 例:
-  node run_all_tests.js                    # 全テスト順次実行
-  node run_all_tests.js --parallel         # 全テスト並行実行
-  node run_all_tests.js --category=unit    # 単体テストのみ実行
-  node run_all_tests.js --priority=high    # 高優先度テストのみ実行
+  node run_all_tests.js                      # 全テスト順次実行（レガシー除外）
+  node run_all_tests.js --parallel           # 全テスト並行実行
+  node run_all_tests.js --category=unit      # 単体テストのみ実行
+  node run_all_tests.js --priority=high      # 高優先度テストのみ実行
+  node run_all_tests.js --include-legacy     # レガシーテストを含めて実行
+  node run_all_tests.js --category=legacy    # レガシーテストのみ実行
+
+レガシーテスト:
+  DSL v1/v2時代のテストは tests/legacy/ に移動されています。
+  これらのテストは現在のコードベースでは動作しない可能性があります。
+  詳細は tests/legacy/README.md を参照してください。
   `);
 }
 

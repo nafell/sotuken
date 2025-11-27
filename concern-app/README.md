@@ -16,9 +16,49 @@ bun install        # 依存関係インストール
 bun run dev        # 開発サーバー
 bun run build      # ビルド
 bun run lint       # ESLint実行
-bun run test       # Vitestテスト
-bun run test:e2e   # Playwrightテスト
 ```
+
+## テスト
+
+**重要**: `bun test`ではなく`bun run test`を使用（Vitestを実行するため）
+
+### コマンド
+
+```bash
+bun run test           # 全Vitestテスト実行（617テスト）
+bun run test:watch     # ウォッチモード
+bun run test:coverage  # カバレッジレポート
+bun run test:e2e       # Playwright E2Eテスト
+```
+
+### テスト構成
+
+| カテゴリ | ファイル数 | テスト数 | 説明 |
+|---------|-----------|---------|------|
+| Widget Controller | 12 | 374 | 各Widgetのロジック層テスト |
+| Widget Integration | 1 | 27 | コンポーネント統合テスト |
+| Services | 4 | 52+ | サービス層テスト |
+| Types | 3 | 30 | 型定義テスト |
+| Store | 1 | 15 | 状態管理テスト |
+| Widget E2E | 13 | - | Playwright E2Eテスト |
+
+### 特定テストの実行
+
+```bash
+# Widget Controllerのみ
+bun run test src/components/widgets/v3/*/__tests__/*Controller.test.ts
+
+# 統合テストのみ
+bun run test src/components/widgets/v3/__tests__/integration.test.tsx
+
+# 特定Widgetのみ
+bun run test src/components/widgets/v3/EmotionPalette/
+```
+
+### ドキュメント
+
+- `specs/testing/test-strategy-v3.md` - テスト戦略
+- `specs/testing/test-improvement-report.md` - 改善作業報告書
 
 ## ルーティング
 

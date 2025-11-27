@@ -7,7 +7,7 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import type { UISpecV2, UIField, UIAction, FormData } from '../../../../server/src/types/UISpecV2';
-import { ExpressionEngine } from './ExpressionEngine';
+import { ExpressionEngine } from '../../services/ui-generation/ExpressionEngine';
 
 // ウィジェットのインポート（v2対応版を使用）
 import { TextFieldV2 } from '../../components/ui/widgets/v2/TextFieldV2';

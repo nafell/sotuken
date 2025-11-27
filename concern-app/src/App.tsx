@@ -1,17 +1,18 @@
 /**
  * App.tsx
- * Phase 2 Step 5: 条件別ルーティング実装
- * 
- * 実験条件に応じて適切なNavigatorを表示:
- * - condition === 'dynamic_ui' → DynamicUINavigator
- * - condition === 'static_ui' → StaticUINavigator
- * - condition === null → UnassignedScreen（未割り当て）
+ *
+ * ルーティング構成:
+ * - / → Full-Flow Demo（現行メイン）
+ * - /dev-demo/* → 開発用デモページ
+ * - /legacy/* → 旧実験条件別ルーティング（Phase 2 Step 5）
+ * - /admin/* → 管理者画面
  */
 
 import { useEffect, useState, lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { DynamicUINavigator } from './navigators/DynamicUINavigator';
-import { StaticUINavigator } from './navigators/StaticUINavigator';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+// Legacy navigators（旧実験用、/legacy/*で利用可能）
+import { DynamicUINavigator } from './legacy/navigators/DynamicUINavigator';
+import { StaticUINavigator } from './legacy/navigators/StaticUINavigator';
 import { UnassignedScreen } from './screens/UnassignedScreen';
 import { AdminUserManagement } from './screens/AdminUserManagement';
 import { AdminDashboard } from './screens/AdminDashboard';
@@ -134,17 +135,27 @@ function App() {
             }
           />
 
-          {/* Phase 2 Step 5: 条件別ルーティング */}
+          {/* メインルート: Full-Flow Demo（現行メイン） */}
+          <Route
+            path="/"
+            element={
+              <Suspense fallback={<div style={{ padding: '20px' }}>Loading...</div>}>
+                <FullFlowDemoPage />
+              </Suspense>
+            }
+          />
+
+          {/* Legacy: 旧実験条件別ルーティング（Phase 2 Step 5） */}
           {condition === null ? (
-            /* 未割り当てユーザー */
-            <Route path="/*" element={<UnassignedScreen />} />
+            <Route path="/legacy/*" element={<UnassignedScreen />} />
           ) : condition === 'dynamic_ui' ? (
-            /* 動的UI版 */
-            <Route path="/*" element={<DynamicUINavigator />} />
+            <Route path="/legacy/*" element={<DynamicUINavigator />} />
           ) : (
-            /* 固定UI版 */
-            <Route path="/*" element={<StaticUINavigator />} />
+            <Route path="/legacy/*" element={<StaticUINavigator />} />
           )}
+
+          {/* 未知のパスはメインにリダイレクト */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </Router>

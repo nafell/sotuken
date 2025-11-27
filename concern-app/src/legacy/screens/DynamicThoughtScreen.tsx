@@ -13,7 +13,7 @@ import { sessionManager } from '../../services/session/SessionManager';
 import { flowStateManager } from '../../services/ConcernFlowStateManager';
 import { taskGenerationService } from '../../services/TaskGenerationService';
 import { uiCacheService } from '../../services/UIGenerationCacheService';
-import { UIRenderer } from '../../services/ui-generation/UIRenderer';
+import { UIRenderer } from '../ui-generation/UIRenderer';
 import type { UISpecDSL } from '../../../../server/src/types/UISpecDSL';
 import type { DataSchemaDSL } from '../../../../server/src/types/DataSchemaDSL';
 

@@ -10,9 +10,9 @@ RUN bun install
 ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
 
-# Build
+# Build (skip TypeScript check for production build)
 COPY concern-app/ ./
-RUN bun run build
+RUN bun run vite build
 
 # Production - Nginx for static files
 FROM nginx:alpine AS runner

@@ -1,7 +1,11 @@
 /**
- * Phase 1C E2E統合テスト
- * 
+ * [LEGACY] Phase 1C E2E統合テスト
+ *
  * 思考整理フロー + タスク推奨フロー + Rule-based Rendering
+ *
+ * ⚠️ このテストはLegacyコード（DSL v1, DynamicThoughtScreen）を対象としています。
+ * 現行版は Full-Flow Demo (DSL v3) です。
+ * 実験データの再現性確認のために保持されています。
  */
 
 const SERVER_URL = 'http://localhost:3000';

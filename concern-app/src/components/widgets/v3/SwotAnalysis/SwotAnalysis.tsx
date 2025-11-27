@@ -4,6 +4,10 @@
  *
  * Phase 4 - DSL v3 - Widget実装
  * 4象限（強み・弱み・機会・脅威）に項目を配置するWidget
+ *
+ * Reactive Port対応 (Phase 4 Task 2.2):
+ * - outputs: strengths (object[]), weaknesses (object[]), opportunities (object[]), threats (object[])
+ * - reserved: _completed, _error
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
@@ -17,6 +21,7 @@ import {
   type SwotQuadrant,
   type SwotItem,
 } from './SwotAnalysisController';
+import { useReactivePorts } from '../../../../hooks/useReactivePorts';
 import styles from './SwotAnalysis.module.css';
 
 /**
@@ -26,7 +31,17 @@ export const SwotAnalysis: React.FC<BaseWidgetProps> = ({
   spec,
   onComplete,
   onUpdate,
+  onPortChange,
+  getPortValue,
+  initialPortValues,
 }) => {
+  // Reactive Ports
+  const { emitPort, setCompleted, setError } = useReactivePorts({
+    widgetId: spec.id,
+    onPortChange,
+    getPortValue,
+    initialPortValues,
+  });
   const [, forceUpdate] = useState({});
   const [newItemTexts, setNewItemTexts] = useState<Record<SwotQuadrant, string>>({
     strengths: '',
@@ -64,6 +79,25 @@ export const SwotAnalysis: React.FC<BaseWidgetProps> = ({
   const isComplete = controllerRef.current.isComplete();
 
   /**
+   * 全出力Portに値を発行
+   */
+  const emitAllPorts = useCallback(() => {
+    emitPort('strengths', controllerRef.current.getItemsByQuadrant('strengths'));
+    emitPort('weaknesses', controllerRef.current.getItemsByQuadrant('weaknesses'));
+    emitPort('opportunities', controllerRef.current.getItemsByQuadrant('opportunities'));
+    emitPort('threats', controllerRef.current.getItemsByQuadrant('threats'));
+  }, [emitPort]);
+
+  // isComplete状態の変更を検知してsetCompleted発行
+  useEffect(() => {
+    if (isComplete) {
+      setCompleted(true);
+    } else {
+      setCompleted(false, ['各象限に1つ以上の項目']);
+    }
+  }, [isComplete, setCompleted]);
+
+  /**
    * アイテム追加
    */
   const handleAddItem = useCallback(
@@ -75,12 +109,14 @@ export const SwotAnalysis: React.FC<BaseWidgetProps> = ({
       setNewItemTexts((prev) => ({ ...prev, [quadrant]: '' }));
       forceUpdate({});
 
+      // Reactive Port出力（後方互換性のためonUpdateも呼ぶ）
+      emitAllPorts();
       if (onUpdate) {
         const result = controllerRef.current.getResult(spec.id);
         onUpdate(spec.id, result.data);
       }
     },
-    [newItemTexts, selectedImportance, onUpdate, spec.id]
+    [newItemTexts, selectedImportance, onUpdate, spec.id, emitAllPorts]
   );
 
   /**
@@ -91,12 +127,14 @@ export const SwotAnalysis: React.FC<BaseWidgetProps> = ({
       controllerRef.current.removeItem(itemId);
       forceUpdate({});
 
+      // Reactive Port出力（後方互換性のためonUpdateも呼ぶ）
+      emitAllPorts();
       if (onUpdate) {
         const result = controllerRef.current.getResult(spec.id);
         onUpdate(spec.id, result.data);
       }
     },
-    [onUpdate, spec.id]
+    [onUpdate, spec.id, emitAllPorts]
   );
 
   /**
@@ -107,12 +145,14 @@ export const SwotAnalysis: React.FC<BaseWidgetProps> = ({
       controllerRef.current.updateItem(itemId, { importance });
       forceUpdate({});
 
+      // Reactive Port出力（後方互換性のためonUpdateも呼ぶ）
+      emitAllPorts();
       if (onUpdate) {
         const result = controllerRef.current.getResult(spec.id);
         onUpdate(spec.id, result.data);
       }
     },
-    [onUpdate, spec.id]
+    [onUpdate, spec.id, emitAllPorts]
   );
 
   /**
@@ -128,11 +168,13 @@ export const SwotAnalysis: React.FC<BaseWidgetProps> = ({
     });
     forceUpdate({});
 
+    // Reactive Port出力（後方互換性のためonUpdateも呼ぶ）
+    emitAllPorts();
     if (onUpdate) {
       const result = controllerRef.current.getResult(spec.id);
       onUpdate(spec.id, result.data);
     }
-  }, [onUpdate, spec.id]);
+  }, [onUpdate, spec.id, emitAllPorts]);
 
   /**
    * 完了

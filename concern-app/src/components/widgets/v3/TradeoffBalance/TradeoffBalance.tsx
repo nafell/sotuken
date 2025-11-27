@@ -4,12 +4,17 @@
  *
  * Phase 4 - DSL v3 - Widget実装
  * 2つの選択肢の重み付けを視覚化するWidget
+ *
+ * Reactive Port対応 (Phase 4 Task 2.2):
+ * - outputs: balance (number -1〜1), direction (string), recommendation (string)
+ * - reserved: _completed, _error
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import type { BaseWidgetProps } from '../../../../types/widget.types';
 import type { WidgetResult } from '../../../../types/result.types';
 import { TradeoffBalanceController } from './TradeoffBalanceController';
+import { useReactivePorts } from '../../../../hooks/useReactivePorts';
 import styles from './TradeoffBalance.module.css';
 
 /**
@@ -19,7 +24,17 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
   spec,
   onComplete,
   onUpdate,
+  onPortChange,
+  getPortValue,
+  initialPortValues,
 }) => {
+  // Reactive Ports
+  const { emitPort, setCompleted, setError } = useReactivePorts({
+    widgetId: spec.id,
+    onPortChange,
+    getPortValue,
+    initialPortValues,
+  });
   const [, forceUpdate] = useState({});
   const [leftLabel, setLeftLabel] = useState(spec.config.leftLabel || '選択肢A');
   const [rightLabel, setRightLabel] = useState(spec.config.rightLabel || '選択肢B');
@@ -55,6 +70,31 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
   const tiltAngle = controllerRef.current.getTiltAngle();
   const balanceDirection = controllerRef.current.getBalanceDirection();
   const recommendation = controllerRef.current.getRecommendation();
+  const canComplete = leftItems.length > 0 && rightItems.length > 0;
+
+  /**
+   * 全出力Portに値を発行
+   */
+  const emitAllPorts = useCallback(() => {
+    // balance: -1〜1 (-1=left優勢, 0=均衡, 1=right優勢)
+    const leftTotal = controllerRef.current.getSideTotal('left');
+    const rightTotal = controllerRef.current.getSideTotal('right');
+    const total = leftTotal + rightTotal;
+    const balance = total > 0 ? (rightTotal - leftTotal) / total : 0;
+
+    emitPort('balance', balance);
+    emitPort('direction', controllerRef.current.getBalanceDirection());
+    emitPort('recommendation', controllerRef.current.getRecommendation());
+  }, [emitPort]);
+
+  // canComplete状態の変更を検知してsetCompleted発行
+  useEffect(() => {
+    if (canComplete) {
+      setCompleted(true);
+    } else {
+      setCompleted(false, ['左右両方に1つ以上の項目']);
+    }
+  }, [canComplete, setCompleted]);
 
   /**
    * ラベル更新
@@ -90,12 +130,14 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
       }
       forceUpdate({});
 
+      // Reactive Port出力（後方互換性のためonUpdateも呼ぶ）
+      emitAllPorts();
       if (onUpdate) {
         const result = controllerRef.current.getResult(spec.id);
         onUpdate(spec.id, result.data);
       }
     },
-    [newLeftItem, newRightItem, onUpdate, spec.id]
+    [newLeftItem, newRightItem, onUpdate, spec.id, emitAllPorts]
   );
 
   /**
@@ -106,12 +148,14 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
       controllerRef.current.setItemWeight(itemId, weight);
       forceUpdate({});
 
+      // Reactive Port出力（後方互換性のためonUpdateも呼ぶ）
+      emitAllPorts();
       if (onUpdate) {
         const result = controllerRef.current.getResult(spec.id);
         onUpdate(spec.id, result.data);
       }
     },
-    [onUpdate, spec.id]
+    [onUpdate, spec.id, emitAllPorts]
   );
 
   /**
@@ -122,12 +166,14 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
       controllerRef.current.removeItem(itemId);
       forceUpdate({});
 
+      // Reactive Port出力（後方互換性のためonUpdateも呼ぶ）
+      emitAllPorts();
       if (onUpdate) {
         const result = controllerRef.current.getResult(spec.id);
         onUpdate(spec.id, result.data);
       }
     },
-    [onUpdate, spec.id]
+    [onUpdate, spec.id, emitAllPorts]
   );
 
   /**
@@ -139,11 +185,13 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
     setNewRightItem('');
     forceUpdate({});
 
+    // Reactive Port出力（後方互換性のためonUpdateも呼ぶ）
+    emitAllPorts();
     if (onUpdate) {
       const result = controllerRef.current.getResult(spec.id);
       onUpdate(spec.id, result.data);
     }
-  }, [onUpdate, spec.id]);
+  }, [onUpdate, spec.id, emitAllPorts]);
 
   /**
    * 完了
@@ -168,8 +216,6 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
       delete (window as any)[`widget_${spec.id}_getResult`];
     };
   }, [spec.id, state]);
-
-  const canComplete = leftItems.length > 0 && rightItems.length > 0;
 
   return (
     <div className={styles.container} role="region" aria-label="トレードオフ天秤" data-testid="tradeoff-container">

@@ -4,6 +4,10 @@
  *
  * Phase 4 - DSL v3 - Widget実装
  * ノード間の依存関係を可視化・編集するWidget
+ *
+ * Reactive Port対応 (Phase 4 Task 2.2):
+ * - outputs: nodes (object[]), edges (object[]), critical_path (string[]), has_cycle (boolean)
+ * - reserved: _completed, _error
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
@@ -17,6 +21,7 @@ import {
   type DependencyNode,
   type DependencyEdge,
 } from './DependencyMappingController';
+import { useReactivePorts } from '../../../../hooks/useReactivePorts';
 import styles from './DependencyMapping.module.css';
 
 /**
@@ -26,7 +31,17 @@ export const DependencyMapping: React.FC<BaseWidgetProps> = ({
   spec,
   onComplete,
   onUpdate,
+  onPortChange,
+  getPortValue,
+  initialPortValues,
 }) => {
+  // Reactive Ports
+  const { emitPort, setCompleted, setError } = useReactivePorts({
+    widgetId: spec.id,
+    onPortChange,
+    getPortValue,
+    initialPortValues,
+  });
   const [, forceUpdate] = useState({});
   const [isAddingEdge, setIsAddingEdge] = useState(false);
   const [edgeSourceId, setEdgeSourceId] = useState<string | null>(null);
@@ -52,6 +67,26 @@ export const DependencyMapping: React.FC<BaseWidgetProps> = ({
   const state = controllerRef.current.getState();
   const criticalPath = controllerRef.current.getCriticalPath();
   const cycle = controllerRef.current.detectCycle();
+  const canComplete = state.edges.length > 0;
+
+  /**
+   * 全出力Portに値を発行
+   */
+  const emitAllPorts = useCallback(() => {
+    emitPort('nodes', state.nodes);
+    emitPort('edges', state.edges);
+    emitPort('critical_path', criticalPath);
+    emitPort('has_cycle', cycle !== null);
+  }, [emitPort, state.nodes, state.edges, criticalPath, cycle]);
+
+  // canComplete状態の変更を検知してsetCompleted発行
+  useEffect(() => {
+    if (canComplete) {
+      setCompleted(true);
+    } else {
+      setCompleted(false, ['1つ以上の接続']);
+    }
+  }, [canComplete, setCompleted]);
 
   /**
    * ノードのドラッグ開始
@@ -95,12 +130,14 @@ export const DependencyMapping: React.FC<BaseWidgetProps> = ({
   const handleMouseUp = useCallback(() => {
     if (draggingNodeId) {
       setDraggingNodeId(null);
+      // Reactive Port出力（後方互換性のためonUpdateも呼ぶ）
+      emitAllPorts();
       if (onUpdate) {
         const result = controllerRef.current.getResult(spec.id);
         onUpdate(spec.id, result.data);
       }
     }
-  }, [draggingNodeId, onUpdate, spec.id]);
+  }, [draggingNodeId, onUpdate, spec.id, emitAllPorts]);
 
   /**
    * ノードクリック
@@ -115,6 +152,8 @@ export const DependencyMapping: React.FC<BaseWidgetProps> = ({
           try {
             controllerRef.current.addEdge(edgeSourceId, nodeId, currentEdgeType);
             forceUpdate({});
+            // Reactive Port出力（後方互換性のためonUpdateも呼ぶ）
+            emitAllPorts();
             if (onUpdate) {
               const result = controllerRef.current.getResult(spec.id);
               onUpdate(spec.id, result.data);
@@ -132,7 +171,7 @@ export const DependencyMapping: React.FC<BaseWidgetProps> = ({
         forceUpdate({});
       }
     },
-    [isAddingEdge, edgeSourceId, currentEdgeType, state.selectedNodeId, onUpdate, spec.id]
+    [isAddingEdge, edgeSourceId, currentEdgeType, state.selectedNodeId, onUpdate, spec.id, emitAllPorts]
   );
 
   /**
@@ -143,13 +182,15 @@ export const DependencyMapping: React.FC<BaseWidgetProps> = ({
       if (!isAddingEdge) {
         controllerRef.current.removeEdge(edgeId);
         forceUpdate({});
+        // Reactive Port出力（後方互換性のためonUpdateも呼ぶ）
+        emitAllPorts();
         if (onUpdate) {
           const result = controllerRef.current.getResult(spec.id);
           onUpdate(spec.id, result.data);
         }
       }
     },
-    [isAddingEdge, onUpdate, spec.id]
+    [isAddingEdge, onUpdate, spec.id, emitAllPorts]
   );
 
   /**
@@ -166,11 +207,13 @@ export const DependencyMapping: React.FC<BaseWidgetProps> = ({
       y,
     });
     forceUpdate({});
+    // Reactive Port出力（後方互換性のためonUpdateも呼ぶ）
+    emitAllPorts();
     if (onUpdate) {
       const result = controllerRef.current.getResult(spec.id);
       onUpdate(spec.id, result.data);
     }
-  }, [state.nodes.length, onUpdate, spec.id]);
+  }, [state.nodes.length, onUpdate, spec.id, emitAllPorts]);
 
   /**
    * ノード削除
@@ -179,12 +222,14 @@ export const DependencyMapping: React.FC<BaseWidgetProps> = ({
     if (state.selectedNodeId) {
       controllerRef.current.removeNode(state.selectedNodeId);
       forceUpdate({});
+      // Reactive Port出力（後方互換性のためonUpdateも呼ぶ）
+      emitAllPorts();
       if (onUpdate) {
         const result = controllerRef.current.getResult(spec.id);
         onUpdate(spec.id, result.data);
       }
     }
-  }, [state.selectedNodeId, onUpdate, spec.id]);
+  }, [state.selectedNodeId, onUpdate, spec.id, emitAllPorts]);
 
   /**
    * リセット
@@ -194,11 +239,13 @@ export const DependencyMapping: React.FC<BaseWidgetProps> = ({
     setIsAddingEdge(false);
     setEdgeSourceId(null);
     forceUpdate({});
+    // Reactive Port出力（後方互換性のためonUpdateも呼ぶ）
+    emitAllPorts();
     if (onUpdate) {
       const result = controllerRef.current.getResult(spec.id);
       onUpdate(spec.id, result.data);
     }
-  }, [onUpdate, spec.id]);
+  }, [onUpdate, spec.id, emitAllPorts]);
 
   /**
    * 完了

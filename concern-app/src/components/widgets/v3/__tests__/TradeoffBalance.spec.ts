@@ -25,13 +25,8 @@ test.describe('TradeoffBalance Widget', () => {
         await leftAddBtn.click();
 
         // Verify left item added
-        // Find by text first
-        const leftItemText = page.getByText('Left Item');
-        await expect(leftItemText).toBeVisible();
-
-        // Get parent container
-        // We can use xpath or just filter again with more confidence
-        const leftItemLocator = page.getByTestId(/^tradeoff-left-item-/).filter({ hasText: 'Left Item' });
+        // Use specific regex to match only the item container, not the header
+        const leftItemLocator = page.getByTestId(/^tradeoff-left-item-balance_item_\d+$/).filter({ hasText: 'Left Item' });
         await expect(leftItemLocator).toBeVisible();
 
         const leftItemTestId = await leftItemLocator.getAttribute('data-testid');
@@ -50,7 +45,7 @@ test.describe('TradeoffBalance Widget', () => {
         await rightAddBtn.click();
 
         // Verify right item added
-        const rightItemLocator = page.getByTestId(/^tradeoff-right-item-/).filter({ hasText: 'Right Item' });
+        const rightItemLocator = page.getByTestId(/^tradeoff-right-item-balance_item_\d+$/).filter({ hasText: 'Right Item' });
         await expect(rightItemLocator).toBeVisible();
 
         // Verify balance score exists

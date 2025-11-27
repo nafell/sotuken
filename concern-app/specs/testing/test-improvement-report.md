@@ -1,7 +1,7 @@
 # テスト改善作業報告書
 
 **作成日**: 2025-11-28
-**更新日**: 2025-11-28
+**更新日**: 2025-11-28 (Phase 3完了)
 **対象ブランチ**: feat/docs-restructure-phase5
 
 ---
@@ -172,50 +172,78 @@ src/components/widgets/v3/
 
 ---
 
+## Phase 3: 統合テスト修正 (完了)
+
+### 問題
+
+統合テスト実行時に `document is not defined` エラーが発生。
+
+### 原因調査
+
+- **誤った診断**: Vitestの`environment`設定が不足していると思われた
+- **実際の原因**: `bun test`（Bunの組み込みテストランナー）を使用していたため、`vitest.config.ts`の設定が適用されていなかった
+
+### 解決方法
+
+1. **正しいコマンド使用**: `bun test`ではなく`bun run test`を使用（Vitestを実行）
+2. **テストアサーション修正**: `BrainstormCards`のWidgetResultテストでデータパスが間違っていた
+
+### 修正内容
+
+**ファイル**: `integration.test.tsx:267`
+
+```typescript
+// Before
+expect(result.data.text?.items).toHaveLength(1);
+
+// After
+expect(result.data.text?.structured?.items).toHaveLength(1);
+```
+
+### テスト実行結果
+
+```
+27 pass / 0 fail
+実行時間: 335ms
+```
+
+---
+
 ## 今後の作業予定
-
-### 優先度: 高
-
-1. **統合テストの修正**
-   - `src/components/widgets/v3/__tests__/integration.test.tsx`
-   - DOM環境 (`document is not defined`) エラーの解消
-   - Vitest設定の`environment: 'jsdom'` 追加が必要
 
 ### 優先度: 中
 
-2. **Full-flow E2Eテスト作成**
+1. **Full-flow E2Eテスト作成**
    - Capture → Plan → Breakdown フローのE2Eテスト
    - Mock版とReal Server版の両方を作成
 
-3. **ReactiveBindingEngineテストの拡充**
+2. **ReactiveBindingEngineテストの拡充**
    - 現在4ファイル存在、追加テストケースの検討
 
 ### 優先度: 低
 
-4. **サーバーテストの整理**
+3. **サーバーテストの整理**
    - 18ファイル存在、カバレッジ確認
 
 ---
 
 ## テスト実行コマンド
 
-```bash
-# Widget Controllerテストのみ実行
-cd concern-app
-bun test src/components/widgets/v3/BrainstormCards/__tests__/BrainstormCardsController.test.ts \
-         src/components/widgets/v3/CardSorting/__tests__/CardSortingController.test.ts \
-         src/components/widgets/v3/DependencyMapping/__tests__/DependencyMappingController.test.ts \
-         src/components/widgets/v3/EmotionPalette/__tests__/EmotionPaletteController.test.ts \
-         src/components/widgets/v3/MatrixPlacement/__tests__/MatrixPlacementController.test.ts \
-         src/components/widgets/v3/MindMap/__tests__/MindMapController.test.ts \
-         src/components/widgets/v3/PrioritySliderGrid/__tests__/PrioritySliderGridController.test.ts \
-         src/components/widgets/v3/QuestionCardChain/__tests__/QuestionCardChainController.test.ts \
-         src/components/widgets/v3/StructuredSummary/__tests__/StructuredSummaryController.test.ts \
-         src/components/widgets/v3/SwotAnalysis/__tests__/SwotAnalysisController.test.ts \
-         src/components/widgets/v3/TimelineSlider/__tests__/TimelineSliderController.test.ts \
-         src/components/widgets/v3/TradeoffBalance/__tests__/TradeoffBalanceController.test.ts
+**重要**: `bun test`ではなく`bun run test`を使用すること（Vitestを実行するため）
 
-# レガシーテスト含めて実行
+```bash
+cd concern-app
+
+# Widget Controllerテストのみ実行
+bun run test src/components/widgets/v3/*/__tests__/*Controller.test.ts
+
+# 統合テスト実行
+bun run test src/components/widgets/v3/__tests__/integration.test.tsx
+
+# 全テスト実行
+bun run test
+
+# レガシーテスト含めて実行（別のテストランナー）
 node tests/run_all_tests.js --include-legacy
 ```
 

@@ -102,9 +102,10 @@ export class ApiService {
   private anonymousUserId: string;
 
   private constructor() {
-    this.baseUrl = 'http://localhost:3000/v1';
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    this.baseUrl = `${apiBaseUrl}/v1`;
     this.anonymousUserId = this.generateAnonymousUserId();
-    
+
     console.log(`🔧 ApiService初期化完了 - UserID: ${this.anonymousUserId}`);
   }
 
@@ -325,7 +326,8 @@ export class ApiService {
    */
   async healthCheck(): Promise<{status: string; timestamp: string}> {
     try {
-      const response = await fetch('http://localhost:3000/health', {
+      const healthUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const response = await fetch(`${healthUrl}/health`, {
         method: 'GET'
       });
 

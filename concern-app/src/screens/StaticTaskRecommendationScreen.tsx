@@ -11,6 +11,7 @@ import { useLocation } from 'react-router-dom';
 import { TaskService } from '../services/TaskService';
 import { eventLogger } from '../services/EventLogger';
 import { db } from '../services/database/localDB';
+import { ContextService } from '../services/context/ContextService';
 import { ActionReportModal } from '../components/ActionReportModal';
 import { ClarityFeedbackModal } from '../components/ClarityFeedbackModal';
 import { StaticTaskCard } from '../components/StaticTaskCard';
@@ -40,32 +41,54 @@ export const StaticTaskRecommendationScreen: React.FC<StaticTaskRecommendationSc
   const locationState = routeLocation.state as LocationState;
   
   const userId = propUserId || localStorage.getItem('anonymousUserId') || '';
-  
+
   // State管理
   const [location, setLocation] = useState<'home' | 'work' | 'transit' | 'other'>('home');
   const [timeOfDay, setTimeOfDay] = useState<'morning' | 'afternoon' | 'evening' | 'night'>('morning');
   const [availableTime, setAvailableTime] = useState<number>(30);
-  
+  const [mood, setMood] = useState<'happy' | 'neutral' | 'stressed' | 'tired'>('neutral');
+  const [energyLevel, setEnergyLevel] = useState<number>(5);
+
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [recommendation, setRecommendation] = useState<RecommendationResult | null>(null);
   const [recommendationShownAt, setRecommendationShownAt] = useState<Date | null>(null);
-  
+
   // Modal state
   const [showActionModal, setShowActionModal] = useState<boolean>(false);
   const [showClarityModal, setShowClarityModal] = useState<boolean>(false);
   const [currentReportId, setCurrentReportId] = useState<string>('');
   const [actionElapsedSec, setActionElapsedSec] = useState<number>(0);
-  
+
   const [showGeneratedTasksMessage, setShowGeneratedTasksMessage] = useState<boolean>(false);
 
-  // 初期化：時間帯を自動設定
+  // 初期化：ContextServiceからfactorsを自動取得
   useEffect(() => {
-    const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) setTimeOfDay('morning');
-    else if (hour >= 12 && hour < 17) setTimeOfDay('afternoon');
-    else if (hour >= 17 && hour < 21) setTimeOfDay('evening');
-    else setTimeOfDay('night');
+    const initializeFactors = async () => {
+      const contextService = new ContextService();
+      const factors = await contextService.collectCurrentFactors();
+
+      console.log('[StaticTaskRecommendationScreen] 自動取得したfactors:', factors);
+
+      // factorsから値を設定
+      if (factors.time_of_day?.value) {
+        setTimeOfDay(factors.time_of_day.value as any);
+      }
+      if (factors.location_category?.value) {
+        setLocation(factors.location_category.value as any);
+      }
+      if (factors.available_time_min?.value) {
+        setAvailableTime(factors.available_time_min.value as number);
+      }
+      if (factors.mood?.value) {
+        setMood(factors.mood.value as any);
+      }
+      if (factors.energy_level?.value) {
+        setEnergyLevel(factors.energy_level.value as number);
+      }
+    };
+
+    initializeFactors();
   }, []);
   
   // 思考整理フローから遷移した場合の処理
@@ -110,21 +133,25 @@ export const StaticTaskRecommendationScreen: React.FC<StaticTaskRecommendationSc
         },
         body: JSON.stringify({
           tasks: tasks.map(t => ({
-            taskId: t.taskId,
+            id: t.taskId,
             title: t.title,
-            importance: t.importance,
-            urgency: t.urgency,
-            dueInHours: t.dueInHours,
-            estimateMin: t.estimateMin,
-            hasIndependentMicroStep: t.hasIndependentMicroStep,
-            lastTouchAt: t.lastTouchAt?.toISOString(),
-            preferredTimeOfDay: t.preferredTimeOfDay,
-            preferredLocation: t.preferredLocation,
+            estimate: t.estimateMin || 30,
+            estimate_min_chunk: Math.min(10, t.estimateMin || 10),
+            importance: t.importance / 5.0,  // 1-5 → 0-1に正規化
+            due_in_hours: t.dueInHours || 999,
+            days_since_last_touch: t.lastTouchAt
+              ? Math.floor((Date.now() - t.lastTouchAt.getTime()) / (1000 * 60 * 60 * 24))
+              : 0,
+            has_independent_micro_step: t.hasIndependentMicroStep || false,
+            preferred_time: t.preferredTimeOfDay,
+            preferred_location: t.preferredLocation,
           })),
           factors: {
             time_of_day: { value: timeOfDay },
             location_category: { value: location },
             available_time_min: { value: availableTime },
+            mood: { value: mood },
+            energy_level: { value: energyLevel },
           },
         }),
       });
@@ -134,15 +161,16 @@ export const StaticTaskRecommendationScreen: React.FC<StaticTaskRecommendationSc
       }
 
       const result = await response.json();
-      
-      const recommendedTaskId = result.recommendedTaskId || result.topTask?.taskId;
+
+      // APIレスポンス形式: { recommendation: { taskId, variant, saliency, score } }
+      const recommendedTaskId = result.recommendation?.taskId || result.recommendedTaskId || result.topTask?.taskId;
       const recommendedTask = tasks.find(t => t.taskId === recommendedTaskId) || tasks[0];
-      
+
       const recResult = {
         task: recommendedTask,
-        variant: result.uiVariant || result.topTask?.variant || 'task_card',
-        saliency: result.saliency || result.topTask?.saliency || 2,
-        score: result.topScore || result.topTask?.score || 0,
+        variant: result.recommendation?.variant || result.uiVariant || result.topTask?.variant || 'task_card',
+        saliency: result.recommendation?.saliency ?? result.saliency ?? result.topTask?.saliency ?? 2,
+        score: result.recommendation?.score ?? result.topScore ?? result.topTask?.score ?? 0,
         generationId: result.generationId,
       };
       
@@ -295,61 +323,43 @@ export const StaticTaskRecommendationScreen: React.FC<StaticTaskRecommendationSc
         </div>
       )}
       
-      {/* Factors入力欄 */}
-      <div className="factors-input" style={{ marginBottom: '20px', padding: '15px', border: '1px solid #ccc', borderRadius: '8px' }}>
-        <h2>現在の状況</h2>
-        
-        <div style={{ marginBottom: '10px' }}>
-          <label>
-            場所：
-            <select value={location} onChange={(e) => setLocation(e.target.value as any)} style={{ marginLeft: '10px', padding: '5px' }}>
-              <option value="home">自宅</option>
-              <option value="work">職場</option>
-              <option value="transit">移動中</option>
-              <option value="other">その他</option>
-            </select>
-          </label>
+      {/* 自動取得されたFactors情報（参考表示のみ） */}
+      <div className="factors-display" style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
+        <h2 style={{ fontSize: '16px', marginBottom: '10px', color: '#495057' }}>📍 自動取得された現在の状況</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px', fontSize: '14px', color: '#6c757d' }}>
+          <div>
+            <strong>場所:</strong> {location === 'home' ? '自宅' : location === 'work' ? '職場' : location === 'transit' ? '移動中' : 'その他'}
+          </div>
+          <div>
+            <strong>時間帯:</strong> {timeOfDay === 'morning' ? '朝' : timeOfDay === 'afternoon' ? '午後' : timeOfDay === 'evening' ? '夕方' : '夜'}
+          </div>
+          <div>
+            <strong>利用可能時間:</strong> {availableTime}分
+          </div>
+          <div>
+            <strong>気分:</strong> {mood === 'happy' ? '良い' : mood === 'neutral' ? '普通' : mood === 'stressed' ? 'ストレス' : '疲れ'}
+          </div>
+          <div>
+            <strong>エネルギー:</strong> {energyLevel}/10
+          </div>
         </div>
-        
-        <div style={{ marginBottom: '10px' }}>
-          <label>
-            時間帯：
-            <select value={timeOfDay} onChange={(e) => setTimeOfDay(e.target.value as any)} style={{ marginLeft: '10px', padding: '5px' }}>
-              <option value="morning">朝</option>
-              <option value="afternoon">午後</option>
-              <option value="evening">夕方</option>
-              <option value="night">夜</option>
-            </select>
-          </label>
-        </div>
-        
-        <div style={{ marginBottom: '10px' }}>
-          <label>
-            利用可能時間（分）：
-            <input 
-              type="number" 
-              value={availableTime} 
-              onChange={(e) => setAvailableTime(Number(e.target.value))}
-              min={5}
-              max={180}
-              style={{ marginLeft: '10px', padding: '5px', width: '80px' }}
-            />
-          </label>
-        </div>
-        
-        <button 
+
+        <button
           onClick={fetchRecommendation}
           disabled={loading}
-          style={{ 
-            padding: '10px 20px', 
-            backgroundColor: loading ? '#ccc' : '#007bff', 
-            color: 'white', 
-            border: 'none', 
+          style={{
+            marginTop: '15px',
+            padding: '10px 20px',
+            backgroundColor: loading ? '#ccc' : '#007bff',
+            color: 'white',
+            border: 'none',
             borderRadius: '5px',
-            cursor: loading ? 'not-allowed' : 'pointer'
+            cursor: loading ? 'not-allowed' : 'pointer',
+            fontSize: '16px',
+            fontWeight: 'bold'
           }}
         >
-          {loading ? '取得中...' : 'タスクを推奨'}
+          {loading ? '推奨中...' : 'タスクを推奨'}
         </button>
       </div>
 

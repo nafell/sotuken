@@ -1,7 +1,10 @@
 /**
  * ConcernFlowStateManager
  *
+ *
  * Phase 2 Step 3: 関心事フロー全体のstate管理
+ * Phase 3 v2.1: FormData保存とリアルタイム永続化対応
+ *
  * Phase 3 v2.1: FormData保存とリアルタイム永続化対応
  *
  * 責務:
@@ -13,6 +16,7 @@
 
 import type { Task } from '../types/database';
 import type { FormData } from '../../../server/src/types/UISpecV2';
+import type { BottleneckAnalysis } from '../types/BottleneckTypes';
 
 /**
  * ConcernFlowState
@@ -32,6 +36,9 @@ export interface ConcernFlowState {
     breakdown?: FormData;
   };
 
+  // Phase 4: ボトルネック診断結果（Capture → Plan連携用）
+  bottleneckAnalysis?: BottleneckAnalysis;
+
   // 各ステージの結果（後方互換性のため保持）
   captureResult?: {
     clarifiedConcern: string;
@@ -39,11 +46,13 @@ export interface ConcernFlowState {
     timestamp: string;
   };
 
+
   planResult?: {
     approach: string;
     steps: string[];
     timestamp: string;
   };
+
 
   breakdownResult?: {
     tasks: Array<{
@@ -56,8 +65,10 @@ export interface ConcernFlowState {
     timestamp: string;
   };
 
+
   // 生成されたタスク（IndexedDBに保存後）
   generatedTasks?: Task[];
+
 
   // フローのメタ情報
   currentStage?: 'capture' | 'plan' | 'breakdown' | 'tasks';
@@ -321,6 +332,33 @@ export class ConcernFlowStateManager {
     }
 
     return state.stages[stage] || null;
+  }
+
+  /**
+   * Phase 4: ボトルネック診断結果を保存
+   */
+  saveBottleneckAnalysis(analysis: BottleneckAnalysis): void {
+    const state = this.loadState();
+
+    if (!state) {
+      throw new Error('No flow state found. Call startNewFlow() first.');
+    }
+
+    this.saveState({
+      ...state,
+      bottleneckAnalysis: analysis,
+      updatedAt: new Date().toISOString()
+    });
+
+    console.log('[ConcernFlowStateManager] Bottleneck analysis saved:', analysis);
+  }
+
+  /**
+   * Phase 4: ボトルネック診断結果を読み込み
+   */
+  loadBottleneckAnalysis(): BottleneckAnalysis | null {
+    const state = this.loadState();
+    return state?.bottleneckAnalysis || null;
   }
 
   /**

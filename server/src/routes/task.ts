@@ -5,7 +5,7 @@
 
 import { Hono } from "hono";
 import { ScoreRankingService } from "../services/ScoreRankingService";
-import type { RankingRequest, RankingResponse } from "../types/TaskRecommendationDSL";
+import type { RankingRequest, InternalRankingRequest, RankingResponse } from "../types/TaskRecommendationDSL";
 
 const taskRoutes = new Hono();
 const scoreRankingService = new ScoreRankingService();
@@ -18,7 +18,7 @@ taskRoutes.post("/rank", async (c) => {
   try {
     // リクエストボディを取得
     const body = await c.req.json() as RankingRequest;
-    
+
     // 入力バリデーション
     if (!body.tasks || body.tasks.length === 0) {
       return c.json({
@@ -26,23 +26,33 @@ taskRoutes.post("/rank", async (c) => {
         error: "No tasks provided"
       }, 400);
     }
-    
-    if (typeof body.available_time !== "number" || body.available_time < 0) {
-      return c.json({
-        success: false,
-        error: "Invalid available_time"
-      }, 400);
-    }
-    
+
     if (!body.factors) {
       return c.json({
         success: false,
         error: "Missing factors"
       }, 400);
     }
-    
+
+    if (!body.factors.available_time_min || typeof body.factors.available_time_min.value !== "number") {
+      return c.json({
+        success: false,
+        error: "Missing or invalid factors.available_time_min"
+      }, 400);
+    }
+
+    // 内部処理用に変換
+    const internalRequest: InternalRankingRequest = {
+      available_time: body.factors.available_time_min.value,
+      factors: {
+        time_of_day: body.factors.time_of_day.value,
+        location_category: body.factors.location_category.value,
+      },
+      tasks: body.tasks
+    };
+
     // タスク推奨DSLを生成
-    const recommendationDSL = await scoreRankingService.selectAndRender(body);
+    const recommendationDSL = await scoreRankingService.selectAndRender(internalRequest);
     
     // レスポンスを構築
     const response: RankingResponse = {

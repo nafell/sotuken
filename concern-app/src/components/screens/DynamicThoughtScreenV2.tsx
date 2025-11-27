@@ -22,6 +22,10 @@ import { FallbackUI } from './FallbackUI';
 import { ProgressHeader } from '../meta/ProgressHeader';
 import { NavigationFooter } from '../meta/NavigationFooter';
 import type { UISpecV2, UIStage, FormData } from '../../../../server/src/types/UISpecV2';
+// Phase 4: Diagnostic imports
+import { ConcernAnalyzer } from '../../services/ConcernAnalyzer';
+import { DiagnosticQuestionService } from '../../services/DiagnosticQuestionService';
+import type { DiagnosticQuestion } from '../../types/BottleneckTypes'; // BottleneckAnalysis used in handleNext
 
 interface LocationState {
   concernText: string;
@@ -52,6 +56,13 @@ export const DynamicThoughtScreenV2: React.FC<DynamicThoughtScreenV2Props> = ({ 
   const [formData, setFormData] = useState<FormData>({});
   const [showFallback, setShowFallback] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Phase 4: Diagnostic Stage State
+  const [isStage2Active, setIsStage2Active] = useState(false);
+  const [diagnosticQuestions, setDiagnosticQuestions] = useState<DiagnosticQuestion[]>([]);
+  const [diagnosticResponses, setDiagnosticResponses] = useState<Record<string, any>>({});
+  const [showDiagnosticUI, setShowDiagnosticUI] = useState(false);
+  const [skipDiagnostic, setSkipDiagnostic] = useState(false);
 
   // ConcernFlowStateManagerから関心事情報を取得
   const flowState = flowStateManager.loadState();
@@ -206,6 +217,76 @@ export const DynamicThoughtScreenV2: React.FC<DynamicThoughtScreenV2Props> = ({ 
   };
 
   /**
+   * Phase 4: Stage 1完了時の処理
+   * Captureステージのみ、診断質問への遷移を判定
+   */
+  const handleStage1Complete = useCallback(async () => {
+    console.log('=== DEBUG: handleStage1Complete called ===');
+    console.log('Current stage:', stage);
+
+    // Capture以外は既存フロー
+    if (stage !== 'capture') {
+      console.log('Not capture stage, skipping diagnostic');
+      return false; // 診断不要
+    }
+
+    // concernTextを取得
+    const concernInput = (formData['concern_text'] as string) || concernText;
+    console.log('Concern input:', concernInput);
+    console.log('Input length:', concernInput?.length);
+
+    if (!concernInput || concernInput.length < 10) {
+      console.log('⚠️ Concern text too short, skipping diagnostic');
+      return false;
+    }
+
+    // ConcernAnalyzerで分析
+    const analysis = ConcernAnalyzer.analyzeConcernDepth(concernInput);
+    const inferredType = ConcernAnalyzer.inferBottleneckType(concernInput);
+
+    console.log('📊 Concern Analysis:', analysis);
+    console.log('🔍 Inferred Bottleneck:', inferredType);
+    console.log('suggestedLevel:', analysis.suggestedLevel);
+    console.log('skipDiagnostic:', skipDiagnostic);
+
+    // TODO: 研究用に一時的にauto-skipを無効化（常に診断を表示）
+    // 本来のロジック: analysis.suggestedLevel === 'minimal' でスキップ
+    // ユーザーによる手動スキップは引き続き有効
+    if (skipDiagnostic) {
+      console.log('⏭️ User manually skipped diagnostic');
+      return false;
+    }
+
+    // 研究用: minimalレベルでも診断を表示（詳細なデータ収集のため）
+    console.log('🔬 Research mode: Showing diagnostic regardless of level');
+
+    // 診断質問を選択
+    const questions = DiagnosticQuestionService.selectQuestions(
+      analysis.suggestedLevel,
+      inferredType
+    );
+
+    if (questions.length === 0) {
+      console.log('⚠️ No diagnostic questions available');
+      return false;
+    }
+
+    setDiagnosticQuestions(questions);
+    setDiagnosticResponses({});
+    setIsStage2Active(true);
+    setShowDiagnosticUI(true);
+
+    // イベント記録
+    await apiService.sendEvent('diagnostic_stage2_start', {
+      suggestedLevel: analysis.suggestedLevel,
+      inferredType,
+      questionCount: questions.length
+    }, sessionManager.getSessionId() || undefined);
+
+    return true; // 診断実行
+  }, [stage, formData, concernText, skipDiagnostic]);
+
+  /**
    * データ変更ハンドラー（debounced自動保存付き）
    */
   const handleFieldChange = useCallback((fieldId: string, value: any) => {
@@ -300,27 +381,126 @@ export const DynamicThoughtScreenV2: React.FC<DynamicThoughtScreenV2Props> = ({ 
   }, [stage, formData]);
 
   /**
-   * 次へボタン
+   * 次へボタン（Phase 4: 2段階対応）
    */
   const handleNext = useCallback(async () => {
+    // --- Step 1: バリデーション ---
     if (!isFormValid) {
       alert('⚠️ 必須項目を入力してください');
       return;
     }
 
-    // フォームデータを保存
+    // --- Step 2: Stage 2診断UI中の場合 ---
+    if (isStage2Active && showDiagnosticUI) {
+      // 診断回答の完了チェック
+      const allAnswered = diagnosticQuestions.every(q =>
+        diagnosticResponses[q.id] !== undefined &&
+        diagnosticResponses[q.id] !== ''
+      );
+
+      if (!allAnswered) {
+        alert('⚠️ すべての診断質問にお答えください');
+        return;
+      }
+
+      // 診断結果を分析
+      const bottleneckAnalysis = DiagnosticQuestionService.analyzeResponses(
+        diagnosticQuestions,
+        diagnosticResponses
+      );
+
+      console.log('📊 Bottleneck Analysis Result:', bottleneckAnalysis);
+
+      // flowStateManagerに保存
+      flowStateManager.saveBottleneckAnalysis(bottleneckAnalysis);
+
+      // イベント記録
+      await apiService.sendEvent('diagnostic_stage2_complete', {
+        primaryType: bottleneckAnalysis.primaryType,
+        confidence: bottleneckAnalysis.confidence,
+        questionCount: diagnosticQuestions.length
+      }, sessionManager.getSessionId() || undefined);
+
+      // Stage 2完了、診断UIを隠す
+      setShowDiagnosticUI(false);
+      setIsStage2Active(false);
+
+      // ここで次のステージへ遷移（既存フローと同じ）
+      flowStateManager.saveStageFormData(stage, formData);
+
+      const nextPath = STAGE_NAVIGATION[stage].next;
+      navigate(nextPath, { state: { concernText, ...formData } });
+
+      return;
+    }
+
+    // --- Step 3: Stage 1完了時（Captureステージのみ）---
+    if (stage === 'capture' && !isStage2Active) {
+      const shouldShowDiagnostic = await handleStage1Complete();
+
+      if (shouldShowDiagnostic) {
+        // Stage 2へ遷移（画面内で診断UI表示）
+        console.log('🔄 Transitioning to Stage 2 (Diagnostic)');
+        // formDataは保存するが、まだ次の画面へは進まない
+        flowStateManager.saveStageFormData(stage, formData);
+        return; // ここで止まる
+      }
+
+      // 診断不要の場合は既存フローへ
+      console.log('⏭️ Skipping diagnostic, proceeding to Plan');
+    }
+
+    // --- Step 4: 既存の次へ処理（Plan/Breakdownステージ or 診断スキップ時）---
     flowStateManager.saveStageFormData(stage, formData);
 
-    // イベント記録
     await apiService.sendEvent('stage_completed', {
       stage,
       formData
     }, sessionManager.getSessionId() || undefined);
 
-    // 次の画面へ遷移
     const nextPath = STAGE_NAVIGATION[stage].next;
     navigate(nextPath, { state: { concernText, ...formData } });
-  }, [stage, formData, concernText, navigate, isFormValid]);
+
+  }, [
+    stage,
+    formData,
+    concernText,
+    navigate,
+    isFormValid,
+    isStage2Active,
+    showDiagnosticUI,
+    diagnosticQuestions,
+    diagnosticResponses,
+    handleStage1Complete
+  ]);
+
+  /**
+   * Phase 4: 診断質問への回答を保存
+   */
+  const handleDiagnosticResponse = useCallback((questionId: string, value: any) => {
+    setDiagnosticResponses(prev => ({
+      ...prev,
+      [questionId]: value
+    }));
+
+    console.log(`📝 Diagnostic response: ${questionId} = ${value}`);
+  }, []);
+
+  /**
+   * Phase 4: 診断をスキップ
+   */
+  const handleSkipDiagnostic = useCallback(() => {
+    setSkipDiagnostic(true);
+    setShowDiagnosticUI(false);
+    setIsStage2Active(false);
+
+    console.log('⏭️ User skipped diagnostic');
+
+    // スキップイベント記録
+    apiService.sendEvent('diagnostic_stage2_skipped', {
+      stage
+    }, sessionManager.getSessionId() || undefined);
+  }, [stage]);
 
   /**
    * 補助アクション（ステージ内機能）
@@ -365,6 +545,116 @@ export const DynamicThoughtScreenV2: React.FC<DynamicThoughtScreenV2Props> = ({ 
         console.warn(`Unknown action type: ${action.type}`);
     }
   }, [uiSpec, isFormValid]);
+
+  /**
+   * Phase 4: Stage 2診断UIコンポーネント
+   */
+  const renderDiagnosticUI = () => {
+    if (!showDiagnosticUI || diagnosticQuestions.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="max-w-3xl mx-auto mt-8 p-6 bg-blue-50 border-2 border-blue-200 rounded-lg">
+        {/* Header */}
+        <div className="mb-6">
+          <h3 className="text-xl font-bold text-blue-900 mb-2">
+            📋 詳しくお聞きします
+          </h3>
+          <p className="text-sm text-blue-700">
+            より良い解決策を提案するため、いくつか質問にお答えください。
+            （{diagnosticQuestions.length}問）
+          </p>
+        </div>
+
+        {/* Questions */}
+        <div className="space-y-6">
+          {diagnosticQuestions.map((question, index) => (
+            <div key={question.id} className="bg-white p-4 rounded-lg shadow-sm">
+              <label className="block mb-3">
+                <span className="font-semibold text-gray-900">
+                  {index + 1}. {question.question}
+                </span>
+              </label>
+
+              {/* Radio buttons */}
+              {question.type === 'radio' && question.options && (
+                <div className="space-y-2">
+                  {question.options.map(option => (
+                    <label key={option} className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name={question.id}
+                        value={option}
+                        checked={diagnosticResponses[question.id] === option}
+                        onChange={(e) => handleDiagnosticResponse(question.id, e.target.value)}
+                        className="mr-3 w-4 h-4"
+                      />
+                      <span className="text-gray-700">{option}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {/* Select dropdown */}
+              {question.type === 'select' && question.options && (
+                <select
+                  value={diagnosticResponses[question.id] || ''}
+                  onChange={(e) => handleDiagnosticResponse(question.id, e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">選択してください</option>
+                  {question.options.map(option => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              )}
+
+              {/* Scale */}
+              {question.type === 'scale' && question.options && (
+                <div className="flex items-center space-x-4">
+                  {question.options.map(option => (
+                    <label key={option} className="flex flex-col items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name={question.id}
+                        value={option}
+                        checked={diagnosticResponses[question.id] === option}
+                        onChange={(e) => handleDiagnosticResponse(question.id, e.target.value)}
+                        className="mb-1"
+                      />
+                      <span className="text-sm text-gray-600">{option}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {/* Text input */}
+              {question.type === 'text' && (
+                <input
+                  type="text"
+                  value={diagnosticResponses[question.id] || ''}
+                  onChange={(e) => handleDiagnosticResponse(question.id, e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  placeholder="回答を入力してください"
+                />
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Skip button */}
+        <div className="mt-6 text-center">
+          <button
+            onClick={handleSkipDiagnostic}
+            className="text-sm text-blue-600 hover:text-blue-800 underline"
+          >
+            スキップする
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   // ローディング中
   if (isLoading) {
@@ -418,12 +708,18 @@ export const DynamicThoughtScreenV2: React.FC<DynamicThoughtScreenV2Props> = ({ 
       {/* コンテンツ層: 動的UI */}
       <div className="flex-1 py-8 px-4 sm:px-6 lg:px-8 overflow-y-auto">
         <div className="max-w-3xl mx-auto">
-          <UIRendererV2
-            uiSpec={uiSpec}
-            data={formData}
-            onChange={handleFieldChange}
-            onAction={handleAction}
-          />
+          {/* Stage 1: 通常のUISpec */}
+          {!showDiagnosticUI && (
+            <UIRendererV2
+              uiSpec={uiSpec}
+              data={formData}
+              onChange={handleFieldChange}
+              onAction={handleAction}
+            />
+          )}
+
+          {/* Stage 2: 診断UI（Captureステージのみ） */}
+          {stage === 'capture' && renderDiagnosticUI()}
         </div>
       </div>
 

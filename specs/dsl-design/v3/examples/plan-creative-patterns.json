@@ -1,0 +1,374 @@
+{
+  "creative_patterns": [
+    {
+      "pattern_id": "diverge_fear",
+      "pattern_name": "恐れの可視化から始める発散",
+      "bottleneck": "fear_of_decision",
+      "flow": [
+        {
+          "stage": "diverge",
+          "component": "UC05",
+          "name": "感情カラーパレット",
+          "config": {
+            "emotions": ["不安", "恐れ", "期待", "希望", "焦り", "安心"],
+            "intensity_scale": [0, 0.25, 0.5, 0.75, 1.0],
+            "color_mapping": {
+              "不安": "#FFB6C1",
+              "恐れ": "#FF6B6B",
+              "期待": "#98FB98",
+              "希望": "#87CEEB",
+              "焦り": "#FFA500",
+              "安心": "#E6E6FA"
+            },
+            "prompt": "転職に対して感じている感情を選び、その強さを調整してください"
+          }
+        },
+        {
+          "stage": "evaluate",
+          "component": "UC06",
+          "name": "時間軸スライダー",
+          "config": {
+            "timepoints": ["3ヶ月後", "1年後", "3年後", "5年後"],
+            "scenarios": {
+              "current_path": "現職継続",
+              "alternative_path": "転職実行"
+            },
+            "visualization": "parallel_timeline",
+            "prompt": "それぞれの時点で、各選択肢を選んだ場合の自分を想像してください"
+          }
+        },
+        {
+          "stage": "converge",
+          "component": "UC16",
+          "name": "シナリオ分岐ツリー",
+          "config": {
+            "branches": [
+              {
+                "decision": "転職する",
+                "outcomes": ["成功", "期待通り", "期待以下"],
+                "probabilities": "user_estimated"
+              },
+              {
+                "decision": "現職に留まる",
+                "outcomes": ["改善努力", "現状維持", "状況悪化"],
+                "probabilities": "user_estimated"
+              }
+            ],
+            "risk_tolerance_check": true
+          }
+        }
+      ],
+      "expected_insights": [
+        "感情の明確化により、論理的判断の阻害要因を特定",
+        "時間軸での比較により、短期的不安と長期的利益のバランスを認識",
+        "リスクの定量化により、漠然とした不安を具体的な対策可能な課題に変換"
+      ]
+    },
+    {
+      "pattern_id": "untangle_complex",
+      "pattern_name": "複雑問題の分解と優先順位付け",
+      "bottleneck": "entangled_problems",
+      "flow": [
+        {
+          "stage": "diverge",
+          "component": "UC04",
+          "name": "マインドマップ生成",
+          "config": {
+            "center_node": "現在の状況",
+            "auto_branches": ["介護", "仕事", "子育て"],
+            "sub_branch_prompts": {
+              "介護": ["必要な時間", "費用", "代替手段"],
+              "仕事": ["必須業務", "調整可能な部分", "在宅勤務可能性"],
+              "子育て": ["必要なサポート", "優先事項", "外部支援"]
+            },
+            "connection_types": ["depends_on", "conflicts_with", "supports"],
+            "interactive": true
+          }
+        },
+        {
+          "stage": "evaluate",
+          "component": "UC10",
+          "name": "依存関係マッピング",
+          "config": {
+            "elements": "from_mindmap",
+            "relationship_types": [
+              {"type": "時間競合", "color": "red"},
+              {"type": "リソース共有", "color": "yellow"},
+              {"type": "相乗効果", "color": "green"}
+            ],
+            "critical_path_analysis": true,
+            "bottleneck_identification": true
+          }
+        },
+        {
+          "stage": "converge",
+          "component": "UC17",
+          "name": "リソース配分パイ",
+          "config": {
+            "resources": ["時間", "エネルギー", "お金", "サポート"],
+            "current_allocation": "user_input",
+            "ideal_allocation": "user_adjust",
+            "constraints": {
+              "time": "24hours/day",
+              "energy": "100%",
+              "money": "current_income"
+            },
+            "optimization_suggestions": true
+          }
+        }
+      ],
+      "expected_insights": [
+        "問題の全体像と相互関係の可視化",
+        "真のボトルネックとなっている要素の特定",
+        "現実的な制約下での最適配分の発見"
+      ]
+    },
+    {
+      "pattern_id": "explore_unknown",
+      "pattern_name": "未知領域の段階的探索",
+      "bottleneck": "no_starting_point",
+      "flow": [
+        {
+          "stage": "diverge",
+          "component": "UC02",
+          "name": "アナロジー選択UI",
+          "config": {
+            "analogies": [
+              {
+                "metaphor": "登山",
+                "description": "目標は頂上、でもルートは複数ある",
+                "questions": ["どんな頂上を目指したい？", "どんな装備が必要？"]
+              },
+              {
+                "metaphor": "料理",
+                "description": "材料から何を作るか決める",
+                "questions": ["今ある材料は？", "誰に食べてもらいたい？"]
+              },
+              {
+                "metaphor": "旅行計画",
+                "description": "行き先から決めるか、目的から決めるか",
+                "questions": ["何を体験したい？", "誰と行きたい？"]
+              }
+            ],
+            "follow_up": "selected_analogy_specific"
+          }
+        },
+        {
+          "stage": "evaluate",
+          "component": "UC03",
+          "name": "質問カード連鎖",
+          "config": {
+            "initial_questions": [
+              "理想の状態は？",
+              "現状で満足している点は？",
+              "変えたいと思う点は？"
+            ],
+            "adaptive_questions": true,
+            "depth_control": "user_controlled",
+            "skip_option": true,
+            "question_types": ["clarifying", "probing", "hypothetical"]
+          }
+        },
+        {
+          "stage": "converge",
+          "component": "UC08",
+          "name": "問題分解ツリー",
+          "config": {
+            "root": "明確になった課題",
+            "decomposition_method": "why_how_what",
+            "max_depth": 3,
+            "actionable_leaves": true,
+            "priority_assignment": true
+          }
+        }
+      ],
+      "expected_insights": [
+        "類推による思考の枠組み獲得",
+        "段階的な質問による問題の明確化",
+        "行動可能なレベルまでの課題分解"
+      ]
+    },
+    {
+      "pattern_id": "many_options",
+      "pattern_name": "選択肢過多の段階的絞り込み",
+      "bottleneck": "too_many_options",
+      "flow": [
+        {
+          "stage": "diverge",
+          "component": "UC09",
+          "name": "カード仕分けUI",
+          "config": {
+            "categories": [
+              "絶対に選びたい",
+              "できれば選びたい",
+              "どちらでもよい",
+              "避けたい"
+            ],
+            "cards": "user_options",
+            "drag_drop": true,
+            "batch_operations": true,
+            "notes_per_card": true
+          }
+        },
+        {
+          "stage": "evaluate",
+          "component": "UC12",
+          "name": "マトリックス配置",
+          "config": {
+            "axes": {
+              "x": {"label": "実現可能性", "range": [0, 10]},
+              "y": {"label": "望ましさ", "range": [0, 10]}
+            },
+            "quadrants": [
+              {"name": "Quick Win", "action": "すぐ実行"},
+              {"name": "Major Project", "action": "計画的に実行"},
+              {"name": "Fill In", "action": "余裕があれば"},
+              {"name": "Avoid", "action": "選ばない"}
+            ],
+            "items": "from_card_sort",
+            "clustering": true
+          }
+        },
+        {
+          "stage": "converge",
+          "component": "UC15",
+          "name": "二択比較連鎖",
+          "config": {
+            "candidates": "from_matrix_top_quadrant",
+            "comparison_criteria": [
+              "総合的な魅力",
+              "リスクの低さ",
+              "即効性"
+            ],
+            "tournament_style": true,
+            "show_decision_path": true,
+            "allow_reconsideration": true
+          }
+        }
+      ],
+      "expected_insights": [
+        "直感的な第一次スクリーニング",
+        "多角的な評価による優先順位付け",
+        "最終的な一対一比較による決定"
+      ]
+    },
+    {
+      "pattern_id": "perspective_shift",
+      "pattern_name": "視点転換による新たな発見",
+      "bottleneck": "fixed_perspective",
+      "flow": [
+        {
+          "stage": "diverge",
+          "component": "UC07",
+          "name": "ペルソナ視点切替",
+          "config": {
+            "personas": [
+              {
+                "name": "5年後の自分",
+                "prompt": "5年後から今を振り返ったら、どう思う？"
+              },
+              {
+                "name": "尊敬する人",
+                "prompt": "あなたが尊敬する人なら、どうアドバイスする？"
+              },
+              {
+                "name": "親友",
+                "prompt": "親友があなたと同じ状況なら、何と言う？"
+              },
+              {
+                "name": "子供",
+                "prompt": "子供に説明するとしたら、どう話す？"
+              }
+            ],
+            "response_format": "advice_letter",
+            "synthesis_required": true
+          }
+        },
+        {
+          "stage": "evaluate",
+          "component": "UC11",
+          "name": "SWOT分析UI",
+          "config": {
+            "perspectives": "from_personas",
+            "categories": {
+              "S": "強み・チャンス",
+              "W": "弱み・改善点",
+              "O": "機会・可能性",
+              "T": "脅威・リスク"
+            },
+            "cross_analysis": true,
+            "strategy_generation": [
+              "SO戦略（強みで機会を活かす）",
+              "WO戦略（弱みを克服して機会を掴む）",
+              "ST戦略（強みで脅威を回避）",
+              "WT戦略（弱みと脅威を最小化）"
+            ]
+          }
+        },
+        {
+          "stage": "converge",
+          "component": "UC14",
+          "name": "優先度スライダーグリッド",
+          "config": {
+            "criteria": [
+              "自分らしさ",
+              "成長可能性",
+              "安定性",
+              "社会貢献",
+              "経済的報酬"
+            ],
+            "weight_adjustment": "slider",
+            "options": "from_swot_strategies",
+            "real_time_scoring": true,
+            "sensitivity_analysis": true
+          }
+        }
+      ],
+      "expected_insights": [
+        "固定観念からの解放",
+        "多角的な視点による新たな選択肢の発見",
+        "価値観の明確化と優先順位の確立"
+      ]
+    }
+  ],
+  "adaptive_rules": {
+    "low_confidence_fallback": {
+      "condition": "confidence < 0.6",
+      "action": "use_high_versatility_flow",
+      "components": ["UC03", "UC09", "UC12"]
+    },
+    "high_complexity_handling": {
+      "condition": "problem_count > 3",
+      "action": "add_decomposition_stage",
+      "insert_component": "UC08"
+    },
+    "emotional_overload": {
+      "condition": "emotional_intensity > 0.8",
+      "action": "insert_calming_stage",
+      "component": "UC05",
+      "position": "before_evaluation"
+    },
+    "decision_paralysis": {
+      "condition": "no_progress_for_120_seconds",
+      "action": "simplify_current_ui",
+      "strategy": "reduce_options_or_add_guidance"
+    }
+  },
+  "success_metrics": {
+    "engagement": {
+      "time_on_task": "average_per_stage",
+      "interaction_count": "clicks_and_inputs",
+      "backtrack_rate": "stage_revisits / total_stages"
+    },
+    "effectiveness": {
+      "clarity_improvement": "before_after_rating",
+      "decision_confidence": "final_confidence_score",
+      "actionability": "tasks_generated_count"
+    },
+    "satisfaction": {
+      "ui_appropriateness": "user_rating",
+      "cognitive_load": "perceived_difficulty",
+      "overall_helpfulness": "recommendation_score"
+    }
+  }
+}

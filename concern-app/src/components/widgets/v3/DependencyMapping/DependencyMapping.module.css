@@ -1,0 +1,328 @@
+/**
+ * DependencyMapping.module.css
+ * 依存関係マッピングWidgetのスタイル
+ */
+
+.container {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 0.5rem 0;
+}
+
+.description {
+  font-size: 0.875rem;
+  color: #666;
+  margin: 0;
+}
+
+/* Canvas area */
+.canvasArea {
+  position: relative;
+  width: 100%;
+  height: 400px;
+  background-color: #f8fafc;
+  border: 2px dashed #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Nodes */
+.node {
+  cursor: move;
+  user-select: none;
+}
+
+.nodeCircle {
+  fill: #3b82f6;
+  stroke: #ffffff;
+  stroke-width: 3;
+  transition: all 0.2s ease;
+}
+
+.nodeCircle:hover {
+  fill: #2563eb;
+}
+
+.nodeSelected .nodeCircle {
+  stroke: #f59e0b;
+  stroke-width: 4;
+}
+
+.nodeLabel {
+  font-size: 12px;
+  fill: #1f2937;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+/* Edges */
+.edge {
+  stroke-width: 2;
+  fill: none;
+  marker-end: url(#arrowhead);
+}
+
+.edgeBlocks {
+  stroke: #ef4444;
+}
+
+.edgeRequires {
+  stroke: #3b82f6;
+}
+
+.edgeInfluences {
+  stroke: #22c55e;
+}
+
+.edgeCustom {
+  stroke: #8b5cf6;
+}
+
+.edgeClickable {
+  stroke-width: 10;
+  stroke: transparent;
+  cursor: pointer;
+}
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background-color: #f1f5f9;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.toolbarLeft {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.toolbarRight {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.toolButton {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.addNodeButton {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.addNodeButton:hover {
+  background-color: #2563eb;
+}
+
+.addEdgeButton {
+  background-color: #22c55e;
+  color: white;
+}
+
+.addEdgeButton:hover {
+  background-color: #16a34a;
+}
+
+.addEdgeButtonActive {
+  background-color: #f59e0b;
+}
+
+.deleteButton {
+  background-color: #ef4444;
+  color: white;
+}
+
+.deleteButton:hover {
+  background-color: #dc2626;
+}
+
+.deleteButton:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Edge type selector */
+.edgeTypeSelector {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.edgeTypeLabel {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.edgeTypeButton {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  border: 2px solid;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.edgeTypeButton:hover {
+  opacity: 0.8;
+}
+
+.edgeTypeButtonActive {
+  color: white;
+}
+
+/* Info panel */
+.infoPanel {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #f8fafc;
+  border-radius: 8px;
+}
+
+.infoPanelTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 0.5rem 0;
+}
+
+.infoItem {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin: 0.25rem 0;
+}
+
+.warning {
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+.error {
+  color: #ef4444;
+  font-weight: 500;
+}
+
+.criticalPath {
+  color: #22c55e;
+  font-weight: 500;
+}
+
+/* Legend */
+.legend {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.legendLine {
+  width: 20px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.resetButton {
+  padding: 0.5rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  background-color: #f3f4f6;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.resetButton:hover {
+  background-color: #e5e7eb;
+}
+
+.completeButton {
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: white;
+  background-color: #22c55e;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.completeButton:hover:not(:disabled) {
+  background-color: #16a34a;
+  transform: translateY(-2px);
+}
+
+.completeButton:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .canvasArea {
+    height: 300px;
+  }
+}

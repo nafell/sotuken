@@ -25,6 +25,16 @@ export const ListFieldV2: React.FC<ListFieldV2Props> = ({
 
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
+  // itemTemplateの検証
+  const hasValidTemplate = itemTemplate && Object.keys(itemTemplate).length > 0;
+  if (!hasValidTemplate) {
+    console.error('[ListFieldV2] itemTemplate is empty or invalid:', {
+      fieldId: field.id,
+      fieldLabel: field.label,
+      itemTemplate
+    });
+  }
+
   // アイテム追加
   const handleAddItem = () => {
     const newItem: Record<string, any> = {};
@@ -138,6 +148,24 @@ export const ListFieldV2: React.FC<ListFieldV2Props> = ({
         {field.label}
         {options.required && <span className="text-red-500 ml-1">*</span>}
       </label>
+
+      {/* エラー表示: itemTemplateが不正 */}
+      {!hasValidTemplate && (
+        <div className="p-4 bg-red-50 border border-red-300 rounded-lg">
+          <p className="text-sm text-red-800 font-semibold">
+            ⚠️ リストフィールドの設定エラー
+          </p>
+          <p className="text-xs text-red-700 mt-1">
+            itemTemplateが正しく設定されていません。UISpec生成に問題がある可能性があります。
+          </p>
+          <details className="mt-2">
+            <summary className="text-xs text-red-600 cursor-pointer">詳細情報</summary>
+            <pre className="mt-1 text-xs bg-white p-2 rounded overflow-x-auto">
+              {JSON.stringify({ fieldId: field.id, itemTemplate }, null, 2)}
+            </pre>
+          </details>
+        </div>
+      )}
 
       {/* アイテムリスト */}
       <div className="space-y-2">

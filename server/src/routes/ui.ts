@@ -1,8 +1,23 @@
 import { Hono } from 'hono';
-// import { GoogleGenerativeAI } from '@google/generative-ai';
-// TODO: Phase 2でLLM統合予定
+import { createGeminiService } from '../services/GeminiService';
+import {
+  createUISpecGeneratorV3,
+  type UISpecV3GenerationRequest,
+  type StageType,
+} from '../services/UISpecGeneratorV3';
+import { logMetricsSummary } from '../utils/metricsLogger';
 
 const uiRoutes = new Hono();
+
+// GeminiService インスタンス（遅延初期化）
+let geminiService: ReturnType<typeof createGeminiService> | null = null;
+
+function getGeminiService() {
+  if (!geminiService) {
+    geminiService = createGeminiService();
+  }
+  return geminiService;
+}
 
 /**
  * UI生成API
@@ -190,6 +205,133 @@ uiRoutes.get('/status', async (c) => {
     llmIntegration: false, // Phase 1で有効化
     timestamp: new Date().toISOString()
   });
+});
+
+/**
+ * UISpec v3生成API (Phase 4 Day 3-4)
+ * POST /v1/ui/generate-v3
+ *
+ * DSL v3用のUISpec生成エンドポイント
+ * 12種プリセットWidgetを活用した動的UI生成
+ */
+uiRoutes.post('/generate-v3', async (c) => {
+  try {
+    const body = await c.req.json();
+
+    // バリデーション
+    if (!body.sessionId) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_REQUEST',
+            message: 'sessionId is required',
+          },
+        },
+        400
+      );
+    }
+
+    if (!body.concernText) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_REQUEST',
+            message: 'concernText is required',
+          },
+        },
+        400
+      );
+    }
+
+    // ステージのバリデーション
+    const validStages: StageType[] = ['diverge', 'organize', 'converge', 'summary'];
+    const stage: StageType = body.stage || 'diverge';
+    if (!validStages.includes(stage)) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_REQUEST',
+            message: `Invalid stage. Must be one of: ${validStages.join(', ')}`,
+          },
+        },
+        400
+      );
+    }
+
+    console.log(`🎨 UISpec v3 generation request for session: ${body.sessionId}`);
+    console.log(`📝 Concern: "${body.concernText.slice(0, 50)}..."`);
+    console.log(`🎯 Stage: ${stage}`);
+    if (body.options?.restrictToImplementedWidgets) {
+      console.log(`🔒 Widget restriction: implemented only`);
+    }
+
+    // UISpecGeneratorV3でUISpec生成
+    const gemini = getGeminiService();
+    const generator = createUISpecGeneratorV3(gemini);
+
+    const request: UISpecV3GenerationRequest = {
+      sessionId: body.sessionId,
+      concernText: body.concernText,
+      stage,
+      factors: body.factors,
+      options: body.options,
+    };
+
+    const result = await generator.generateUISpec(request);
+
+    // セッションサマリーをログ
+    logMetricsSummary(body.sessionId);
+
+    if (!result.success) {
+      console.error(`❌ UISpec v3 generation failed: ${result.error}`);
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'GENERATION_FAILED',
+            message: result.error,
+            retryCount: result.retryCount,
+          },
+          metrics: result.metrics,
+        },
+        500
+      );
+    }
+
+    console.log(`✅ UISpec v3 generated successfully (mode: ${result.mode})`);
+
+    return c.json({
+      success: true,
+      uiSpec: result.uiSpec,
+      textSummary: result.textSummary,
+      mode: result.mode,
+      generation: {
+        model: gemini.getModelName(),
+        generatedAt: new Date().toISOString(),
+        processingTimeMs: result.metrics?.processingTimeMs || 0,
+        promptTokens: result.metrics?.promptTokens || 0,
+        responseTokens: result.metrics?.responseTokens || 0,
+        totalTokens: result.metrics?.totalTokens || 0,
+        retryCount: result.retryCount || 0,
+      },
+    });
+  } catch (error) {
+    console.error('❌ UISpec v3 generation error:', error);
+
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        },
+      },
+      500
+    );
+  }
 });
 
 export { uiRoutes };

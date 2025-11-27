@@ -37,11 +37,11 @@ export const HomeScreen: React.FC = () => {
   const handleStartSession = () => {
     if (state?.prefillConcern && state?.fromCompletion) {
       // 前のセッションから引き継いだ関心事で開始
-      navigate('/concern-input', { 
+      navigate('/concern/input', { 
         state: { prefillConcern: state.prefillConcern }
       });
     } else {
-      navigate('/concern-input');
+      navigate('/concern/input');
     }
   };
 

@@ -30,7 +30,7 @@ export const DatabaseTest: React.FC = () => {
       setStats(dbStats);
 
       // コンテキスト情報収集
-      const factors = await contextService.collectCurrentFactors();
+      await contextService.collectCurrentFactors();
       setDebugInfo(contextService.getDebugInfo());
 
     } catch (error) {

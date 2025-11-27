@@ -1,0 +1,167 @@
+{
+  "sessionId": "demo-session-001",
+  "stage": "diverge",
+  "oodm": {
+    "version": "3.0",
+    "entities": [
+      {
+        "id": "concern_1",
+        "type": "concern",
+        "attributes": [
+          {
+            "name": "text",
+            "value": "仕事のプレゼンが不安で眠れない",
+            "type": "sval"
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "createdAt": "2025-01-26T00:00:00.000Z"
+    }
+  },
+  "dpg": {
+    "dependencies": [],
+    "metadata": {
+      "version": "3.0",
+      "generatedAt": 1737849600000
+    }
+  },
+  "widgets": [
+    {
+      "id": "emotion_widget_1",
+      "component": "emotion_palette",
+      "position": 1,
+      "layout": "single",
+      "config": {
+        "prompt": "今の気持ちを選んでください"
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "selectedEmotion",
+          "type": "object",
+          "description": "選択された感情と強度"
+        }
+      ],
+      "reactiveBindings": [],
+      "metadata": {
+        "timing": 0.1,
+        "versatility": 0.8,
+        "bottleneck": ["感情的ブロック"],
+        "description": "感情を視覚的に選択するWidget"
+      }
+    },
+    {
+      "id": "brainstorm_widget_1",
+      "component": "brainstorm_cards",
+      "position": 2,
+      "layout": "single",
+      "config": {
+        "prompt": "プレゼンに関する不安要素を書き出してください",
+        "maxCards": 10,
+        "minCards": 1
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "cards",
+          "type": "array",
+          "description": "ブレインストームで生成されたカードリスト"
+        }
+      ],
+      "reactiveBindings": [],
+      "metadata": {
+        "timing": 0.2,
+        "versatility": 0.9,
+        "bottleneck": ["情報不足", "発散不足"],
+        "description": "自由にアイデアを出すブレインストーミングWidget"
+      }
+    },
+    {
+      "id": "matrix_widget_1",
+      "component": "matrix_placement",
+      "position": 3,
+      "layout": "single",
+      "config": {
+        "xAxisLabel": "重要度",
+        "yAxisLabel": "緊急度",
+        "maxItems": 15,
+        "enableDrag": true
+      },
+      "inputs": [
+        {
+          "name": "items",
+          "type": "array",
+          "source": "brainstorm_widget_1.cards",
+          "description": "配置するアイテムリスト"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "placements",
+          "type": "array",
+          "description": "マトリックス上の配置結果"
+        }
+      ],
+      "reactiveBindings": [],
+      "metadata": {
+        "timing": 0.5,
+        "versatility": 0.7,
+        "bottleneck": ["選択肢が多すぎる", "優先順位がつけられない"],
+        "description": "2軸マトリックスでアイテムを配置するWidget"
+      }
+    },
+    {
+      "id": "priority_widget_1",
+      "component": "priority_slider_grid",
+      "position": 4,
+      "layout": "single",
+      "config": {
+        "maxItems": 10,
+        "showRanking": true,
+        "normalizeValues": true
+      },
+      "inputs": [
+        {
+          "name": "items",
+          "type": "array",
+          "source": "brainstorm_widget_1.cards",
+          "description": "優先度を設定するアイテムリスト"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "priorities",
+          "type": "array",
+          "description": "優先度設定結果"
+        },
+        {
+          "name": "ranking",
+          "type": "array",
+          "description": "ランキング結果"
+        }
+      ],
+      "reactiveBindings": [],
+      "metadata": {
+        "timing": 0.6,
+        "versatility": 0.7,
+        "bottleneck": ["優先順位がつけられない"],
+        "description": "複数項目の優先度をスライダーで設定するWidget"
+      }
+    }
+  ],
+  "layout": {
+    "type": "sequential",
+    "config": {
+      "spacing": "comfortable",
+      "responsive": true
+    }
+  },
+  "metadata": {
+    "generatedAt": 1737849600000,
+    "llmModel": "static_demo",
+    "tokenCount": 0,
+    "version": "3.0"
+  }
+}

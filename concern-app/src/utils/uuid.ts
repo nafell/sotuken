@@ -42,3 +42,16 @@ export function generateAnonymousId(): string {
   const random = Math.random().toString(36).substring(2);
   return `anon_${timestamp}_${random}`;
 }
+
+/**
+ * プレフィックス付きID生成
+ * Phase 2で使用
+ * 
+ * @param prefix - IDのプレフィックス（例: 'task', 'concern', 'user'）
+ * @returns プレフィックス付きUUID（例: 'task_550e8400-e29b-41d4-a716'）
+ */
+export function generateId(prefix: string): string {
+  const uuid = generateUUID();
+  const shortUuid = uuid.split('-').slice(0, 3).join('-'); // 最初の3セグメントのみ使用
+  return `${prefix}_${shortUuid}`;
+}

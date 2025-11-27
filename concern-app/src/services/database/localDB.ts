@@ -12,7 +12,9 @@ import type {
   ContextData, 
   InteractionEvent, 
   UIGeneration,
-  ServerSyncStatus 
+  ServerSyncStatus,
+  Task,
+  ActionReport
 } from '../../types/database.js';
 import { generateUUID, generateAnonymousId } from '../../utils/uuid';
 
@@ -23,6 +25,8 @@ export class LocalDatabase extends Dexie {
   contextData!: Table<ContextData>;
   interactionEvents!: Table<InteractionEvent>;
   uiGenerations!: Table<UIGeneration>;
+  tasks!: Table<Task>;
+  actionReports!: Table<ActionReport>;
 
   constructor() {
     super('ConcernApp');
@@ -34,6 +38,17 @@ export class LocalDatabase extends Dexie {
       contextData: 'contextId, sessionId, collectedAt',
       interactionEvents: 'eventId, sessionId, timestamp, syncedToServer, [sessionId+timestamp], [syncedToServer+timestamp]',
       uiGenerations: 'generationId, sessionId, generatedAt'
+    });
+    
+    // バージョン2のスキーマ定義（Phase 2: Task & ActionReport追加）
+    this.version(2).stores({
+      userProfile: 'userId',
+      concernSessions: 'sessionId, userId, startTime, completed, [userId+startTime]',
+      contextData: 'contextId, sessionId, collectedAt',
+      interactionEvents: 'eventId, sessionId, timestamp, syncedToServer, [sessionId+timestamp], [syncedToServer+timestamp]',
+      uiGenerations: 'generationId, sessionId, generatedAt',
+      tasks: 'taskId, userId, status, dueInHours, lastTouchAt, syncedToServer, [userId+status], [userId+lastTouchAt]',
+      actionReports: 'reportId, taskId, userId, actionStartedAt, uiCondition, syncedToServer, [taskId+actionStartedAt], [userId+actionStartedAt], [uiCondition+actionStartedAt]'
     });
   }
 
@@ -100,11 +115,11 @@ export class LocalDatabase extends Dexie {
 
   async getSessionHistory(userId: string, limit: number = 10): Promise<ConcernSession[]> {
     return await this.concernSessions
-      .where({ userId })
-      .orderBy('startTime')
+      .where('userId')
+      .equals(userId)
       .reverse()
-      .limit(limit)
-      .toArray();
+      .sortBy('startTime')
+      .then(sessions => sessions.slice(0, limit));
   }
 
   /**
@@ -124,7 +139,7 @@ export class LocalDatabase extends Dexie {
   async getUnsyncedEvents(limit: number = 50): Promise<InteractionEvent[]> {
     return await this.interactionEvents
       .where('syncedToServer')
-      .equals(false)
+      .equals(0)
       .limit(limit)
       .toArray();
   }
@@ -169,7 +184,7 @@ export class LocalDatabase extends Dexie {
   async getSyncStatus(): Promise<ServerSyncStatus> {
     const pendingEventCount = await this.interactionEvents
       .where('syncedToServer')
-      .equals(false)
+      .equals(0)
       .count();
 
     return {
@@ -207,6 +222,176 @@ export class LocalDatabase extends Dexie {
       eventCount,
       lastActivity: await this.getLastActivityTime()
     };
+  }
+
+  // ========================================
+  // Task管理（Phase 2）
+  // ========================================
+
+  /**
+   * タスク作成
+   */
+  async createTask(task: Omit<Task, 'taskId' | 'createdAt' | 'updatedAt'>): Promise<Task> {
+    const fullTask: Task = {
+      ...task,
+      taskId: generateUUID(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      syncedToServer: false
+    };
+    
+    await this.tasks.add(fullTask);
+    return fullTask;
+  }
+
+  /**
+   * タスク取得（アクティブのみ）
+   */
+  async getActiveTasks(userId: string): Promise<Task[]> {
+    return await this.tasks
+      .where('[userId+status]')
+      .equals([userId, 'active'])
+      .toArray();
+  }
+
+  /**
+   * タスク更新
+   */
+  async updateTask(taskId: string, updates: Partial<Task>): Promise<void> {
+    await this.tasks.update(taskId, {
+      ...updates,
+      updatedAt: new Date(),
+      syncedToServer: false
+    });
+  }
+
+  /**
+   * タスク完了
+   */
+  async completeTask(taskId: string): Promise<void> {
+    await this.tasks.update(taskId, {
+      status: 'completed',
+      completedAt: new Date(),
+      progress: 100,
+      updatedAt: new Date(),
+      syncedToServer: false
+    });
+  }
+
+  /**
+   * 放置タスク検出
+   */
+  async getStaleTasks(userId: string, daysThreshold: number = 3): Promise<Task[]> {
+    const thresholdDate = new Date();
+    thresholdDate.setDate(thresholdDate.getDate() - daysThreshold);
+
+    return await this.tasks
+      .where('[userId+status]')
+      .equals([userId, 'active'])
+      .filter(task => task.lastTouchAt !== undefined && task.lastTouchAt < thresholdDate)
+      .toArray();
+  }
+
+  /**
+   * 未同期タスク取得
+   */
+  async getUnsyncedTasks(limit: number = 50): Promise<Task[]> {
+    return await this.tasks
+      .where('syncedToServer')
+      .equals(0)
+      .limit(limit)
+      .toArray();
+  }
+
+  // ========================================
+  // ActionReport管理（Phase 2）
+  // ========================================
+
+  /**
+   * 行動開始記録
+   */
+  async startAction(
+    taskId: string,
+    userId: string,
+    recommendationShownAt: Date,
+    uiCondition: 'dynamic_ui' | 'static_ui',
+    contextSnapshot: any
+  ): Promise<ActionReport> {
+    const now = new Date();
+    const timeToStartSec = (now.getTime() - recommendationShownAt.getTime()) / 1000;
+    
+    const report: ActionReport = {
+      reportId: generateUUID(),
+      taskId,
+      userId,
+      recommendationShownAt,
+      actionStartedAt: now,
+      timeToStartSec,
+      uiCondition,
+      contextAtStart: contextSnapshot,
+      createdAt: now,
+      syncedToServer: false
+    };
+    
+    await this.actionReports.add(report);
+    
+    // タスクの着手回数を更新
+    await this.tasks.where('taskId').equals(taskId).modify((task) => {
+      task.totalActionsStarted++;
+      task.lastTouchAt = now;
+      task.updatedAt = now;
+    });
+    
+    return report;
+  }
+
+  /**
+   * 行動完了記録
+   */
+  async completeAction(
+    reportId: string,
+    clarityImprovement: 1 | 2 | 3,
+    notes?: string
+  ): Promise<void> {
+    const report = await this.actionReports.get(reportId);
+    if (!report) throw new Error('Report not found');
+    
+    const now = new Date();
+    const durationMin = (now.getTime() - report.actionStartedAt.getTime()) / 1000 / 60;
+    
+    await this.actionReports.update(reportId, {
+      actionCompletedAt: now,
+      durationMin,
+      clarityImprovement,
+      notes,
+      syncedToServer: false
+    });
+    
+    // タスクの完了回数を更新
+    await this.tasks.where('taskId').equals(report.taskId).modify((task) => {
+      task.totalActionsCompleted++;
+      task.updatedAt = now;
+    });
+  }
+
+  /**
+   * 条件別着手率計算（クライアント側）
+   */
+  async calculateEngagementRate(_userId: string, condition: 'dynamic_ui' | 'static_ui'): Promise<number> {
+    // 推奨表示イベント数
+    const shownCount = await this.interactionEvents
+      .where('eventType')
+      .equals('task_recommendation_shown')
+      .filter(e => e.metadata.uiCondition === condition)
+      .count();
+    
+    // 着手報告数
+    const startedCount = await this.actionReports
+      .where('uiCondition')
+      .equals(condition)
+      .count();
+    
+    return shownCount > 0 ? startedCount / shownCount : 0;
   }
 
   // ========================================

@@ -1,0 +1,190 @@
+{
+  "version": "1.0",
+  "description": "専門家評価用テストケース（10ケース）- Phase 4 タスク3.1",
+  "createdAt": "2025-01-27",
+  "cases": [
+    {
+      "id": "case1_selection_overload",
+      "concern": "転職先候補が10社あって決められない。業界も職種もバラバラで比較できない",
+      "category": "career",
+      "expectedBottleneck": ["選択肢が多すぎる", "情報が整理されていない"],
+      "expectedComponents": ["brainstorm_cards", "card_sorting", "matrix_placement"],
+      "expectedStages": ["diverge", "organize", "converge"],
+      "hasReactivity": false,
+      "priority": "high",
+      "evaluationCriteria": {
+        "bottleneckDiagnosis": "選択肢過多の認識と整理の必要性を示唆しているか",
+        "componentSelection": "比較・整理に適したWidgetが選ばれているか",
+        "flowLogic": "発散→整理→収束の論理的フローになっているか"
+      }
+    },
+    {
+      "id": "case2_emotion_block",
+      "concern": "新規事業を提案したいが、失敗したら評価が下がるのが怖い",
+      "category": "work",
+      "expectedBottleneck": ["感情的ブロック", "決断への恐れ"],
+      "expectedComponents": ["emotion_palette", "timeline_slider", "tradeoff_balance"],
+      "expectedStages": ["diverge", "converge"],
+      "hasReactivity": true,
+      "reactivityType": "balance_visualization",
+      "priority": "high",
+      "evaluationCriteria": {
+        "bottleneckDiagnosis": "感情的障壁と恐れを認識しているか",
+        "componentSelection": "感情表出とリスク可視化のWidgetが選ばれているか",
+        "reactivityDesign": "感情入力が天秤のバランスに反映される設計か"
+      }
+    },
+    {
+      "id": "case3_information_gap",
+      "concern": "起業したいけど、何から始めればいいか全くわからない",
+      "category": "career",
+      "expectedBottleneck": ["情報不足", "ロードマップ欠如"],
+      "expectedComponents": ["question_card_chain", "dependency_mapping", "timeline_slider"],
+      "expectedStages": ["diverge", "organize", "converge"],
+      "hasReactivity": true,
+      "reactivityType": "dependency_chain",
+      "priority": "high",
+      "evaluationCriteria": {
+        "bottleneckDiagnosis": "知識・情報のギャップを認識しているか",
+        "componentSelection": "段階的な情報収集と依存関係整理のWidgetか",
+        "flowLogic": "質問連鎖→依存関係→時間軸の流れが論理的か"
+      }
+    },
+    {
+      "id": "case4_value_conflict",
+      "concern": "給料の高い会社と、やりがいのある会社、どちらを選べばいいか迷っている",
+      "category": "career",
+      "expectedBottleneck": ["価値観の対立", "トレードオフ"],
+      "expectedComponents": ["emotion_palette", "swot_analysis", "tradeoff_balance"],
+      "expectedStages": ["diverge", "organize", "converge"],
+      "hasReactivity": true,
+      "reactivityType": "balance_visualization",
+      "priority": "medium",
+      "evaluationCriteria": {
+        "bottleneckDiagnosis": "価値観の対立を明確に認識しているか",
+        "componentSelection": "価値観比較とトレードオフ可視化のWidgetか",
+        "reactivityDesign": "各選択肢の重み付けが天秤に反映されるか"
+      }
+    },
+    {
+      "id": "case5_relationship_stress",
+      "concern": "上司との関係がうまくいかない。何を言っても否定される気がする",
+      "category": "relationship",
+      "expectedBottleneck": ["感情的ストレス", "コミュニケーション障害"],
+      "expectedComponents": ["emotion_palette", "brainstorm_cards", "structured_summary"],
+      "expectedStages": ["diverge", "summary"],
+      "hasReactivity": false,
+      "priority": "medium",
+      "evaluationCriteria": {
+        "bottleneckDiagnosis": "感情的ストレスとコミュニケーション問題を認識しているか",
+        "componentSelection": "感情表出と状況整理に適したWidgetか",
+        "flowLogic": "感情の発散から具体的対策へのフローか"
+      }
+    },
+    {
+      "id": "case6_time_pressure",
+      "concern": "論文の締め切りまであと1ヶ月。まだ半分も書けていない",
+      "category": "academic",
+      "expectedBottleneck": ["時間的制約", "タスク管理"],
+      "expectedComponents": ["brainstorm_cards", "dependency_mapping", "priority_slider_grid"],
+      "expectedStages": ["diverge", "organize", "converge"],
+      "hasReactivity": true,
+      "reactivityType": "priority_ranking",
+      "priority": "high",
+      "evaluationCriteria": {
+        "bottleneckDiagnosis": "時間的プレッシャーとタスク分解の必要性を認識しているか",
+        "componentSelection": "タスク洗い出しと優先順位付けのWidgetか",
+        "reactivityDesign": "優先度スライダーがランキング表示に反映されるか"
+      }
+    },
+    {
+      "id": "case7_multiple_goals",
+      "concern": "仕事も趣味も家族も大事にしたいけど、時間が足りない",
+      "category": "life",
+      "expectedBottleneck": ["リソース制約", "優先順位の不明確さ"],
+      "expectedComponents": ["brainstorm_cards", "matrix_placement", "priority_slider_grid"],
+      "expectedStages": ["diverge", "converge"],
+      "hasReactivity": true,
+      "reactivityType": "priority_ranking",
+      "priority": "medium",
+      "evaluationCriteria": {
+        "bottleneckDiagnosis": "複数目標間のリソース配分問題を認識しているか",
+        "componentSelection": "優先順位可視化と配分調整のWidgetか",
+        "reactivityDesign": "重要度・緊急度のスライダー調整で順位が変わるか"
+      }
+    },
+    {
+      "id": "case8_uncertainty_future",
+      "concern": "5年後の自分がどうなっているか想像できない。将来が不安",
+      "category": "life",
+      "expectedBottleneck": ["将来の不確実性", "ビジョン欠如"],
+      "expectedComponents": ["emotion_palette", "mind_map", "timeline_slider"],
+      "expectedStages": ["diverge", "organize", "converge"],
+      "hasReactivity": false,
+      "priority": "medium",
+      "evaluationCriteria": {
+        "bottleneckDiagnosis": "将来への不安とビジョンの欠如を認識しているか",
+        "componentSelection": "感情表出とビジョン構築のWidgetか",
+        "flowLogic": "感情→可能性の拡大→時間軸での具体化のフローか"
+      }
+    },
+    {
+      "id": "case9_complex_decision",
+      "concern": "海外留学と国内就職、どちらも魅力があって決められない。費用、キャリア、語学力...考えることが多すぎる",
+      "category": "career",
+      "expectedBottleneck": ["複雑な意思決定", "多軸比較"],
+      "expectedComponents": ["brainstorm_cards", "swot_analysis", "matrix_placement", "structured_summary"],
+      "expectedStages": ["diverge", "organize", "converge", "summary"],
+      "hasReactivity": false,
+      "priority": "high",
+      "evaluationCriteria": {
+        "bottleneckDiagnosis": "多軸での比較の困難さを認識しているか",
+        "componentSelection": "多角的分析と構造化のWidgetが複数選ばれているか",
+        "flowLogic": "発散→整理→収束→まとめの完全なフローか"
+      }
+    },
+    {
+      "id": "case10_perfectionism",
+      "concern": "完璧にしないと気が済まないけど、そのせいでいつも締め切りに追われる",
+      "category": "personal",
+      "expectedBottleneck": ["完璧主義", "自己認識のギャップ"],
+      "expectedComponents": ["emotion_palette", "question_card_chain", "tradeoff_balance"],
+      "expectedStages": ["diverge", "converge"],
+      "hasReactivity": true,
+      "reactivityType": "balance_visualization",
+      "priority": "medium",
+      "evaluationCriteria": {
+        "bottleneckDiagnosis": "完璧主義と時間管理の問題を認識しているか",
+        "componentSelection": "自己内省とトレードオフ可視化のWidgetか",
+        "reactivityDesign": "完璧さと効率のバランスが可視化されるか"
+      }
+    }
+  ],
+  "evaluationMetrics": {
+    "bottleneckDiagnosis": {
+      "weight": 0.3,
+      "scale": 5,
+      "description": "ボトルネックの正確な診断（1: 全く不正確 〜 5: 完全に正確）"
+    },
+    "componentSelection": {
+      "weight": 0.3,
+      "scale": 5,
+      "description": "適切なWidgetの選択（1: 不適切 〜 5: 最適）"
+    },
+    "flowLogic": {
+      "weight": 0.2,
+      "scale": 5,
+      "description": "フロー構成の論理性（1: 非論理的 〜 5: 完全に論理的）"
+    },
+    "reactivityDesign": {
+      "weight": 0.2,
+      "scale": 5,
+      "description": "リアクティビティの設計（1: 未活用 〜 5: 効果的に活用）"
+    }
+  },
+  "baselineComparison": {
+    "jellyEstimatedTokens": 2800,
+    "targetReductionRate": 0.30,
+    "description": "Jelly論文の推定トークン数との比較"
+  }
+}

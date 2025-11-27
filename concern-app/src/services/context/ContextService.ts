@@ -9,6 +9,9 @@ import { db } from '../database/localDB';
 import { generateUUID } from '../../utils/uuid';
 import { capacitorIntegration } from './CapacitorIntegration';
 
+// Re-export types for external use
+export type { FactorsDict, FactorValue, BaseFactors };
+
 export class ContextService {
   private factors: FactorsDict = {};
 
@@ -204,12 +207,14 @@ export class ContextService {
     const sanitized: FactorsDict = {};
 
     Object.entries(factors).forEach(([key, factor]) => {
-      sanitized[key] = {
-        value: factor.value,
-        confidence: factor.confidence,
-        source: factor.source,
-        // rawDataは除外（プライバシー保護）
-      };
+      if (factor) {
+        sanitized[key] = {
+          value: factor.value,
+          confidence: factor.confidence,
+          source: factor.source,
+          // rawDataは除外（プライバシー保護）
+        };
+      }
     });
 
     return sanitized;
@@ -224,10 +229,12 @@ export class ContextService {
       lastCollected: this.factors.time_of_day?.timestamp,
       factors: Object.keys(this.factors),
       confidenceScores: Object.fromEntries(
-        Object.entries(this.factors).map(([key, factor]) => [
-          key, 
-          factor.confidence || 0
-        ])
+        Object.entries(this.factors)
+          .filter(([, factor]) => factor !== undefined)
+          .map(([key, factor]) => [
+            key,
+            factor!.confidence || 0
+          ])
       )
     };
   }

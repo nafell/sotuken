@@ -1,0 +1,446 @@
+{
+  "fixed_ui_templates": {
+    "default": {
+      "layout": "three-panel",
+      "components": {
+        "left_panel": {
+          "type": "sortable-list",
+          "title": "タスクリスト",
+          "features": ["drag_drop", "nesting", "checkbox", "priority_badge"]
+        },
+        "center_panel": {
+          "type": "detail-editor",
+          "title": "タスク詳細",
+          "fields": ["description", "success_criteria", "resources", "notes"]
+        },
+        "right_panel": {
+          "type": "dependency-graph",
+          "title": "依存関係",
+          "views": ["list", "tree", "timeline"]
+        }
+      }
+    }
+  },
+  "content_generation_examples": [
+    {
+      "scenario": "転職活動計画",
+      "plan_output": {
+        "summary": "現職を続けながら3ヶ月で転職活動を完了する。スキルアップと企業リサーチを並行して進め、2ヶ月目から応募開始。",
+        "decisions": {
+          "primary": "段階的な転職活動",
+          "constraints": ["現職継続", "3ヶ月以内", "年収維持"]
+        },
+        "recommendations": {
+          "task_complexity": "moderate",
+          "breakdown_approach": "parallel",
+          "estimated_steps": 15
+        }
+      },
+      "generated_content": {
+        "tasks": [
+          {
+            "id": "t1",
+            "name": "自己分析とキャリアの棚卸し",
+            "description": "これまでの経験、スキル、強み、価値観を整理し、転職の軸を明確化する",
+            "estimated_time": 240,
+            "priority": "high",
+            "dependencies": [],
+            "success_criteria": [
+              "スキルマップの完成",
+              "強み3つの特定",
+              "転職理由の明文化"
+            ],
+            "resources_needed": ["キャリア分析シート", "過去の業務記録"],
+            "potential_risks": ["自己評価の偏り"],
+            "subtasks": [
+              {
+                "id": "t1.1",
+                "name": "職務経歴の整理",
+                "estimated_time": 60
+              },
+              {
+                "id": "t1.2",
+                "name": "スキルインベントリ作成",
+                "estimated_time": 90
+              },
+              {
+                "id": "t1.3",
+                "name": "価値観の明確化",
+                "estimated_time": 90
+              }
+            ]
+          },
+          {
+            "id": "t2",
+            "name": "目標業界・企業のリサーチ",
+            "description": "転職先として検討する業界と企業を調査し、優先順位をつける",
+            "estimated_time": 360,
+            "priority": "high",
+            "dependencies": ["t1"],
+            "success_criteria": [
+              "ターゲット企業20社のリスト作成",
+              "各企業の求人要件の把握",
+              "業界動向の理解"
+            ],
+            "resources_needed": ["転職サイト", "企業HP", "業界レポート"],
+            "potential_risks": ["情報の偏り", "求人のタイミング"]
+          },
+          {
+            "id": "t3",
+            "name": "履歴書・職務経歴書の作成",
+            "description": "自己分析とリサーチ結果を基に、応募書類を作成する",
+            "estimated_time": 180,
+            "priority": "high",
+            "dependencies": ["t1", "t2"],
+            "success_criteria": [
+              "履歴書の完成",
+              "職務経歴書の完成",
+              "3パターンの志望動機準備"
+            ],
+            "resources_needed": ["書類テンプレート", "添削サービス"],
+            "potential_risks": ["アピール不足", "情報過多"]
+          },
+          {
+            "id": "t4",
+            "name": "スキルアップ計画の実行",
+            "description": "不足スキルを特定し、学習計画を立てて実行する",
+            "estimated_time": 720,
+            "priority": "medium",
+            "dependencies": ["t1", "t2"],
+            "success_criteria": [
+              "必要スキル3つの特定",
+              "学習計画の作成",
+              "1つ以上の資格/認定取得"
+            ],
+            "resources_needed": ["オンライン講座", "参考書", "学習時間"],
+            "potential_risks": ["時間不足", "モチベーション低下"]
+          },
+          {
+            "id": "t5",
+            "name": "ネットワーキング活動",
+            "description": "業界の人脈を作り、情報収集と相談相手を確保する",
+            "estimated_time": 240,
+            "priority": "medium",
+            "dependencies": ["t2"],
+            "success_criteria": [
+              "3人以上との面談",
+              "LinkedInプロフィール更新",
+              "1つ以上のイベント参加"
+            ],
+            "resources_needed": ["LinkedIn", "勉強会情報", "名刺"],
+            "potential_risks": ["時間の確保", "現職への影響"]
+          },
+          {
+            "id": "t6",
+            "name": "応募開始と管理",
+            "description": "準備した書類で企業への応募を開始し、進捗を管理する",
+            "estimated_time": 180,
+            "priority": "high",
+            "dependencies": ["t3"],
+            "success_criteria": [
+              "10社以上への応募",
+              "応募管理シートの運用",
+              "返信率20%以上"
+            ],
+            "resources_needed": ["応募管理ツール", "カレンダー"],
+            "potential_risks": ["応募過多", "スケジュール競合"]
+          },
+          {
+            "id": "t7",
+            "name": "面接対策と練習",
+            "description": "想定質問への回答を準備し、模擬面接を実施する",
+            "estimated_time": 300,
+            "priority": "high",
+            "dependencies": ["t3", "t6"],
+            "success_criteria": [
+              "30の想定質問への回答準備",
+              "3回以上の模擬面接",
+              "STAR形式での事例準備"
+            ],
+            "resources_needed": ["面接対策本", "練習相手", "録画機材"],
+            "potential_risks": ["過度な準備", "自然さの欠如"]
+          },
+          {
+            "id": "t8",
+            "name": "現職の引き継ぎ準備",
+            "description": "転職が決まった際にスムーズに退職できるよう準備する",
+            "estimated_time": 120,
+            "priority": "low",
+            "dependencies": ["t6"],
+            "success_criteria": [
+              "業務マニュアルの更新",
+              "引き継ぎ資料の準備",
+              "後任候補の検討"
+            ],
+            "resources_needed": ["業務資料", "マニュアルテンプレート"],
+            "potential_risks": ["早期露見", "モチベーション低下"]
+          }
+        ],
+        "execution_plan": {
+          "phases": [
+            {
+              "name": "準備フェーズ（1ヶ月目）",
+              "tasks": ["t1", "t2", "t4開始"],
+              "milestone": "自己分析とリサーチ完了"
+            },
+            {
+              "name": "書類作成フェーズ（1-2ヶ月目）",
+              "tasks": ["t3", "t5", "t4継続"],
+              "milestone": "応募書類完成"
+            },
+            {
+              "name": "応募フェーズ（2-3ヶ月目）",
+              "tasks": ["t6", "t7", "t8"],
+              "milestone": "内定獲得"
+            }
+          ],
+          "critical_path": ["t1", "t2", "t3", "t6", "t7"],
+          "total_duration": 2160,
+          "parallel_tracks": [
+            ["t1", "t3", "t6", "t7"],
+            ["t2", "t5"],
+            ["t4"],
+            ["t8"]
+          ]
+        },
+        "next_actions": {
+          "immediate": [
+            "職務経歴の棚卸しを開始（t1.1）",
+            "転職サイトへの登録",
+            "スケジュール確保"
+          ],
+          "blockers": [
+            "現職の繁忙期との調整",
+            "家族への相談"
+          ],
+          "preparations": [
+            "作業時間の確保（平日夜2時間、週末4時間）",
+            "必要な資料の収集"
+          ]
+        }
+      }
+    },
+    {
+      "scenario": "家族問題の解決",
+      "plan_output": {
+        "summary": "介護・仕事・子育ての負担を再配分し、持続可能な体制を構築する",
+        "decisions": {
+          "primary": "外部サービスの活用と家族内役割分担の見直し",
+          "constraints": ["予算月10万円", "平日日中は仕事"]
+        },
+        "recommendations": {
+          "task_complexity": "complex",
+          "breakdown_approach": "hierarchical",
+          "estimated_steps": 20
+        }
+      },
+      "generated_content": {
+        "tasks": [
+          {
+            "id": "t1",
+            "name": "現状の負担分析",
+            "description": "各領域での時間、費用、精神的負担を可視化する",
+            "estimated_time": 180,
+            "priority": "high",
+            "dependencies": [],
+            "subtasks": [
+              {
+                "id": "t1.1",
+                "name": "1週間のタイムログ作成",
+                "estimated_time": 60
+              },
+              {
+                "id": "t1.2",
+                "name": "月間支出の整理",
+                "estimated_time": 60
+              },
+              {
+                "id": "t1.3",
+                "name": "ストレス要因のリストアップ",
+                "estimated_time": 60
+              }
+            ]
+          },
+          {
+            "id": "t2",
+            "name": "介護サービスの検討と導入",
+            "description": "利用可能な介護サービスを調査し、導入計画を立てる",
+            "estimated_time": 480,
+            "priority": "high",
+            "dependencies": ["t1"],
+            "subtasks": [
+              {
+                "id": "t2.1",
+                "name": "ケアマネージャーとの相談",
+                "estimated_time": 120
+              },
+              {
+                "id": "t2.2",
+                "name": "デイサービスの見学と選定",
+                "estimated_time": 240
+              },
+              {
+                "id": "t2.3",
+                "name": "介護保険申請手続き",
+                "estimated_time": 120
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "シンプルな目標設定",
+      "plan_output": {
+        "summary": "毎日運動する習慣を作る",
+        "decisions": {
+          "primary": "朝30分のウォーキングから始める",
+          "constraints": ["雨天対応", "早朝限定"]
+        },
+        "recommendations": {
+          "task_complexity": "simple",
+          "breakdown_approach": "sequential",
+          "estimated_steps": 5
+        }
+      },
+      "generated_content": {
+        "tasks": [
+          {
+            "id": "t1",
+            "name": "環境準備",
+            "description": "運動に必要な環境と道具を整える",
+            "estimated_time": 60,
+            "priority": "high",
+            "dependencies": [],
+            "success_criteria": [
+              "運動着の準備",
+              "ウォーキングコースの決定",
+              "雨天時の代替案準備"
+            ]
+          },
+          {
+            "id": "t2",
+            "name": "習慣化の仕組み作り",
+            "description": "継続のための仕組みを構築する",
+            "estimated_time": 30,
+            "priority": "high",
+            "dependencies": ["t1"],
+            "success_criteria": [
+              "起床時間の固定",
+              "記録アプリの導入",
+              "報酬システムの設定"
+            ]
+          },
+          {
+            "id": "t3",
+            "name": "1週間のトライアル",
+            "description": "まず1週間続けてみる",
+            "estimated_time": 210,
+            "priority": "high",
+            "dependencies": ["t2"],
+            "success_criteria": [
+              "7日間の実施",
+              "記録の継続",
+              "振り返りの実施"
+            ]
+          },
+          {
+            "id": "t4",
+            "name": "習慣の定着（1ヶ月）",
+            "description": "1ヶ月間継続して習慣化する",
+            "estimated_time": 900,
+            "priority": "medium",
+            "dependencies": ["t3"],
+            "success_criteria": [
+              "30日間の継続",
+              "休んだ日の記録と理由分析",
+              "次月の計画作成"
+            ]
+          },
+          {
+            "id": "t5",
+            "name": "習慣の拡張検討",
+            "description": "運動量や種類の拡張を検討する",
+            "estimated_time": 60,
+            "priority": "low",
+            "dependencies": ["t4"],
+            "success_criteria": [
+              "体力向上の評価",
+              "新メニューの検討",
+              "長期目標の設定"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "fallback_templates": {
+    "generic_simple": {
+      "tasks": [
+        {
+          "name": "現状分析",
+          "estimated_time": 60,
+          "description": "現在の状況を整理する"
+        },
+        {
+          "name": "目標設定",
+          "estimated_time": 30,
+          "description": "達成したい状態を明確にする"
+        },
+        {
+          "name": "行動計画作成",
+          "estimated_time": 60,
+          "description": "具体的な行動を計画する"
+        },
+        {
+          "name": "実行",
+          "estimated_time": 180,
+          "description": "計画を実行する"
+        },
+        {
+          "name": "振り返り",
+          "estimated_time": 30,
+          "description": "結果を評価し、改善点を見つける"
+        }
+      ]
+    },
+    "generic_complex": {
+      "phases": [
+        {
+          "name": "分析フェーズ",
+          "tasks": ["現状把握", "問題分析", "要因特定"]
+        },
+        {
+          "name": "計画フェーズ",
+          "tasks": ["目標設定", "戦略立案", "リソース計画"]
+        },
+        {
+          "name": "実行フェーズ",
+          "tasks": ["準備作業", "本作業", "品質確認"]
+        },
+        {
+          "name": "評価フェーズ",
+          "tasks": ["成果測定", "振り返り", "改善提案"]
+        }
+      ]
+    }
+  },
+  "error_handling": {
+    "no_tasks": {
+      "message": "タスクの自動生成に失敗しました。テンプレートを使用します。",
+      "action": "apply_generic_template"
+    },
+    "too_many_tasks": {
+      "message": "タスクが多すぎます（30個以上）。主要タスクに絞り込みます。",
+      "action": "group_and_prioritize"
+    },
+    "circular_dependency": {
+      "message": "タスク間に循環依存が検出されました。自動的に解消します。",
+      "action": "break_circular_dependency"
+    },
+    "invalid_estimates": {
+      "message": "時間見積もりが不正です。標準値を適用します。",
+      "action": "apply_default_estimates"
+    }
+  }
+}

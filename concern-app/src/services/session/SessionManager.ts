@@ -47,7 +47,7 @@ export class SessionManager {
       currentScreen: 'concern_input',
       completed: false,
       realityCheck: {
-        concernText,
+        rawInput: concernText,
         inputTime: new Date()
       },
       planning: {},
@@ -79,25 +79,22 @@ export class SessionManager {
 
     if (updates.concernLevel || updates.urgency) {
       dbUpdates.realityCheck = {
-        ...this.currentSession,
         concernLevel: updates.concernLevel,
-        urgency: updates.urgency,
-        mentalLoad: updates.mentalLoad
+        urgency: updates.urgency as 'now' | 'this_week' | 'this_month' | 'someday' | undefined,
+        estimatedMentalLoad: updates.mentalLoad
       };
     }
 
     if (updates.category || updates.approach) {
       dbUpdates.planning = {
-        category: updates.category,
-        categoryLabel: updates.categoryLabel,
-        approach: updates.approach
+        category: updates.category as 'learning_research' | 'event_planning' | 'lifestyle_habits' | 'work_project' | 'other' | undefined,
+        approach: updates.approach as 'information_gathering' | 'concrete_action' | 'strategic_planning' | undefined
       };
     }
 
     if (updates.selectedAction) {
       dbUpdates.breakdown = {
-        selectedAction: updates.selectedAction,
-        actionStartTime: new Date()
+        selectedActionId: updates.selectedAction
       };
     }
 
@@ -128,7 +125,10 @@ export class SessionManager {
       completed: true,
       endTime: new Date(),
       outcomes: {
-        ...outcomes,
+        satisfactionLevel: outcomes.satisfactionLevel as 'very_clear' | 'somewhat_clear' | 'still_foggy' | undefined,
+        executionMemo: outcomes.executionMemo,
+        nextConcern: outcomes.nextConcern,
+        mentalLoadChange: outcomes.mentalLoadChange,
         completionTime: new Date()
       }
     };

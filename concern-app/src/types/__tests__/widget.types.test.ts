@@ -1,193 +1,127 @@
 /**
  * widget.types.test.ts
- * Widget実装層型定義のテスト
+ *
+ * BaseWidgetPropsの型チェックテスト
  */
 
-import { describe, test, expect } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import type {
+  BaseWidgetProps,
   WidgetSpecObject,
-  OODMObject,
-  UISpecObject,
-  DataBindingObject,
-  ReactiveBindingObject,
+  PortChangeCallback,
+  PortValueGetter,
 } from '../widget.types';
 
-describe('WidgetSpecObject型', () => {
-  test('有効なWidgetSpecObjectを作成できる', () => {
-    const specObject: WidgetSpecObject = {
-      id: 'widget_1',
-      component: 'emotion_palette',
-      position: 0,
-      config: {
-        prompt: 'あなたの気持ちを教えてください',
-        options: ['喜び', '悲しみ', '怒り', '不安'],
+describe('Widget Types', () => {
+  // ダミーのWidgetSpecObject
+  const mockSpec: WidgetSpecObject = {
+    id: 'test-widget',
+    component: 'brainstorm_cards',
+    position: 0,
+    config: {},
+    metadata: {
+      timing: 0.5,
+      versatility: 0.5,
+      bottleneck: [],
+    },
+  };
+
+  test('BaseWidgetPropsが後方互換性を維持', () => {
+    // 既存のpropsのみでも型エラーにならない
+    const legacyProps: BaseWidgetProps = {
+      spec: mockSpec,
+      onUpdate: (id, data) => {
+        console.log(id, data);
       },
-      metadata: {
-        timing: 0.1,
-        versatility: 0.8,
-        bottleneck: ['感情的ブロック'],
+      onComplete: (id) => {
+        console.log(id);
       },
     };
-
-    expect(specObject.id).toBe('widget_1');
-    expect(specObject.component).toBe('emotion_palette');
-    expect(specObject.config.options).toHaveLength(4);
+    expect(legacyProps).toBeDefined();
+    expect(legacyProps.spec.id).toBe('test-widget');
   });
 
-  test('DataBindingObjectを含むWidgetSpecObjectを作成できる', () => {
-    const specObject: WidgetSpecObject = {
-      id: 'widget_2',
-      component: 'matrix_placement',
-      position: 1,
-      config: {},
-      inputs: [
-        {
-          name: 'items',
-          type: 'object[]',
-          source: 'widget_1.output',
-          required: true,
-        },
-      ],
-      outputs: [
-        {
-          name: 'placements',
-          type: 'object[]',
-        },
-      ],
-      metadata: {
-        timing: 0.5,
-        versatility: 0.6,
-        bottleneck: [],
+  test('BaseWidgetPropsが新しいreactiveプロパティを持てる', () => {
+    const reactiveProps: BaseWidgetProps = {
+      spec: mockSpec,
+      onPortChange: (widgetId, portId, value) => {
+        console.log(widgetId, portId, value);
       },
+      getPortValue: (portKey) => null,
+      initialPortValues: { balance: 0 },
     };
 
-    expect(specObject.inputs).toHaveLength(1);
-    expect(specObject.outputs).toHaveLength(1);
-    expect(specObject.inputs?.[0].source).toBe('widget_1.output');
+    expect(reactiveProps.onPortChange).toBeDefined();
+    expect(reactiveProps.getPortValue).toBeDefined();
+    expect(reactiveProps.initialPortValues).toBeDefined();
   });
 
-  test('ReactiveBindingObjectを含むWidgetSpecObjectを作成できる', () => {
-    const reactiveBinding: ReactiveBindingObject = {
-      source: 'slider.values',
-      target: 'ranking.items',
-      mechanism: 'update',
-      relationship: {
-        type: 'transform',
-        transform: 'calculate_ranking',
-      },
-      updateMode: 'debounced',
+  test('既存と新規のpropsを同時に使用できる', () => {
+    const fullProps: BaseWidgetProps = {
+      spec: mockSpec,
+      // 既存
+      onComplete: (id) => {},
+      onUpdate: (id, data) => {},
+      // 新規
+      onPortChange: (widgetId, portId, value) => {},
+      getPortValue: (portKey) => undefined,
+      initialPortValues: { _completed: { isCompleted: false } },
     };
 
-    const specObject: WidgetSpecObject = {
-      id: 'widget_3',
-      component: 'priority_slider_grid',
-      position: 2,
-      config: {},
-      reactiveBindings: [reactiveBinding],
-      metadata: {
-        timing: 0.7,
-        versatility: 0.5,
-        bottleneck: [],
-      },
-    };
+    expect(fullProps.onComplete).toBeDefined();
+    expect(fullProps.onPortChange).toBeDefined();
+  });
 
-    expect(specObject.reactiveBindings).toHaveLength(1);
-    expect(specObject.reactiveBindings?.[0].updateMode).toBe('debounced');
+  test('全てのpropsがオプショナル（specを除く）', () => {
+    const minimalProps: BaseWidgetProps = {
+      spec: mockSpec,
+    };
+    expect(minimalProps.onComplete).toBeUndefined();
+    expect(minimalProps.onUpdate).toBeUndefined();
+    expect(minimalProps.onPortChange).toBeUndefined();
+    expect(minimalProps.getPortValue).toBeUndefined();
+    expect(minimalProps.initialPortValues).toBeUndefined();
   });
 });
 
-describe('OODMObject型', () => {
-  test('有効なOODMObjectを作成できる', () => {
-    const oodmObject: OODMObject = {
-      version: '3.0',
-      entities: [
-        {
-          id: 'entity_1',
-          type: 'concern',
-          attributes: [
-            {
-              name: 'title',
-              value: '転職の悩み',
-              type: 'sval',
-            },
-          ],
-        },
-      ],
-      metadata: {
-        parsedAt: Date.now(),
-      },
+describe('PortChangeCallback', () => {
+  test('正しい引数で呼び出せる', () => {
+    const callback: PortChangeCallback = (widgetId, portId, value) => {
+      expect(widgetId).toBe('test');
+      expect(portId).toBe('balance');
+      expect(value).toBe(0.5);
     };
 
-    expect(oodmObject.version).toBe('3.0');
-    expect(oodmObject.entities).toHaveLength(1);
+    callback('test', 'balance', 0.5);
+  });
+
+  test('様々な型の値を渡せる', () => {
+    const values: unknown[] = [];
+    const callback: PortChangeCallback = (widgetId, portId, value) => {
+      values.push(value);
+    };
+
+    callback('w1', 'a', 'string');
+    callback('w1', 'b', 123);
+    callback('w1', 'c', true);
+    callback('w1', 'd', { foo: 'bar' });
+    callback('w1', 'e', [1, 2, 3]);
+
+    expect(values).toHaveLength(5);
   });
 });
 
-describe('UISpecObject型', () => {
-  test('有効なUISpecObjectを作成できる', () => {
-    const uiSpecObject: UISpecObject = {
-      sessionId: 'session_456',
-      stage: 'converge',
-      oodm: {
-        version: '3.0',
-        entities: [],
-      },
-      dpg: null, // DependencyGraphインスタンス（別途実装）
-      widgets: [
-        {
-          id: 'widget_1',
-          component: 'matrix_placement',
-          position: 0,
-          config: {
-            axes: ['重要度', '緊急度'],
-          },
-          metadata: {
-            timing: 0.5,
-            versatility: 0.6,
-            bottleneck: [],
-          },
-        },
-      ],
-      layout: {
-        type: 'sequential',
-      },
-      metadata: {
-        generatedAt: Date.now(),
-        llmModel: 'gemini-2.5-mini',
-        tokenCount: 1800,
-        version: '3.0',
-      },
+describe('PortValueGetter', () => {
+  test('ポートキーから値を取得できる', () => {
+    const values: Record<string, unknown> = {
+      'widget1.balance': 0.5,
+      'widget2.direction': 'left',
     };
 
-    expect(uiSpecObject.sessionId).toBe('session_456');
-    expect(uiSpecObject.stage).toBe('converge');
-    expect(uiSpecObject.widgets).toHaveLength(1);
-  });
-});
+    const getter: PortValueGetter = (portKey) => values[portKey];
 
-describe('DataBindingObject型', () => {
-  test('必須フィールドのみのDataBindingObjectを作成できる', () => {
-    const binding: DataBindingObject = {
-      name: 'input1',
-      type: 'string',
-    };
-
-    expect(binding.name).toBe('input1');
-    expect(binding.type).toBe('string');
-  });
-
-  test('全フィールドを持つDataBindingObjectを作成できる', () => {
-    const binding: DataBindingObject = {
-      name: 'concernList',
-      type: 'object[]',
-      source: 'brainstorm.cards',
-      required: true,
-      defaultValue: [],
-      description: 'ブレインストームで収集した懸念事項のリスト',
-    };
-
-    expect(binding.name).toBe('concernList');
-    expect(binding.required).toBe(true);
-    expect(binding.defaultValue).toEqual([]);
+    expect(getter('widget1.balance')).toBe(0.5);
+    expect(getter('widget2.direction')).toBe('left');
+    expect(getter('nonexistent.port')).toBeUndefined();
   });
 });

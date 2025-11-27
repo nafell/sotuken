@@ -60,38 +60,18 @@
 
 ### 3.1 デプロイメント設計書
 
-**状態**: VPSセットアップログのみ
-**場所**: `specs/system-design/deployment-design.md`（提案）
-
-**必要な内容**:
-- 本番環境構成
-- CI/CDパイプライン詳細
-- スケーリング設計
-
-**関連**: `specs/project/phase5/ci-cd-design.md`は作成済み
+**状態**: ✅ 完了
+**場所**: `specs/system-design/deployment-design.md`
 
 ### 3.2 API V3仕様書
 
-**状態**: V1仕様のみ存在
-**場所**: `specs/api-schema/api_specification_v3.md`（提案）
-
-**必要な内容**:
-- 新規エンドポイント（/api/ui/v3/*）
-- リクエスト/レスポンススキーマ
-- エラーコード
-
-**関連コード**:
-- `server/src/routes/ui.ts`
+**状態**: ✅ 完了
+**場所**: `specs/api-schema/api_specification_v3.md`
 
 ### 3.3 テスト戦略更新
 
-**状態**: Phase 2のテスト仕様のみ
-**場所**: `specs/testing/test-strategy-v3.md`（提案）
-
-**必要な内容**:
-- Widget v3テスト方針
-- 統合テストシナリオ
-- E2Eテスト計画
+**状態**: ✅ 完了
+**場所**: `specs/testing/test-strategy-v3.md`
 
 ---
 

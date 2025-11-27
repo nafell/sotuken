@@ -14,8 +14,12 @@ import { metricsRoutes } from './routes/metrics';
 const app = new Hono();
 
 // Middleware
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',')
+  : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'];
+
 app.use('*', cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'],
+  origin: allowedOrigins,
   credentials: true,
 }));
 app.use('*', logger());

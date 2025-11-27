@@ -221,8 +221,8 @@ export const TimelineSlider: React.FC<BaseWidgetProps> = ({
               <div
                 key={event.id}
                 className={`${styles.eventMarker} ${state.selectedEventId === event.id
-                    ? styles.eventMarkerSelected
-                    : ''
+                  ? styles.eventMarkerSelected
+                  : ''
                   }`}
                 style={{ left: `${event.position}%` }}
                 onClick={() => handleSelectEvent(event.id)}
@@ -292,8 +292,8 @@ export const TimelineSlider: React.FC<BaseWidgetProps> = ({
               <div
                 key={event.id}
                 className={`${styles.eventItem} ${state.selectedEventId === event.id
-                    ? styles.eventItemSelected
-                    : ''
+                  ? styles.eventItemSelected
+                  : ''
                   }`}
                 style={{ borderLeftColor: event.color }}
                 onClick={() => handleSelectEvent(event.id)}
@@ -317,6 +317,7 @@ export const TimelineSlider: React.FC<BaseWidgetProps> = ({
                     handleEventPositionChange(event.id, Number(e.target.value))
                   }
                   onClick={(e) => e.stopPropagation()}
+                  data-testid={`timeline-item-slider-${event.id}`}
                 />
                 <button
                   className={styles.eventDeleteButton}

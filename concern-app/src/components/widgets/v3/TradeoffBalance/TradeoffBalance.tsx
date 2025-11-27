@@ -79,9 +79,7 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
    */
   const handleAddItem = useCallback(
     (side: 'left' | 'right') => {
-      console.log('handleAddItem called', side);
       const text = side === 'left' ? newLeftItem : newRightItem;
-      console.log('text to add', text);
       if (!text.trim()) return;
 
       controllerRef.current.addItem(text.trim(), side, 50);
@@ -269,6 +267,7 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
                     onChange={(e) =>
                       handleWeightChange(item.id, Number(e.target.value))
                     }
+                    data-testid={`tradeoff-weight-${item.id}`}
                   />
                 </div>
               ))

@@ -52,10 +52,8 @@ export const QuestionCardChain: React.FC<BaseWidgetProps> = ({
 
   // 現在の質問の既存回答を取得
   useEffect(() => {
-    console.log('useEffect triggered', { currentIndex, questionId: currentQuestion?.id });
     if (currentQuestion) {
       const existingAnswer = controllerRef.current.getAnswerForQuestion(currentQuestion.id);
-      console.log('existingAnswer', existingAnswer);
       setCurrentAnswer(existingAnswer?.text || '');
     }
   }, [currentIndex, currentQuestion?.id]);

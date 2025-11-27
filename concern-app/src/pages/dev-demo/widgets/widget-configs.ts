@@ -298,16 +298,16 @@ export const WIDGET_SHOWCASE_CONFIGS: Record<WidgetComponentType, WidgetShowcase
         id: 'default',
         label: 'Default',
         config: {
-          leftOption: { label: '選択肢A', description: 'コスト重視' },
-          rightOption: { label: '選択肢B', description: '品質重視' },
+          leftLabel: '選択肢A',
+          rightLabel: '選択肢B',
         },
       },
       {
         id: 'career',
         label: 'Career Choice',
         config: {
-          leftOption: { label: '現職継続', description: '安定・経験蓄積' },
-          rightOption: { label: '転職', description: '挑戦・成長機会' },
+          leftLabel: '現職継続',
+          rightLabel: '転職',
         },
       },
     ],

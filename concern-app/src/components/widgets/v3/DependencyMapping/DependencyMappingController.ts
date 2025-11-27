@@ -79,7 +79,7 @@ export class DependencyMappingController {
 
   constructor(nodes?: DependencyNode[]) {
     this.state = {
-      nodes: nodes || DEFAULT_NODES,
+      nodes: nodes ? [...nodes] : [...DEFAULT_NODES],
       edges: [],
       selectedNodeId: null,
     };

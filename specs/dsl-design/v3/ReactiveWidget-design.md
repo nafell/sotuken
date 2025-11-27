@@ -1,9 +1,10 @@
 # ReactiveWidget 設計仕様書
 
-> Phase 4 - Day 3-4 Task 2.2 準備
+> Phase 4 - Day 3-4 Task 2.2
 >
 > 作成日: 2025-01-27
-> バージョン: 1.0
+> 更新日: 2025-01-27（実装完了後の注意点追記）
+> バージョン: 1.1
 
 ## 1. 概要
 
@@ -511,8 +512,121 @@ concern-app/
 
 ---
 
-## 11. 参照ドキュメント
+## 11. 実装時の重要な留意点
+
+> **Note**: このセクションは実装完了後（2025-01-27）に追記されました。
+
+### 11.1 PropagationCallback の引数形式
+
+`setOnPropagate` に渡すコールバックは、**配列形式** で伝播イベントを受け取る：
+
+```typescript
+// ✗ 誤った形式
+engine.setOnPropagate((source, target, value) => { ... });
+
+// ✓ 正しい形式
+engine.setOnPropagate((events: PropagationEvent[]) => {
+  events.forEach((e) => {
+    console.log(e.sourcePortKey, e.targetPortKey, e.value);
+  });
+});
+```
+
+### 11.2 JavaScript式の評価形式
+
+DependencyGraph内のJavaScript式では、`source` は `{ value: any }` オブジェクトとして渡される：
+
+```typescript
+// ✗ 動作しない（undefined が返る）
+relationship: {
+  type: 'javascript',
+  javascript: 'source * 2',
+}
+
+// ✓ 正しい形式
+relationship: {
+  type: 'javascript',
+  javascript: 'return source.value * 2',
+}
+```
+
+**複数の書き方例**:
+```typescript
+// 単純な値渡し
+'return source.value'
+
+// 計算
+'return source.value * 2 + 10'
+
+// 条件分岐
+'return source.value > 0.5 ? "high" : "low"'
+
+// オブジェクト変換
+'return { doubled: source.value * 2, original: source.value }'
+```
+
+### 11.3 DependencySpec の必須フィールド
+
+`DependencySpec` を作成する際、以下のフィールドが必須：
+
+```typescript
+interface DependencySpec {
+  source: string;      // 必須: "widgetId.portId"
+  target: string;      // 必須: "widgetId.portId"
+  mechanism: 'update' | 'validate';  // 必須
+  updateMode: 'realtime' | 'debounced' | 'on_confirm';  // 必須
+  relationship: {...}; // 必須
+}
+```
+
+### 11.4 予約Port（_error, _completed）の動作
+
+| 特性 | 予約Port | 通常Port |
+|------|----------|----------|
+| Debounce | なし（即座に反映） | 300ms |
+| 伝播 | しない | する |
+| FlowValidation | 影響する | 影響しない |
+
+**理由**: `canProceed` フラグ（「次へ」ボタンの有効/無効）は即座に反映する必要がある。
+
+### 11.5 テストでの同期的伝播確認
+
+Debounce待ちなしで伝播を確認したい場合は `flush()` を使用：
+
+```typescript
+engine.updatePort('widgetA.output', 10);
+engine.flush();  // 即座に伝播実行
+
+// この時点で伝播完了を確認可能
+expect(propagations.length).toBe(1);
+```
+
+### 11.6 Widget改修時の後方互換性
+
+既存の `onUpdate` / `onComplete` コールバックも並行して呼び出す：
+
+```typescript
+const emitAllPorts = useCallback(() => {
+  emitPort('balance', balance);
+  emitPort('direction', direction);
+}, [emitPort]);
+
+const handleChange = useCallback(() => {
+  // Reactive Port出力
+  emitAllPorts();
+
+  // 後方互換性のため onUpdate も呼ぶ
+  if (onUpdate) {
+    onUpdate(spec.id, result.data);
+  }
+}, [emitAllPorts, onUpdate, spec.id]);
+```
+
+---
+
+## 12. 参照ドキュメント
 
 - [DSL-Core-Spec-v3.0.md](./DSL-Core-Spec-v3.0.md)
 - [plan-requirements-v3.0.md](./plan-requirements-v3.0.md)
 - [phase4_detailed_tasks_rev2.md](../../project/phase4/phase4_detailed_tasks_rev2.md)
+- [実装完了レポート](../../project/phase4/tasks/phase4_task2.2_completion_report.md)

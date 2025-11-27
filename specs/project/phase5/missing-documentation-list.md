@@ -46,6 +46,8 @@
 | TimelineSlider | - | なし | 中 |
 | TradeoffBalance | - | なし | 中 |
 
+ユーザ追記: sotuken/concern-app/src/components/widgets/v3/__tests__/にplaywrightテスト用ファイルが集約されている．それぞれのコンポーネントのディレクトリの__tests__に移動させたい．
+
 ### 1.3 LLMプロンプト仕様書（V3版）
 
 **状態**: 未作成
@@ -110,6 +112,19 @@
 - `concern-app/src/services/FullFlowMetricsService.ts`
 - `concern-app/src/components/demo/full-flow/MetricsDashboard.tsx`
 - `server/src/utils/metricsLogger.ts`
+
+### 2.4 各種README.md / ユーザ追記
+
+**状態**
+- 古い/更新されていない:
+  - README.md (root)
+  - server/README.md
+  - concern-app/README.md
+- specs/testing/README.md: specs/testing自体が昔に作って点在しているテストファイルなのでこれごと整頓する必要あり．実態には促しているので内容変更必要なし．
+- それ以外は変更必要なし
+
+**依頼**
+- 他にREADME.mdを作った方が良さそうな場所を調査し報告書を作成してください
 
 ---
 

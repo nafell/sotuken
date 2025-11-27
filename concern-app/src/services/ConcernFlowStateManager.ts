@@ -1,13 +1,18 @@
 /**
  * ConcernFlowStateManager
  *
+ *
  * Phase 2 Step 3: 関心事フロー全体のstate管理
+ * Phase 3 v2.1: FormData保存とリアルタイム永続化対応
+ *
  * Phase 3 v2.1: FormData保存とリアルタイム永続化対応
  *
  * 責務:
  * - 関心事入力からタスク生成までのフロー状態を保持
  * - SessionStorage + LocalStorageを使った永続化
+ * - SessionStorage + LocalStorageを使った永続化
  * - フロー間のデータ受け渡し
+ * - 各ステージのフォーム入力データの保存（v2.1）
  * - 各ステージのフォーム入力データの保存（v2.1）
  */
 
@@ -17,6 +22,7 @@ import type { BottleneckAnalysis } from '../types/BottleneckTypes';
 
 /**
  * ConcernFlowState
+ *
  *
  * 関心事フロー全体の状態
  */
@@ -43,11 +49,13 @@ export interface ConcernFlowState {
     timestamp: string;
   };
 
+
   planResult?: {
     approach: string;
     steps: string[];
     timestamp: string;
   };
+
 
   breakdownResult?: {
     tasks: Array<{
@@ -60,13 +68,16 @@ export interface ConcernFlowState {
     timestamp: string;
   };
 
+
   // 生成されたタスク（IndexedDBに保存後）
   generatedTasks?: Task[];
+
 
   // フローのメタ情報
   currentStage?: 'capture' | 'plan' | 'breakdown' | 'tasks';
   startedAt?: string;
   completedAt?: string;
+  updatedAt?: string;  // v2.1: 最終更新日時
   updatedAt?: string;  // v2.1: 最終更新日時
   uiCondition?: 'dynamic_ui' | 'static_ui';
 }

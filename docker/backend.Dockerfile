@@ -5,12 +5,12 @@ WORKDIR /app
 # Dependencies layer
 FROM base AS deps
 COPY server/package.json server/bun.lock* ./
-RUN bun install --frozen-lockfile --production
+RUN bun install --production
 
 # Build layer
 FROM base AS builder
 COPY server/package.json server/bun.lock* ./
-RUN bun install --frozen-lockfile
+RUN bun install
 COPY server/ ./
 RUN bun run build
 

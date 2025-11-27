@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Dependencies
 COPY concern-app/package.json concern-app/bun.lock* ./
-RUN bun install --frozen-lockfile
+RUN bun install
 
 # Build args for environment variables
 ARG VITE_API_URL

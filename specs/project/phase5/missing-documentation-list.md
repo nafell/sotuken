@@ -1,6 +1,7 @@
 # 不足ドキュメント一覧
 
 **作成日**: 2025-11-28
+**更新日**: 2025-11-28
 **Phase**: 5 - ドキュメント整理
 
 このドキュメントは、現在不足している仕様書・設計書を整理したものです。
@@ -11,57 +12,20 @@
 
 ### 1.1 Full-Flow統合設計書
 
-**状態**: 未作成
-**場所**: `specs/project/phase4/full-flow-design.md`（提案）
-
-**必要な内容**:
-- Full-Flow全体アーキテクチャ
-- 3フェーズ（Capture → Plan → Breakdown）の連携
-- FullFlowContainer, CapturePhase, PlanPhase, BreakdownPhaseの設計
-- メトリクス収集設計
-
-**関連コード**:
-- `concern-app/src/pages/dev-demo/FullFlowDemoPage.tsx`
-- `concern-app/src/components/demo/full-flow/`
+**状態**: ✅ 完了
+**場所**: `specs/project/phase4/full-flow-design.md`
 
 ### 1.2 Widget v3個別仕様書
 
-**状態**: 部分的に存在（ReactiveWidget-design.mdに概要のみ）
-**場所**: `specs/dsl-design/v3/widgets/`（提案）
+**状態**: ✅ 完了
+**場所**: `specs/dsl-design/v3/widgets/widget-v3-specifications.md`
 
-**不足しているWidget仕様**:
-
-| Widget | 仕様書 | テスト | 優先度 |
-|--------|--------|--------|--------|
-| BrainstormCards | - | あり | 中 |
-| CardSorting | - | なし | 高 |
-| DependencyMapping | - | なし | 高 |
-| EmotionPalette | - | あり | 中 |
-| MatrixPlacement | - | あり | 中 |
-| MindMap | - | なし | 高 |
-| PrioritySliderGrid | - | あり | 中 |
-| QuestionCardChain | - | なし | 高 |
-| StructuredSummary | - | なし | 高 |
-| SwotAnalysis | - | なし | 中 |
-| TimelineSlider | - | なし | 中 |
-| TradeoffBalance | - | なし | 中 |
-
-ユーザ追記: sotuken/concern-app/src/components/widgets/v3/__tests__/にplaywrightテスト用ファイルが集約されている．それぞれのコンポーネントのディレクトリの__tests__に移動させたい．
+**残タスク**: Playwrightテストファイルの移動（`__tests__/`に集約 → 各コンポーネントディレクトリへ）
 
 ### 1.3 LLMプロンプト仕様書（V3版）
 
-**状態**: 未作成
-**場所**: `specs/ui-design/prompt/ui_generation_prompt_v3.md`（提案）
-
-**必要な内容**:
-- DSLv3用プロンプトテンプレート
-- Widget選定ロジック
-- DpG生成ガイドライン
-- 出力フォーマット仕様
-
-**関連コード**:
-- `server/src/services/UISpecGeneratorV3.ts`
-- `server/src/services/GeminiService.ts`
+**状態**: ✅ 完了
+**場所**: `specs/ui-design/prompt/ui_generation_prompt_v3.md`
 
 ---
 
@@ -69,62 +33,26 @@
 
 ### 2.1 ReactiveBindingEngine詳細仕様
 
-**状態**: 設計書あり、詳細仕様不足
-**場所**: `specs/dsl-design/v3/reactive-engine-spec.md`（提案）
-
-**必要な内容**:
-- バインディングAPI仕様
-- 依存関係解決アルゴリズム
-- デバウンス/スロットル設定
-- エラーハンドリング
-
-**関連コード**:
-- `concern-app/src/services/ui/ReactiveBindingEngine.ts`
-- `concern-app/src/services/ui/DependencyGraph.ts`
-- `concern-app/src/services/ui/DependencyExecutor.ts`
+**状態**: ✅ 完了
+**場所**: `specs/dsl-design/v3/reactive-engine-spec.md`
 
 ### 2.2 WidgetDefinition仕様
 
-**状態**: 型定義のみ存在
-**場所**: `specs/dsl-design/v3/widget-definition-spec.md`（提案）
-
-**必要な内容**:
-- WidgetDefinitionの構造
-- プリセットWidget登録方法
-- LLM向けWidget説明フォーマット
-
-**関連コード**:
-- `server/src/definitions/widgets.ts`
-- `server/src/types/WidgetDefinition.ts`
+**状態**: ✅ 完了
+**場所**: `specs/dsl-design/v3/widget-definition-spec.md`
 
 ### 2.3 メトリクス設計書
 
-**状態**: 未作成
-**場所**: `specs/project/phase4/metrics-design.md`（提案）
+**状態**: ✅ 完了
+**場所**: `specs/project/phase4/metrics-design.md`
 
-**必要な内容**:
-- 収集するメトリクス一覧
-- ステージ別計測項目
-- データ形式
-- エクスポート仕様
+### 2.4 各種README.md
 
-**関連コード**:
-- `concern-app/src/services/FullFlowMetricsService.ts`
-- `concern-app/src/components/demo/full-flow/MetricsDashboard.tsx`
-- `server/src/utils/metricsLogger.ts`
-
-### 2.4 各種README.md / ユーザ追記
-
-**状態**
-- 古い/更新されていない:
-  - README.md (root)
-  - server/README.md
-  - concern-app/README.md
-- specs/testing/README.md: specs/testing自体が昔に作って点在しているテストファイルなのでこれごと整頓する必要あり．実態には促しているので内容変更必要なし．
-- それ以外は変更必要なし
-
-**依頼**
-- 他にREADME.mdを作った方が良さそうな場所を調査し報告書を作成してください
+**状態**: ✅ 完了
+- README.md (root) - 更新済み
+- server/README.md - 更新済み
+- concern-app/README.md - 更新済み
+- 調査報告書: `specs/project/phase5/readme-survey-report.md`
 
 ---
 

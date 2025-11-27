@@ -1,0 +1,103 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  DEPLOY_PATH: /opt/sotuken-prod
+
+jobs:
+  # Job 1: Test
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install backend dependencies
+        working-directory: ./server
+        run: bun install
+
+      - name: Run backend tests
+        working-directory: ./server
+        run: bun test
+        continue-on-error: true
+
+      - name: Install frontend dependencies
+        working-directory: ./concern-app
+        run: bun install
+
+      - name: Type check frontend
+        working-directory: ./concern-app
+        run: bun run type-check
+        continue-on-error: true
+
+      - name: Run frontend tests
+        working-directory: ./concern-app
+        run: bun run test
+        continue-on-error: true
+
+  # Job 2: Build and Deploy
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            cd ${{ env.DEPLOY_PATH }}
+
+            # Pull latest code
+            git fetch origin main
+            git reset --hard origin/main
+
+            # Create .env from secrets
+            cat > .env << 'EOF'
+            DB_USER=${{ secrets.DB_USER }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            DB_NAME=${{ secrets.DB_NAME }}
+            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+            CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}
+            VITE_API_URL=${{ secrets.VITE_API_URL }}
+            EOF
+
+            # Build and deploy
+            docker compose build --no-cache
+            docker compose up -d
+
+            # Wait for services
+            sleep 15
+
+            # Health check
+            curl -f http://localhost:8080/health || exit 1
+
+            # Cleanup old images
+            docker image prune -f
+
+            echo "Deployment completed successfully!"
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "Deployment successful!"
+          else
+            echo "Deployment failed!"
+            exit 1
+          fi

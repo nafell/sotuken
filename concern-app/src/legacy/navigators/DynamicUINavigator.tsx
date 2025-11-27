@@ -1,36 +1,39 @@
 /**
- * DynamicUINavigator
- * 
- * Phase 2 Step 3: 動的UI版のルーター
+ * [LEGACY] DynamicUINavigator
+ *
+ * Phase 2 Step 3: 動的UI版のルーター（旧版）
  * 思考整理フロー（capture/plan/breakdown）からタスク推奨までの完全なフロー
+ *
+ * NOTE: 現行版は /dev-demo/full-flow (FullFlowDemoPage) です。
+ * このファイルは実験データの再現性のために /legacy/* で利用可能な状態を維持しています。
  */
 
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
 // Phase 0-1: 既存画面
-import { HomeScreen } from '../components/screens/HomeScreen';
-import { ConcernInputScreen } from '../components/screens/ConcernInputScreen';
-import { CategorySelectionScreen } from '../components/screens/CategorySelectionScreen';
-import { ConcernLevelScreen } from '../components/screens/ConcernLevelScreen';
-import { ApproachScreen } from '../components/screens/ApproachScreen';
-import { BreakdownScreen } from '../components/screens/BreakdownScreen';
-import { FeedbackScreen } from '../components/screens/FeedbackScreen';
+import { HomeScreen } from '../../components/screens/HomeScreen';
+import { ConcernInputScreen } from '../../components/screens/ConcernInputScreen';
+import { CategorySelectionScreen } from '../../components/screens/CategorySelectionScreen';
+import { ConcernLevelScreen } from '../../components/screens/ConcernLevelScreen';
+import { ApproachScreen } from '../../components/screens/ApproachScreen';
+import { BreakdownScreen } from '../../components/screens/BreakdownScreen';
+import { FeedbackScreen } from '../../components/screens/FeedbackScreen';
 
-// Phase 1C: 動的思考整理画面
-import { DynamicThoughtScreen } from '../components/screens/DynamicThoughtScreen';
+// Phase 1C: 動的思考整理画面（Legacy）
+import { DynamicThoughtScreen } from '../screens/DynamicThoughtScreen';
 
-// Phase 3: UISpec v2.0対応の動的思考整理画面
-import { DynamicThoughtScreenV2 } from '../components/screens/DynamicThoughtScreenV2';
+// Phase 3: UISpec v2.0対応の動的思考整理画面（Legacy）
+import { DynamicThoughtScreenV2 } from '../screens/DynamicThoughtScreenV2';
 
 // Phase 2: タスク管理画面
-import { TaskRecommendationScreen } from '../screens/TaskRecommendationScreen';
-import { StaticTaskRecommendationScreen } from '../screens/StaticTaskRecommendationScreen';
-import { TaskListScreen } from '../screens/TaskListScreen';
-import { TaskCreateScreen } from '../screens/TaskCreateScreen';
+import { TaskRecommendationScreen } from '../../screens/TaskRecommendationScreen';
+import { StaticTaskRecommendationScreen } from '../../screens/StaticTaskRecommendationScreen';
+import { TaskListScreen } from '../../screens/TaskListScreen';
+import { TaskCreateScreen } from '../../screens/TaskCreateScreen';
 
 // Phase 2 Step 5: 設定画面
-import { SettingsScreen } from '../screens/SettingsScreen';
+import { SettingsScreen } from '../../screens/SettingsScreen';
 
 /**
  * DynamicUINavigator

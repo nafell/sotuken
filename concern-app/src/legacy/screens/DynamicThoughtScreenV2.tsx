@@ -17,10 +17,10 @@ import { apiService } from '../../services/api/ApiService';
 import { ContextService } from '../../services/context/ContextService';
 import { sessionManager } from '../../services/session/SessionManager';
 import { flowStateManager } from '../../services/ConcernFlowStateManager';
-import { UIRendererV2 } from '../../services/ui-generation/UIRendererV2';
-import { FallbackUI } from './FallbackUI';
-import { ProgressHeader } from '../meta/ProgressHeader';
-import { NavigationFooter } from '../meta/NavigationFooter';
+import { UIRendererV2 } from '../ui-generation/UIRendererV2';
+import { FallbackUI } from '../../components/screens/FallbackUI';
+import { ProgressHeader } from '../../components/meta/ProgressHeader';
+import { NavigationFooter } from '../../components/meta/NavigationFooter';
 import type { UISpecV2, UIStage, FormData } from '../../../../server/src/types/UISpecV2';
 // Phase 4: Diagnostic imports
 import { ConcernAnalyzer } from '../../services/ConcernAnalyzer';

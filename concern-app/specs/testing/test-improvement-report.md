@@ -1,6 +1,7 @@
 # テスト改善作業報告書
 
 **作成日**: 2025-11-28
+**更新日**: 2025-11-28
 **対象ブランチ**: feat/docs-restructure-phase5
 
 ---
@@ -48,18 +49,18 @@
 
 テストが未作成だった8つのWidget Controllerに対して、包括的な単体テストを作成。
 
-### 作成したテストファイル
+### 作成したテストファイル (8ファイル)
 
-| Controller | テストファイル | テスト数 |
-|------------|---------------|---------|
-| CardSortingController | `CardSorting/__tests__/CardSortingController.test.ts` | 30+ |
-| SwotAnalysisController | `SwotAnalysis/__tests__/SwotAnalysisController.test.ts` | 25+ |
-| MindMapController | `MindMap/__tests__/MindMapController.test.ts` | 30+ |
-| QuestionCardChainController | `QuestionCardChain/__tests__/QuestionCardChainController.test.ts` | 30+ |
-| DependencyMappingController | `DependencyMapping/__tests__/DependencyMappingController.test.ts` | 35+ |
-| TimelineSliderController | `TimelineSlider/__tests__/TimelineSliderController.test.ts` | 30+ |
-| StructuredSummaryController | `StructuredSummary/__tests__/StructuredSummaryController.test.ts` | 35+ |
-| TradeoffBalanceController | `TradeoffBalance/__tests__/TradeoffBalanceController.test.ts` | 30+ |
+| Controller | テストファイル | 状態 |
+|------------|---------------|------|
+| CardSortingController | `CardSorting/__tests__/CardSortingController.test.ts` | **新規作成** |
+| SwotAnalysisController | `SwotAnalysis/__tests__/SwotAnalysisController.test.ts` | **新規作成** |
+| MindMapController | `MindMap/__tests__/MindMapController.test.ts` | **新規作成** |
+| QuestionCardChainController | `QuestionCardChain/__tests__/QuestionCardChainController.test.ts` | **新規作成** |
+| DependencyMappingController | `DependencyMapping/__tests__/DependencyMappingController.test.ts` | **新規作成** |
+| TimelineSliderController | `TimelineSlider/__tests__/TimelineSliderController.test.ts` | **新規作成** |
+| StructuredSummaryController | `StructuredSummary/__tests__/StructuredSummaryController.test.ts` | **新規作成** |
+| TradeoffBalanceController | `TradeoffBalance/__tests__/TradeoffBalanceController.test.ts` | **新規作成** |
 
 ### テストカバレッジ
 
@@ -72,15 +73,6 @@
 - **WidgetResult生成**: getResult() の出力形式検証
 - **サマリー生成**: generateSummary() の出力検証
 - **リセット**: reset() 後の状態確認
-
-### テスト実行結果
-
-```
-291 pass / 0 fail
-506 expect() calls
-9 files (既存のBrainstormCardsController含む)
-実行時間: 93ms
-```
 
 ### コミット
 
@@ -132,29 +124,51 @@ items: items ? [...items] : undefined,
 
 ## 現在のテスト構成
 
-### Widget v3 Controllerテスト (9ファイル)
+### Widget v3 Controllerテスト (全12ファイル - 完了)
 
 ```
 src/components/widgets/v3/
-├── BrainstormCards/__tests__/BrainstormCardsController.test.ts  (既存)
-├── CardSorting/__tests__/CardSortingController.test.ts          (新規)
+├── BrainstormCards/__tests__/BrainstormCardsController.test.ts    (既存)
+├── CardSorting/__tests__/CardSortingController.test.ts            (新規)
 ├── DependencyMapping/__tests__/DependencyMappingController.test.ts (新規)
-├── MindMap/__tests__/MindMapController.test.ts                  (新規)
+├── EmotionPalette/__tests__/EmotionPaletteController.test.ts      (既存)
+├── MatrixPlacement/__tests__/MatrixPlacementController.test.ts    (既存)
+├── MindMap/__tests__/MindMapController.test.ts                    (新規)
+├── PrioritySliderGrid/__tests__/PrioritySliderGridController.test.ts (既存)
 ├── QuestionCardChain/__tests__/QuestionCardChainController.test.ts (新規)
 ├── StructuredSummary/__tests__/StructuredSummaryController.test.ts (新規)
-├── SwotAnalysis/__tests__/SwotAnalysisController.test.ts        (新規)
-├── TimelineSlider/__tests__/TimelineSliderController.test.ts    (新規)
-└── TradeoffBalance/__tests__/TradeoffBalanceController.test.ts  (新規)
+├── SwotAnalysis/__tests__/SwotAnalysisController.test.ts          (新規)
+├── TimelineSlider/__tests__/TimelineSliderController.test.ts      (新規)
+└── TradeoffBalance/__tests__/TradeoffBalanceController.test.ts    (新規)
 ```
 
-### テスト未作成のController (4ファイル)
+### テスト実行結果（全Controllerテスト）
 
-以下のControllerはテストが必要:
+```
+374 pass / 0 fail
+744 expect() calls
+12 files
+実行時間: 140ms
+```
 
-1. `EmotionPaletteController` - 感情選択
-2. `MatrixPlacementController` - マトリクス配置
-3. `PrioritySliderGridController` - 優先度スライダー
-4. `ScenarioPathController` - シナリオパス
+### Widget Controllerテスト完了状況
+
+| Controller | テスト有無 | 備考 |
+|------------|-----------|------|
+| BrainstormCardsController | ✅ | 既存 |
+| CardSortingController | ✅ | 今回作成 |
+| DependencyMappingController | ✅ | 今回作成 |
+| EmotionPaletteController | ✅ | 既存 |
+| MatrixPlacementController | ✅ | 既存 |
+| MindMapController | ✅ | 今回作成 |
+| PrioritySliderGridController | ✅ | 既存 |
+| QuestionCardChainController | ✅ | 今回作成 |
+| StructuredSummaryController | ✅ | 今回作成 |
+| SwotAnalysisController | ✅ | 今回作成 |
+| TimelineSliderController | ✅ | 今回作成 |
+| TradeoffBalanceController | ✅ | 今回作成 |
+
+**全12個のWidget Controllerテストが完了**
 
 ---
 
@@ -162,28 +176,23 @@ src/components/widgets/v3/
 
 ### 優先度: 高
 
-1. **残りのWidget Controllerテスト作成**
-   - EmotionPaletteController
-   - MatrixPlacementController
-   - PrioritySliderGridController
-   - ScenarioPathController
-
-2. **統合テストの修正**
+1. **統合テストの修正**
    - `src/components/widgets/v3/__tests__/integration.test.tsx`
    - DOM環境 (`document is not defined`) エラーの解消
+   - Vitest設定の`environment: 'jsdom'` 追加が必要
 
 ### 優先度: 中
 
-3. **Full-flow E2Eテスト作成**
+2. **Full-flow E2Eテスト作成**
    - Capture → Plan → Breakdown フローのE2Eテスト
    - Mock版とReal Server版の両方を作成
 
-4. **ReactiveBindingEngineテストの拡充**
+3. **ReactiveBindingEngineテストの拡充**
    - 現在4ファイル存在、追加テストケースの検討
 
 ### 優先度: 低
 
-5. **サーバーテストの整理**
+4. **サーバーテストの整理**
    - 18ファイル存在、カバレッジ確認
 
 ---
@@ -193,10 +202,18 @@ src/components/widgets/v3/
 ```bash
 # Widget Controllerテストのみ実行
 cd concern-app
-bun test src/components/widgets/v3/**/*Controller.test.ts
-
-# 全Widget v3テスト実行
-bun test src/components/widgets/v3
+bun test src/components/widgets/v3/BrainstormCards/__tests__/BrainstormCardsController.test.ts \
+         src/components/widgets/v3/CardSorting/__tests__/CardSortingController.test.ts \
+         src/components/widgets/v3/DependencyMapping/__tests__/DependencyMappingController.test.ts \
+         src/components/widgets/v3/EmotionPalette/__tests__/EmotionPaletteController.test.ts \
+         src/components/widgets/v3/MatrixPlacement/__tests__/MatrixPlacementController.test.ts \
+         src/components/widgets/v3/MindMap/__tests__/MindMapController.test.ts \
+         src/components/widgets/v3/PrioritySliderGrid/__tests__/PrioritySliderGridController.test.ts \
+         src/components/widgets/v3/QuestionCardChain/__tests__/QuestionCardChainController.test.ts \
+         src/components/widgets/v3/StructuredSummary/__tests__/StructuredSummaryController.test.ts \
+         src/components/widgets/v3/SwotAnalysis/__tests__/SwotAnalysisController.test.ts \
+         src/components/widgets/v3/TimelineSlider/__tests__/TimelineSliderController.test.ts \
+         src/components/widgets/v3/TradeoffBalance/__tests__/TradeoffBalanceController.test.ts
 
 # レガシーテスト含めて実行
 node tests/run_all_tests.js --include-legacy

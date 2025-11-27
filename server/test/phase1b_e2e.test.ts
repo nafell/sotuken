@@ -1,6 +1,10 @@
 /**
- * Phase 1B E2Eテスト
+ * [LEGACY] Phase 1B E2Eテスト
  * 全機能の統合テスト
+ *
+ * ⚠️ このテストはLegacyコード（Phase 1B API）を対象としています。
+ * 現行版は Full-Flow Demo (DSL v3) です。
+ * 実験データの再現性確認のために保持されています。
  */
 
 console.log("=== Phase 1B E2E統合テスト ===\n");

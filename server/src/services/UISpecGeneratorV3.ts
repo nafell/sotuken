@@ -149,7 +149,7 @@ export class UISpecGeneratorV3 {
         // メトリクスをログ
         if (response.metrics) {
           logMetrics(request.sessionId, response.metrics, {
-            model: this.geminiService.getModelName(),
+            model: this.geminiService.getModelId(),
             stage: request.stage,
             inputTextLength: request.concernText.length,
             success: response.success,
@@ -221,7 +221,7 @@ export class UISpecGeneratorV3 {
       // メトリクスをログ
       if (response.metrics) {
         logMetrics(request.sessionId, response.metrics, {
-          model: this.geminiService.getModelName(),
+          model: this.geminiService.getModelId(),
           stage: request.stage,
           inputTextLength: request.concernText.length,
           success: response.success,
@@ -351,7 +351,7 @@ ${widgetDescriptions}
   },
   "metadata": {
     "generatedAt": ${Date.now()},
-    "llmModel": "${this.geminiService.getModelName()}",
+    "llmModel": "${this.geminiService.getModelId()}",
     "tokenCount": 0,
     "version": "3.0"
   }
@@ -482,7 +482,7 @@ ${widgetDescriptions}
       },
       metadata: {
         generatedAt: Date.now(),
-        llmModel: this.geminiService.getModelName(),
+        llmModel: this.geminiService.getModelId(),
         tokenCount: 0,
         version: '3.0',
         ...(uiSpec.metadata || {}),

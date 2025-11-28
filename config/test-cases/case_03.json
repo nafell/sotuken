@@ -1,0 +1,50 @@
+{
+  "caseId": "case_03",
+  "title": "複数の問題が絡んでいる（Reactivity活用）",
+  "complexity": "complex",
+  "hasReactivity": true,
+
+  "concernText": "仕事が忙しすぎて家族との時間が取れない。でも昇進のチャンスでもある。健康も気になるし、趣味も続けたい",
+
+  "contextFactors": {
+    "category": "ワークライフバランス",
+    "urgency": "high",
+    "emotionalState": "overwhelmed",
+    "timeAvailable": 60
+  },
+
+  "expectedBottlenecks": [
+    "multiple_issues",
+    "cannot_prioritize"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["mind_map"],
+      "purpose": "問題要素を可視化（仕事/家族/健康/趣味）"
+    },
+    "organize": {
+      "widgets": ["dependency_mapping"],
+      "purpose": "要素間の依存関係をマッピング",
+      "reactivity": {
+        "description": "矢印接続 → クリティカルパス自動表示",
+        "sourceWidget": "dependency_cards",
+        "targetWidget": "critical_path_highlight"
+      }
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "リソース配分パイチャート調整 → 満足度メーター更新",
+      "reactivity": {
+        "description": "パイチャート調整 → 各要素の満足度メーター更新",
+        "sourceWidget": "resource_pie",
+        "targetWidget": "satisfaction_meters"
+      }
+    }
+  },
+
+  "evaluationCriteria": [
+    "複雑な問題の構造化の適切性",
+    "Reactivityが問題理解を助けているか"
+  ]
+}

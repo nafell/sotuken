@@ -1,0 +1,41 @@
+{
+  "caseId": "case_04",
+  "title": "何から考えればいいか分からない（中複雑度）",
+  "complexity": "medium",
+  "hasReactivity": false,
+
+  "concernText": "将来のキャリアがぼんやりしている。何がやりたいのか、何ができるのかもよく分からない",
+
+  "contextFactors": {
+    "category": "キャリア",
+    "urgency": "low",
+    "emotionalState": "uncertain",
+    "timeAvailable": 45
+  },
+
+  "expectedBottlenecks": [
+    "dont_know_where_to_start",
+    "fixed_perspective"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["question_card_chain"],
+      "purpose": "LLMが動的に質問を生成（5-7問）",
+      "llmFeature": true
+    },
+    "organize": {
+      "widgets": ["card_sorting"],
+      "purpose": "ペルソナ視点切替（5年後の自分、尊敬する人）"
+    },
+    "converge": {
+      "widgets": ["matrix_placement"],
+      "purpose": "情熱×市場性でキャリア候補を配置"
+    }
+  },
+
+  "evaluationCriteria": [
+    "白紙状態からの思考起動の適切性",
+    "質問生成の質"
+  ]
+}

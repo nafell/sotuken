@@ -89,6 +89,8 @@ Both DSLs work together to generate context-aware interfaces using Gemini 2.5 mi
 - **Events** table - User interaction tracking
 - **Sessions** table - User session management
 - **Configs** table - Experiment configuration versioning
+- **ExperimentSessions** table - Research experiment session data (Phase 6)
+- **WidgetStates** table - Widget state snapshots for replay (Phase 6)
 
 ## Development Workflow
 
@@ -117,3 +119,49 @@ This is an academic research project focused on:
 - Privacy-first data collection
 
 The system uses anonymous cloud storage with deterministic LLM modes for reproducibility in research experiments.
+
+## Experiment System (Phase 6)
+
+### Overview
+The experiment system enables controlled evaluation of dynamic UI generation with:
+- **Technical Evaluation**: LLM generation quality and latency measurement
+- **Expert Evaluation**: 10 pre-defined test cases with/without Reactivity
+- **User Validation**: Real-world concern resolution testing
+
+### Experiment API Endpoints
+```
+POST   /api/experiment/sessions              # Create experiment session
+GET    /api/experiment/sessions              # List sessions (with filters)
+GET    /api/experiment/sessions/:id          # Get session details
+PATCH  /api/experiment/sessions/:id          # Update session (results/metrics)
+POST   /api/experiment/sessions/:id/widget-states  # Save widget state
+GET    /api/experiment/sessions/:id/widget-states  # Get widget states (replay)
+GET    /api/experiment/cases                 # List test cases
+GET    /api/experiment/cases/:caseId         # Get test case details
+GET    /api/experiment/settings              # Get experiment settings
+GET    /api/experiment/health                # Health check
+```
+
+### Experiment Commands
+```bash
+# Run experiment API tests
+cd server && bun test/experiment_api.test.ts
+
+# Run integration tests
+cd server && bun test/experiment_integration.test.ts
+
+# Access experiment admin UI (frontend)
+# Navigate to: http://localhost:5173/research-experiment
+```
+
+### Key Configuration Files
+- `config/experiment-settings.json` - Widget count/model conditions
+- `config/test-cases/*.json` - 10 expert evaluation test cases
+
+### Admin UI Routes
+- `/research-experiment` - Dashboard
+- `/research-experiment/cases` - Test case selection
+- `/research-experiment/execute/:caseId` - Run experiment
+- `/research-experiment/sessions` - Session list
+- `/research-experiment/sessions/:sessionId` - Session details
+- `/research-experiment/replay/:sessionId` - Replay view

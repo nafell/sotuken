@@ -154,9 +154,10 @@ export function PlanPhase({
         completedWidgets.size + (existingResult?.widgetResults?.length || 0));
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+    <div data-testid="plan-phase-container" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       {/* ステージナビゲーション */}
       <div
+        data-testid="plan-stage-indicator"
         style={{
           backgroundColor: '#1e293b',
           borderRadius: '0.75rem',
@@ -179,6 +180,7 @@ export function PlanPhase({
                 }}
               >
                 <div
+                  data-testid={`plan-stage-${stage}`}
                   style={{
                     padding: '0.5rem 1rem',
                     backgroundColor: isActive
@@ -226,6 +228,7 @@ export function PlanPhase({
 
       {/* メインコンテンツ */}
       <div
+        data-testid="plan-main-content"
         style={{
           backgroundColor: '#1e293b',
           borderRadius: '0.75rem',
@@ -235,11 +238,12 @@ export function PlanPhase({
       >
         {/* 初期状態 */}
         {status === 'idle' && (
-          <div style={{ textAlign: 'center', padding: '2rem' }}>
+          <div data-testid="plan-idle-state" style={{ textAlign: 'center', padding: '2rem' }}>
             <p style={{ color: '#94a3b8', marginBottom: '1rem' }}>
               {currentStage} ステージのUIを生成します
             </p>
             <button
+              data-testid="plan-generate-btn"
               onClick={handleGenerate}
               style={{
                 padding: '0.75rem 2rem',
@@ -258,7 +262,7 @@ export function PlanPhase({
 
         {/* 生成中 */}
         {status === 'generating' && (
-          <div style={{ textAlign: 'center', padding: '2rem' }}>
+          <div data-testid="plan-generating-indicator" style={{ textAlign: 'center', padding: '2rem' }}>
             <div
               style={{
                 width: '40px',
@@ -279,9 +283,10 @@ export function PlanPhase({
 
         {/* エラー */}
         {status === 'error' && (
-          <div style={{ textAlign: 'center', padding: '2rem' }}>
+          <div data-testid="plan-error-state" style={{ textAlign: 'center', padding: '2rem' }}>
             <p style={{ color: '#ef4444', marginBottom: '1rem' }}>{error}</p>
             <button
+              data-testid="plan-retry-btn"
               onClick={handleGenerate}
               style={{
                 padding: '0.5rem 1.5rem',
@@ -299,16 +304,19 @@ export function PlanPhase({
 
         {/* Widget表示 */}
         {status === 'ready' && currentResponse?.mode === 'widget' && currentResponse.uiSpec && (
-          <UIRendererV3
-            uiSpec={currentResponse.uiSpec}
-            onWidgetUpdate={handleWidgetUpdate}
-            onWidgetComplete={handleWidgetComplete}
-          />
+          <div data-testid="plan-widget-container">
+            <UIRendererV3
+              uiSpec={currentResponse.uiSpec}
+              onWidgetUpdate={handleWidgetUpdate}
+              onWidgetComplete={handleWidgetComplete}
+            />
+          </div>
         )}
 
         {/* テキスト表示 */}
         {status === 'ready' && currentResponse?.mode === 'text' && currentResponse.textSummary && (
           <div
+            data-testid="plan-text-summary"
             style={{
               backgroundColor: '#0f172a',
               borderRadius: '0.5rem',
@@ -334,6 +342,7 @@ export function PlanPhase({
 
       {/* ナビゲーションボタン */}
       <div
+        data-testid="plan-navigation"
         style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -341,6 +350,7 @@ export function PlanPhase({
         }}
       >
         <button
+          data-testid="plan-prev-btn"
           onClick={onPrevStage}
           disabled={!canGoPrev}
           style={{
@@ -358,6 +368,7 @@ export function PlanPhase({
           Stage {currentStageIndex + 1} / {STAGE_ORDER.length}
         </span>
         <button
+          data-testid="plan-next-btn"
           onClick={() => {
             onStageResult(currentStage, {
               ...existingResult,

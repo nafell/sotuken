@@ -74,9 +74,10 @@ export function FullFlowContainer({ onPhaseChange }: FullFlowContainerProps) {
   }, [resetFlow, onPhaseChange]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+    <div data-testid="full-flow-container" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       {/* プログレスバー */}
       <div
+        data-testid="full-flow-progress-header"
         style={{
           backgroundColor: '#0f172a',
           borderRadius: '0.75rem',
@@ -96,6 +97,7 @@ export function FullFlowContainer({ onPhaseChange }: FullFlowContainerProps) {
               label="Capture"
               active={state.phase === 'capture'}
               completed={state.phase !== 'capture'}
+              testId="full-flow-phase-capture"
             />
             <span style={{ color: '#475569' }}>→</span>
             <PhaseIndicator
@@ -103,15 +105,18 @@ export function FullFlowContainer({ onPhaseChange }: FullFlowContainerProps) {
               active={state.phase === 'plan'}
               completed={state.phase === 'breakdown' || state.phase === 'complete'}
               subLabel={state.planStage || undefined}
+              testId="full-flow-phase-plan"
             />
             <span style={{ color: '#475569' }}>→</span>
             <PhaseIndicator
               label="Breakdown"
               active={state.phase === 'breakdown'}
               completed={state.phase === 'complete'}
+              testId="full-flow-phase-breakdown"
             />
           </div>
           <button
+            data-testid="full-flow-reset-btn"
             onClick={handleReset}
             style={{
               padding: '0.25rem 0.75rem',
@@ -128,6 +133,11 @@ export function FullFlowContainer({ onPhaseChange }: FullFlowContainerProps) {
         </div>
         {/* 進捗バー */}
         <div
+          data-testid="full-flow-progress"
+          role="progressbar"
+          aria-valuenow={progress.percentage}
+          aria-valuemin={0}
+          aria-valuemax={100}
           style={{
             height: '4px',
             backgroundColor: '#1e293b',
@@ -198,6 +208,7 @@ export function FullFlowContainer({ onPhaseChange }: FullFlowContainerProps) {
 
       {state.phase === 'complete' && (
         <div
+          data-testid="full-flow-complete-screen"
           style={{
             backgroundColor: '#14532d',
             borderRadius: '0.75rem',
@@ -267,11 +278,13 @@ interface PhaseIndicatorProps {
   active: boolean;
   completed: boolean;
   subLabel?: string;
+  testId?: string;
 }
 
-function PhaseIndicator({ label, active, completed, subLabel }: PhaseIndicatorProps) {
+function PhaseIndicator({ label, active, completed, subLabel, testId }: PhaseIndicatorProps) {
   return (
     <div
+      data-testid={testId}
       style={{
         display: 'inline-flex',
         alignItems: 'center',

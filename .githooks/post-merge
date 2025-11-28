@@ -1,0 +1,57 @@
+#!/bin/bash
+# post-merge hook: git pull/merge 後に実行される
+
+# 色定義
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+# マイグレーションファイルの変更を検知
+CHANGED_MIGRATIONS=$(git diff-tree -r --name-only --no-commit-id ORIG_HEAD HEAD | grep -E '^server/drizzle/.*\.sql$' || true)
+
+# スキーマファイルの変更を検知
+CHANGED_SCHEMA=$(git diff-tree -r --name-only --no-commit-id ORIG_HEAD HEAD | grep -E '^server/src/database/schema\.ts$' || true)
+
+# package.json の変更を検知
+CHANGED_PACKAGES=$(git diff-tree -r --name-only --no-commit-id ORIG_HEAD HEAD | grep -E 'package\.json$' || true)
+
+echo ""
+
+# マイグレーション変更の通知
+if [ -n "$CHANGED_MIGRATIONS" ] || [ -n "$CHANGED_SCHEMA" ]; then
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${YELLOW}  データベーススキーマが変更されました！${NC}"
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo "  変更されたファイル:"
+    if [ -n "$CHANGED_MIGRATIONS" ]; then
+        echo "$CHANGED_MIGRATIONS" | sed 's/^/    /'
+    fi
+    if [ -n "$CHANGED_SCHEMA" ]; then
+        echo "$CHANGED_SCHEMA" | sed 's/^/    /'
+    fi
+    echo ""
+    echo -e "  ${CYAN}マイグレーションを実行してください:${NC}"
+    echo "    cd server && bun run db:migrate"
+    echo ""
+fi
+
+# パッケージ変更の通知
+if [ -n "$CHANGED_PACKAGES" ]; then
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${YELLOW}  パッケージが変更されました！${NC}"
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo "  変更されたファイル:"
+    echo "$CHANGED_PACKAGES" | sed 's/^/    /'
+    echo ""
+    echo -e "  ${CYAN}依存関係を更新してください:${NC}"
+
+    if echo "$CHANGED_PACKAGES" | grep -q "server/package.json"; then
+        echo "    cd server && bun install"
+    fi
+    if echo "$CHANGED_PACKAGES" | grep -q "concern-app/package.json"; then
+        echo "    cd concern-app && bun install"
+    fi
+    echo ""
+fi

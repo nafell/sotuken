@@ -19,25 +19,39 @@ export interface GeminiResponse {
   metrics?: GeminiResponseMetrics;
 }
 
+/** デフォルトモデルID */
+export const DEFAULT_MODEL_ID = "gemini-2.5-flash-lite";
+
+/** 利用可能なモデルID一覧（実験用） */
+export const AVAILABLE_MODELS = [
+  "gemini-2.5-flash-lite",
+  "gemini-2.5-flash",
+  "gemini-2.5-pro"
+] as const;
+
+export type ModelId = typeof AVAILABLE_MODELS[number];
+
 /**
  * Gemini サービスクラス
  */
 export class GeminiService {
   private genAI: GoogleGenerativeAI;
   private model: any;
+  private modelId: string;
 
   /**
    * コンストラクタ
    * @param apiKey Gemini API キー
+   * @param modelId 使用するモデルID（省略時はデフォルト）
    */
-  constructor(apiKey: string) {
+  constructor(apiKey: string, modelId?: string) {
     if (!apiKey) {
       throw new Error("GEMINI_API_KEY is required");
     }
 
     this.genAI = new GoogleGenerativeAI(apiKey);
-    // gemini-2.5-flash-lite を使用
-    this.model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+    this.modelId = modelId || DEFAULT_MODEL_ID;
+    this.model = this.genAI.getGenerativeModel({ model: this.modelId });
   }
 
   /**
@@ -162,25 +176,34 @@ export class GeminiService {
   }
 
   /**
-   * 使用モデル名を取得
+   * 使用モデルIDを取得
+   */
+  getModelId(): string {
+    return this.modelId;
+  }
+
+  /**
+   * 使用モデル名を取得（後方互換性のため維持）
+   * @deprecated getModelId()を使用してください
    */
   getModelName(): string {
-    return "gemini-2.5-flash-lite";
+    return this.modelId;
   }
 }
 
 /**
- * デフォルトのGeminiServiceインスタンスを作成
+ * GeminiServiceインスタンスを作成
  * 環境変数からAPIキーを取得
+ * @param modelId 使用するモデルID（省略時はデフォルト）
  */
-export function createGeminiService(): GeminiService {
+export function createGeminiService(modelId?: string): GeminiService {
   const apiKey = process.env.GEMINI_API_KEY;
-  
+
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY environment variable is not set");
   }
 
-  return new GeminiService(apiKey);
+  return new GeminiService(apiKey, modelId);
 }
 
 

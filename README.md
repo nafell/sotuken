@@ -6,7 +6,7 @@ LLM（Gemini 2.5 mini）による動的UI生成でユーザーの思考整理を
 ## 技術スタック
 
 - **Frontend**: React + TypeScript + Vite (PWA)
-- **Backend**: Bun + Hono + Drizzle ORM + SQLite
+- **Backend**: Bun + Hono + Drizzle ORM + PostgreSQL
 - **LLM**: Google Gemini 2.5 mini
 - **DSL**: DSL v3（OODM + DpG + Reactive Widgets）
 

@@ -1,0 +1,50 @@
+{
+  "caseId": "case_09",
+  "title": "複合パターン - 時間制約あり（Reactivity活用）",
+  "complexity": "complex",
+  "hasReactivity": true,
+
+  "concernText": "来月までに実家に戻るか東京に残るか決めないといけない。仕事、恋人、親の介護、全部が絡んでいる",
+
+  "contextFactors": {
+    "category": "人生選択",
+    "urgency": "critical",
+    "emotionalState": "pressured",
+    "timeAvailable": 60
+  },
+
+  "expectedBottlenecks": [
+    "multiple_issues",
+    "fear_of_decision"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["emotion_palette"],
+      "purpose": "複雑な感情を整理"
+    },
+    "organize": {
+      "widgets": ["dependency_mapping", "timeline_slider"],
+      "purpose": "要素間の関係をドラッグで接続 → 決断延期の影響シミュレーション",
+      "reactivity": {
+        "description": "依存関係図 → 影響シミュレーション表示",
+        "sourceWidget": "dependency_graph",
+        "targetWidget": "impact_simulation"
+      }
+    },
+    "converge": {
+      "widgets": ["tradeoff_balance"],
+      "purpose": "天秤に左右カード配置 → 傾き数値（東京60%/実家40%）リアルタイム表示",
+      "reactivity": {
+        "description": "天秤配置 → 傾き数値リアルタイム更新",
+        "sourceWidget": "balance_cards",
+        "targetWidget": "tilt_percentage"
+      }
+    }
+  },
+
+  "evaluationCriteria": [
+    "複雑な状況の整理の適切性",
+    "時間制約の考慮"
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "caseId": "case_02",
+  "title": "感情的ブロック（Reactivity活用）",
+  "complexity": "medium",
+  "hasReactivity": true,
+
+  "concernText": "新規事業を提案したいが、失敗したら評価が下がるのが怖い。でも今のままだとキャリアが停滞する",
+
+  "contextFactors": {
+    "category": "キャリア",
+    "urgency": "medium",
+    "emotionalState": "anxious",
+    "timeAvailable": 45
+  },
+
+  "expectedBottlenecks": [
+    "emotional_block",
+    "fear_of_decision"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["emotion_palette"],
+      "purpose": "不安の種類・強度を可視化"
+    },
+    "organize": {
+      "widgets": ["timeline_slider"],
+      "purpose": "3ヶ月後/1年後/3年後での最悪・最高シナリオ入力"
+    },
+    "converge": {
+      "widgets": ["tradeoff_balance"],
+      "purpose": "リスク要因の重み付け → 天秤のバランス表示",
+      "reactivity": {
+        "description": "リスク要因スライダー → 天秤がリアルタイムで傾く",
+        "sourceWidget": "risk_sliders",
+        "targetWidget": "balance_display"
+      }
+    }
+  },
+
+  "evaluationCriteria": [
+    "感情ブロックへの対処の適切性",
+    "Reactivityが不安の定量化に寄与しているか"
+  ]
+}

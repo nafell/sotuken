@@ -1,0 +1,109 @@
+{
+  "$schema": "./experiment-settings.schema.json",
+  "version": "1.0.0",
+  "description": "Phase 6 実験設定ファイル",
+
+  "widgetCountConditions": [
+    {
+      "id": "condition_6",
+      "widgetCount": 6,
+      "description": "基本6Widgetセット",
+      "widgets": [
+        "emotion_palette",
+        "brainstorm_cards",
+        "card_sorting",
+        "matrix_placement",
+        "priority_slider_grid",
+        "structured_summary"
+      ]
+    },
+    {
+      "id": "condition_9",
+      "widgetCount": 9,
+      "description": "拡張9Widgetセット",
+      "widgets": [
+        "emotion_palette",
+        "brainstorm_cards",
+        "question_card_chain",
+        "card_sorting",
+        "dependency_mapping",
+        "swot_analysis",
+        "matrix_placement",
+        "priority_slider_grid",
+        "structured_summary"
+      ]
+    },
+    {
+      "id": "condition_12",
+      "widgetCount": 12,
+      "description": "フル12Widgetセット",
+      "widgets": [
+        "emotion_palette",
+        "brainstorm_cards",
+        "question_card_chain",
+        "card_sorting",
+        "dependency_mapping",
+        "swot_analysis",
+        "mind_map",
+        "matrix_placement",
+        "tradeoff_balance",
+        "priority_slider_grid",
+        "timeline_slider",
+        "structured_summary"
+      ]
+    }
+  ],
+
+  "modelConditions": [
+    {
+      "id": "lite",
+      "modelId": "gemini-2.5-flash-lite",
+      "description": "軽量モデル（低コスト・高速）"
+    },
+    {
+      "id": "standard",
+      "modelId": "gemini-2.5-flash",
+      "description": "標準モデル（バランス型）"
+    },
+    {
+      "id": "pro",
+      "modelId": "gemini-2.5-pro",
+      "description": "高性能モデル（高品質・高コスト）"
+    }
+  ],
+
+  "experimentTypes": [
+    {
+      "id": "technical",
+      "name": "技術評価",
+      "description": "生成成功率・トークン数・レイテンシの測定"
+    },
+    {
+      "id": "expert",
+      "name": "専門家評価",
+      "description": "10ケースに対するUI品質評価"
+    },
+    {
+      "id": "user",
+      "name": "ユーザー検証",
+      "description": "5名によるユーザビリティ評価"
+    }
+  ],
+
+  "defaults": {
+    "widgetCount": 12,
+    "modelId": "gemini-2.5-flash-lite",
+    "experimentType": "technical"
+  },
+
+  "bottleneckTypes": [
+    "too_many_options",
+    "emotional_block",
+    "multiple_issues",
+    "dont_know_where_to_start",
+    "cannot_prioritize",
+    "fear_of_decision",
+    "unorganized_info",
+    "fixed_perspective"
+  ]
+}

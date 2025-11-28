@@ -1,9 +1,12 @@
 /**
- * StaticUINavigator（Phase 2 Step 5）
- * 固定UI版のルーター
- * 
+ * [LEGACY] StaticUINavigator（Phase 2 Step 5）
+ * 固定UI版のルーター（旧版）
+ *
  * 固定UI条件（static_ui）用のルーティング設定
- * 
+ *
+ * NOTE: 現行版は /dev-demo/full-flow (FullFlowDemoPage) です。
+ * このファイルは実験データの再現性のために /legacy/* で利用可能な状態を維持しています。
+ *
  * フロー:
  * 1. / → HomeScreen（スタート）
  * 2. /concern/input → ConcernInputScreen（関心事入力）
@@ -21,21 +24,21 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
 // Phase 0-1: 既存画面（固定UI版）
-import { HomeScreen } from '../components/screens/HomeScreen';
-import { ConcernInputScreen } from '../components/screens/ConcernInputScreen';
-import { ConcernLevelScreen } from '../components/screens/ConcernLevelScreen';
-import { CategorySelectionScreen } from '../components/screens/CategorySelectionScreen';
-import { ApproachScreen } from '../components/screens/ApproachScreen';
-import { BreakdownScreen } from '../components/screens/BreakdownScreen';
-import { FeedbackScreen } from '../components/screens/FeedbackScreen';
+import { HomeScreen } from '../../components/screens/HomeScreen';
+import { ConcernInputScreen } from '../../components/screens/ConcernInputScreen';
+import { ConcernLevelScreen } from '../../components/screens/ConcernLevelScreen';
+import { CategorySelectionScreen } from '../../components/screens/CategorySelectionScreen';
+import { ApproachScreen } from '../../components/screens/ApproachScreen';
+import { BreakdownScreen } from '../../components/screens/BreakdownScreen';
+import { FeedbackScreen } from '../../components/screens/FeedbackScreen';
 
 // Phase 2: タスク管理画面
-import { StaticTaskRecommendationScreen } from '../screens/StaticTaskRecommendationScreen';
-import { TaskListScreen } from '../screens/TaskListScreen';
-import { TaskCreateScreen } from '../screens/TaskCreateScreen';
+import { StaticTaskRecommendationScreen } from '../../screens/StaticTaskRecommendationScreen';
+import { TaskListScreen } from '../../screens/TaskListScreen';
+import { TaskCreateScreen } from '../../screens/TaskCreateScreen';
 
 // Phase 2 Step 5: 設定画面
-import { SettingsScreen } from '../screens/SettingsScreen';
+import { SettingsScreen } from '../../screens/SettingsScreen';
 
 /**
  * StaticUINavigator

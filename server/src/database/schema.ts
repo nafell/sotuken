@@ -4,7 +4,7 @@
  * @see specs/system-design/database_schema.md
  */
 
-import { pgTable, text, integer, timestamp, uuid, jsonb, index } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, timestamp, uuid, jsonb, index, boolean } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 // ========================================
@@ -138,6 +138,72 @@ export const systemLogs = pgTable('system_logs', {
 }));
 
 // ========================================
+// Phase 6: 実験セッション管理テーブル
+// ========================================
+
+export const experimentSessions = pgTable('experiment_sessions', {
+  sessionId: uuid('session_id').primaryKey().default(sql`gen_random_uuid()`),
+  experimentType: text('experiment_type').notNull(), // 'technical' | 'expert' | 'user'
+  caseId: text('case_id').notNull(),
+  evaluatorId: text('evaluator_id'),
+
+  // 実験条件
+  widgetCount: integer('widget_count').notNull(),
+  modelId: text('model_id').notNull(),
+
+  // 入力データ
+  concernText: text('concern_text').notNull(),
+  contextFactors: jsonb('context_factors').notNull(),
+
+  // 生成結果（各フェーズ分離保存）
+  generatedOodm: jsonb('generated_oodm'),
+  generatedDpg: jsonb('generated_dpg'),
+  generatedDsl: jsonb('generated_dsl'),
+
+  // メトリクス
+  oodmMetrics: jsonb('oodm_metrics'), // { tokens, latencyMs }
+  dslMetrics: jsonb('dsl_metrics'),   // { tokens, latencyMs }
+  totalTokens: integer('total_tokens'),
+  totalLatencyMs: integer('total_latency_ms'),
+  generationSuccess: boolean('generation_success'),
+  errorMessage: text('error_message'),
+
+  // タイムスタンプ
+  startedAt: timestamp('started_at', { withTimezone: true }).default(sql`now()`),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+
+  // 外部連携（Microsoft Forms）
+  formsResponseId: text('forms_response_id')
+}, (table) => ({
+  sessionsTypeIdx: index('idx_sessions_type').on(table.experimentType),
+  sessionsCaseIdx: index('idx_sessions_case').on(table.caseId),
+  sessionsModelIdx: index('idx_sessions_model').on(table.modelId),
+  sessionsStartedAtIdx: index('idx_sessions_started_at').on(table.startedAt)
+}));
+
+// ========================================
+// Phase 6: Widget状態記録テーブル
+// ========================================
+
+export const widgetStates = pgTable('widget_states', {
+  stateId: uuid('state_id').primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: uuid('session_id').notNull().references(() => experimentSessions.sessionId),
+  stepIndex: integer('step_index').notNull(),
+  widgetType: text('widget_type').notNull(),
+
+  // Widget設定・状態
+  widgetConfig: jsonb('widget_config').notNull(),
+  userInputs: jsonb('user_inputs'),
+  portValues: jsonb('port_values'),
+
+  // 記録時刻
+  recordedAt: timestamp('recorded_at', { withTimezone: true }).default(sql`now()`)
+}, (table) => ({
+  widgetStatesSessionIdx: index('idx_widget_states_session').on(table.sessionId),
+  widgetStatesStepIdx: index('idx_widget_states_step').on(table.sessionId, table.stepIndex)
+}));
+
+// ========================================
 // 型エクスポート
 // ========================================
 
@@ -158,3 +224,9 @@ export type NewPriorityScore = typeof priorityScores.$inferInsert;
 
 export type SystemLog = typeof systemLogs.$inferSelect;
 export type NewSystemLog = typeof systemLogs.$inferInsert;
+
+export type ExperimentSession = typeof experimentSessions.$inferSelect;
+export type NewExperimentSession = typeof experimentSessions.$inferInsert;
+
+export type WidgetState = typeof widgetStates.$inferSelect;
+export type NewWidgetState = typeof widgetStates.$inferInsert;

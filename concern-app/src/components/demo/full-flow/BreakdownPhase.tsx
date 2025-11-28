@@ -173,9 +173,10 @@ export function BreakdownPhase({
   const summary = planSummary();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+    <div data-testid="breakdown-phase-container" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       {/* Planサマリー */}
       <div
+        data-testid="breakdown-summary-section"
         style={{
           backgroundColor: '#1e293b',
           borderRadius: '0.75rem',
@@ -219,6 +220,7 @@ export function BreakdownPhase({
 
       {/* メインコンテンツ */}
       <div
+        data-testid="breakdown-main-content"
         style={{
           backgroundColor: '#1e293b',
           borderRadius: '0.75rem',
@@ -228,7 +230,7 @@ export function BreakdownPhase({
       >
         {/* サマリー確認 */}
         {step === 'summary' && (
-          <div style={{ textAlign: 'center', padding: '2rem' }}>
+          <div data-testid="breakdown-summary-state" style={{ textAlign: 'center', padding: '2rem' }}>
             <h3 style={{ margin: '0 0 1rem 0', color: '#e2e8f0' }}>
               Planフェーズが完了しました
             </h3>
@@ -236,6 +238,7 @@ export function BreakdownPhase({
               結果をもとにアクションタスクを生成します
             </p>
             <button
+              data-testid="breakdown-generate-btn"
               onClick={handleGenerateTasks}
               style={{
                 padding: '0.75rem 2rem',
@@ -254,7 +257,7 @@ export function BreakdownPhase({
 
         {/* 生成中 */}
         {step === 'generating' && (
-          <div style={{ textAlign: 'center', padding: '2rem' }}>
+          <div data-testid="breakdown-generating-indicator" style={{ textAlign: 'center', padding: '2rem' }}>
             <div
               style={{
                 width: '40px',
@@ -273,14 +276,14 @@ export function BreakdownPhase({
 
         {/* タスクレビュー */}
         {step === 'review' && tasks.length > 0 && (
-          <div>
+          <div data-testid="breakdown-review-section">
             <h3 style={{ margin: '0 0 1rem 0', color: '#e2e8f0', fontSize: '1rem' }}>
               生成されたタスク
             </h3>
             <p style={{ margin: '0 0 1rem 0', color: '#64748b', fontSize: '0.75rem' }}>
               実行するタスクを選択してください
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div data-testid="breakdown-task-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {tasks.map((task) => (
                 <TaskCard
                   key={task.id}
@@ -300,10 +303,11 @@ export function BreakdownPhase({
                 alignItems: 'center',
               }}
             >
-              <span style={{ color: '#64748b', fontSize: '0.75rem' }}>
+              <span data-testid="breakdown-selection-count" style={{ color: '#64748b', fontSize: '0.75rem' }}>
                 {selectedTaskIds.size} / {tasks.length} 選択中
               </span>
               <button
+                data-testid="breakdown-complete-btn"
                 onClick={handleComplete}
                 style={{
                   padding: '0.75rem 2rem',
@@ -323,7 +327,7 @@ export function BreakdownPhase({
 
         {/* 完了 */}
         {step === 'complete' && (
-          <div style={{ textAlign: 'center', padding: '2rem' }}>
+          <div data-testid="breakdown-complete-indicator" style={{ textAlign: 'center', padding: '2rem' }}>
             <div
               style={{
                 width: '60px',
@@ -366,6 +370,7 @@ function TaskCard({ task, selected, onToggle }: TaskCardProps) {
 
   return (
     <div
+      data-testid={`breakdown-task-${task.id}`}
       onClick={onToggle}
       style={{
         display: 'flex',
@@ -381,6 +386,7 @@ function TaskCard({ task, selected, onToggle }: TaskCardProps) {
     >
       {/* チェックボックス */}
       <div
+        data-testid={`breakdown-task-${task.id}-checkbox`}
         style={{
           width: '20px',
           height: '20px',

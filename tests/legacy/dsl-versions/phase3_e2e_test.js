@@ -1,7 +1,11 @@
 /**
- * Phase 3 E2E Test - UISpec v2.0
+ * [LEGACY] Phase 3 E2E Test - UISpec v2.0
  *
  * v2 APIとUIRendererの統合テスト
+ *
+ * ⚠️ このテストはLegacyコード（DSL v2, UIRendererV2）を対象としています。
+ * 現行版は Full-Flow Demo (DSL v3) です。
+ * 実験データの再現性確認のために保持されています。
  */
 
 const SERVER_URL = 'http://localhost:3000';

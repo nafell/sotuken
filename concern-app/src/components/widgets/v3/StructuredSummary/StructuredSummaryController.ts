@@ -166,7 +166,7 @@ export class StructuredSummaryController {
       type,
       title: title || config.label,
       content,
-      items,
+      items: items ? [...items] : undefined,
       order: this.state.sections.length + 1,
     };
     this.state.sections.push(section);

@@ -98,9 +98,10 @@ export function CapturePhase({ concernText, onConcernTextChange, onComplete }: C
   const allQuestionsAnswered = questions.every((q) => responses[q.id]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div data-testid="capture-phase-container" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* Step 1: テキスト入力 */}
       <div
+        data-testid="capture-input-section"
         style={{
           backgroundColor: '#1e293b',
           borderRadius: '0.75rem',
@@ -111,6 +112,7 @@ export function CapturePhase({ concernText, onConcernTextChange, onComplete }: C
           Step 1: 関心事を入力
         </h2>
         <textarea
+          data-testid="capture-concern-input"
           value={concernText}
           onChange={(e) => onConcernTextChange(e.target.value)}
           placeholder="今抱えている悩みや関心事を自由に書いてください..."
@@ -141,6 +143,7 @@ export function CapturePhase({ concernText, onConcernTextChange, onComplete }: C
           </span>
           {step === 'input' && (
             <button
+              data-testid="capture-analyze-btn"
               onClick={handleAnalyze}
               disabled={!concernText.trim() || concernText.length < 3}
               style={{
@@ -162,6 +165,7 @@ export function CapturePhase({ concernText, onConcernTextChange, onComplete }: C
       {/* Step 2: 分析結果 */}
       {analysisResult && (
         <div
+          data-testid="capture-analysis-result"
           style={{
             backgroundColor: '#1e293b',
             borderRadius: '0.75rem',
@@ -205,6 +209,7 @@ export function CapturePhase({ concernText, onConcernTextChange, onComplete }: C
       {/* Step 3: 診断質問 */}
       {step === 'diagnostic' && questions.length > 0 && (
         <div
+          data-testid="capture-diagnostic-section"
           style={{
             backgroundColor: '#1e293b',
             borderRadius: '0.75rem',
@@ -239,6 +244,7 @@ export function CapturePhase({ concernText, onConcernTextChange, onComplete }: C
             }}
           >
             <button
+              data-testid="capture-diagnostic-skip-btn"
               onClick={handleSkipDiagnostic}
               style={{
                 padding: '0.5rem 1rem',
@@ -252,6 +258,7 @@ export function CapturePhase({ concernText, onConcernTextChange, onComplete }: C
               スキップ
             </button>
             <button
+              data-testid="capture-complete-btn"
               onClick={handleDiagnosticComplete}
               disabled={!allQuestionsAnswered}
               style={{
@@ -273,6 +280,7 @@ export function CapturePhase({ concernText, onConcernTextChange, onComplete }: C
       {/* 完了状態 */}
       {step === 'complete' && (
         <div
+          data-testid="capture-complete-indicator"
           style={{
             backgroundColor: '#14532d',
             borderRadius: '0.75rem',

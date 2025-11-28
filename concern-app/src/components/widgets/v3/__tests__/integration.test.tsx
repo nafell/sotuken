@@ -264,7 +264,7 @@ describe('Widget Integration Tests', () => {
       expect(result.widgetId).toBe(brainstormSpec.id);
       expect(result.component).toBe('brainstorm_cards');
       expect(result.data.type).toBe('text');
-      expect(result.data.text?.items).toHaveLength(1);
+      expect(result.data.text?.structured?.items).toHaveLength(1);
     });
 
     test('MatrixPlacement: mapping型のWidgetResultを生成', () => {

@@ -8,7 +8,7 @@
 import React, { useState, useCallback } from 'react';
 import type { UISpecDSL } from '../../../../server/src/types/UISpecDSL';
 import type { DataSchemaDSL } from '../../../../server/src/types/DataSchemaDSL';
-import { ComponentMapper } from './ComponentMapper';
+import { ComponentMapper } from '../../services/ui-generation/ComponentMapper';
 
 // ウィジェットのインポート
 import { TextAreaWidget } from '../../components/ui/widgets/TextAreaWidget';

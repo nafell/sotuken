@@ -10,6 +10,7 @@ import { thoughtRoutesV2 } from './routes/thoughtV2';
 import { taskRoutes } from './routes/task';
 import admin from './routes/admin';
 import { metricsRoutes } from './routes/metrics';
+import { experimentRoutes } from './routes/experiment';
 
 const app = new Hono();
 
@@ -51,6 +52,7 @@ app.route('/v2/thought', thoughtRoutesV2);  // Phase 3: UISpec v2.0 API
 app.route('/v1/task', taskRoutes);
 app.route('/v1/metrics', metricsRoutes);  // Phase 2 Step 6: メトリクスAPI
 app.route('/admin', admin);  // Phase 2 Step 5: 管理者用API
+app.route('/api/experiment', experimentRoutes);  // Phase 6: 実験API
 
 // Basic route
 app.get('/', (c) => {
@@ -76,7 +78,17 @@ app.get('/', (c) => {
       'GET /admin/assignments',
       'GET /admin/assignments/counts',
       'POST /admin/assignments',
-      'DELETE /admin/assignments/:userId'
+      'DELETE /admin/assignments/:userId',
+      'GET /api/experiment/health',
+      'GET /api/experiment/settings',
+      'GET /api/experiment/cases',
+      'GET /api/experiment/cases/:caseId',
+      'POST /api/experiment/sessions',
+      'GET /api/experiment/sessions',
+      'GET /api/experiment/sessions/:sessionId',
+      'PATCH /api/experiment/sessions/:sessionId',
+      'POST /api/experiment/sessions/:sessionId/widget-states',
+      'GET /api/experiment/sessions/:sessionId/widget-states'
     ]
   });
 });

@@ -35,6 +35,7 @@ const CaseSelection = lazy(() => import('./pages/research-experiment/CaseSelecti
 const CaseExecution = lazy(() => import('./pages/research-experiment/CaseExecution'));
 const SessionList = lazy(() => import('./pages/research-experiment/SessionList'));
 const SessionDetail = lazy(() => import('./pages/research-experiment/SessionDetail'));
+const ReplayView = lazy(() => import('./pages/research-experiment/ReplayView'));
 
 function App() {
   const [condition, setCondition] = useState<ExperimentCondition>(null);
@@ -180,6 +181,14 @@ function App() {
             element={
               <Suspense fallback={<div style={{ padding: '20px' }}>Loading Session...</div>}>
                 <SessionDetail />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/research-experiment/replay/:sessionId"
+            element={
+              <Suspense fallback={<div style={{ padding: '20px' }}>Loading Replay...</div>}>
+                <ReplayView />
               </Suspense>
             }
           />

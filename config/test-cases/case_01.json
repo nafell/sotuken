@@ -1,0 +1,40 @@
+{
+  "caseId": "case_01",
+  "title": "選択肢が多すぎる（シンプル）",
+  "complexity": "simple",
+  "hasReactivity": false,
+
+  "concernText": "転職先候補が10社あって決められない。業界も職種もバラバラで比較できない",
+
+  "contextFactors": {
+    "category": "キャリア",
+    "urgency": "medium",
+    "emotionalState": "confused",
+    "timeAvailable": 30
+  },
+
+  "expectedBottlenecks": [
+    "too_many_options",
+    "unorganized_info"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "各企業の魅力を自由記述"
+    },
+    "organize": {
+      "widgets": ["card_sorting"],
+      "purpose": "業界別・職種別にグルーピング"
+    },
+    "converge": {
+      "widgets": ["matrix_placement"],
+      "purpose": "重要度×実現性で最終候補3-5社に絞り込み"
+    }
+  },
+
+  "evaluationCriteria": [
+    "ボトルネック診断の適切性",
+    "選択肢削減フローの論理性"
+  ]
+}

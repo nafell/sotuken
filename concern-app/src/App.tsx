@@ -29,6 +29,13 @@ const FullFlowDemoPage = lazy(() => import('./pages/dev-demo/FullFlowDemoPage'))
 const WidgetShowcaseIndex = lazy(() => import('./pages/dev-demo/widgets/WidgetShowcaseIndex'));
 const WidgetShowcasePage = lazy(() => import('./pages/dev-demo/widgets/WidgetShowcasePage'));
 
+// Phase 6: Research Experiment Pages
+const ExperimentDashboard = lazy(() => import('./pages/research-experiment/ExperimentDashboard'));
+const CaseSelection = lazy(() => import('./pages/research-experiment/CaseSelection'));
+const CaseExecution = lazy(() => import('./pages/research-experiment/CaseExecution'));
+const SessionList = lazy(() => import('./pages/research-experiment/SessionList'));
+const SessionDetail = lazy(() => import('./pages/research-experiment/SessionDetail'));
+
 function App() {
   const [condition, setCondition] = useState<ExperimentCondition>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -131,6 +138,48 @@ function App() {
             element={
               <Suspense fallback={<div style={{ padding: '20px' }}>Loading Widget Showcase...</div>}>
                 <WidgetShowcasePage />
+              </Suspense>
+            }
+          />
+
+          {/* Phase 6: Research Experiment Routes */}
+          <Route
+            path="/research-experiment"
+            element={
+              <Suspense fallback={<div style={{ padding: '20px' }}>Loading Experiment Dashboard...</div>}>
+                <ExperimentDashboard />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/research-experiment/cases"
+            element={
+              <Suspense fallback={<div style={{ padding: '20px' }}>Loading Cases...</div>}>
+                <CaseSelection />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/research-experiment/execute/:caseId"
+            element={
+              <Suspense fallback={<div style={{ padding: '20px' }}>Loading Execution...</div>}>
+                <CaseExecution />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/research-experiment/sessions"
+            element={
+              <Suspense fallback={<div style={{ padding: '20px' }}>Loading Sessions...</div>}>
+                <SessionList />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/research-experiment/sessions/:sessionId"
+            element={
+              <Suspense fallback={<div style={{ padding: '20px' }}>Loading Session...</div>}>
+                <SessionDetail />
               </Suspense>
             }
           />

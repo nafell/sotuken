@@ -1,6 +1,6 @@
 [tools]
-bun = "1.2"
-node = "22"
+bun = "latest"
+node = "latest"
 
 [env]
 _.file = ".env.development"

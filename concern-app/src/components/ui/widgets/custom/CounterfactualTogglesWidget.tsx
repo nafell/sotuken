@@ -3,24 +3,54 @@
  * planステージのカスタムウィジェット
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useReactivePorts } from '../../../../hooks/useReactivePorts';
+import type { BaseWidgetProps } from '../../../../types/widget.types';
 
-interface CounterfactualTogglesWidgetProps {
+interface CounterfactualTogglesWidgetProps extends Partial<BaseWidgetProps> {
   value?: Record<string, boolean>;
   onChange?: (value: Record<string, boolean>) => void;
   options?: string[];
   className?: string;
+  // Reactive props
+  spec?: any; // WidgetSpecObject is complex, keeping any for now. Reactive props might be passed directly or via spec.
+  onPortChange?: (widgetId: string, portId: string, value: unknown) => void;
+  getPortValue?: (portKey: string) => unknown;
+  initialPortValues?: Record<string, unknown>;
 }
 
 export const CounterfactualTogglesWidget: React.FC<CounterfactualTogglesWidgetProps> = ({
   value = {},
   onChange,
   options = ['オプション1', 'オプション2', 'オプション3'],
-  className = ''
+  className = '',
+  // Reactive props
+  spec,
+  onPortChange,
+  getPortValue,
+  initialPortValues,
 }) => {
+  // Use reactive ports if available
+  const { emitPort } = useReactivePorts({
+    widgetId: spec?.id || 'unknown',
+    onPortChange,
+    getPortValue,
+    initialPortValues,
+  });
+
+  // Emit initial value if spec is present
+  useEffect(() => {
+    if (spec?.id) {
+      emitPort('value', value);
+    }
+  }, [spec?.id, emitPort, value]);
+
   const handleToggle = (option: string) => {
     const newValue = { ...value, [option]: !value[option] };
     onChange?.(newValue);
+    if (spec?.id) {
+      emitPort('value', newValue);
+    }
   };
 
   return (
@@ -42,4 +72,3 @@ export const CounterfactualTogglesWidget: React.FC<CounterfactualTogglesWidgetPr
     </div>
   );
 };
-

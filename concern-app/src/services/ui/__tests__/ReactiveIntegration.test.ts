@@ -230,16 +230,18 @@ describe('Reactive Widget Integration', () => {
 
     test('深度制限を超える伝播は停止する', () => {
       // 深い依存関係（11段階）
-      const dependencies: DependencyGraphSpec['dependencies'] = [];
+      const dependencies: any[] = [];
       for (let i = 0; i < 11; i++) {
         dependencies.push({
           source: `w${i}.out`,
           target: `w${i + 1}.in`,
           relationship: { type: 'javascript', javascript: 'return source.value' },
+          mechanism: 'update',
+          updateMode: 'realtime',
         });
       }
 
-      engine = new ReactiveBindingEngine(createTestDpgSpec(dependencies), {
+      engine = new ReactiveBindingEngine(createTestDpgSpec(dependencies) as any, {
         maxPropagationDepth: 5,
       });
 

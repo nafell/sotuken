@@ -10,7 +10,7 @@
  * - Widget別のエラー・完了状態を提供
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import type {
   ReactiveBindingEngine,
   FlowValidationState,
@@ -83,7 +83,7 @@ export function useFlowValidation(
     return () => {
       // コールバックをnullにリセット（engine.disposeで行われるが念のため）
       if (!engine.isDisposed()) {
-        engine.setOnValidationStateChange(() => {});
+        engine.setOnValidationStateChange(() => { });
       }
     };
   }, [engine]);

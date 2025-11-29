@@ -4,7 +4,7 @@
  * useFlowValidationフックの単体テスト
  */
 
-import { describe, expect, test, vi, beforeEach, afterEach } from 'vitest';
+import { describe, expect, test, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import {
   useFlowValidation,

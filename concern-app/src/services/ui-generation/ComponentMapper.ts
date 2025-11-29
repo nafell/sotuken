@@ -18,16 +18,16 @@ export const RENDER_TO_COMPONENT_MAP: Record<string, string> = {
   radio: 'RadioGroupWidget',
   category: 'CategoryPickerWidget',
   hidden: 'HiddenWidget',
-  
+
   // ARRY系
   expanded: 'ListWidget',
   summary: 'SummaryListWidget',
-  
+
   // PNTR系
   link: 'LinkWidget',
   inline: 'InlineWidget',
   card: 'CardWidget',
-  
+
   // CUSTOM系
   custom: 'DynamicWidget'
 };
@@ -77,12 +77,12 @@ export class ComponentMapper {
    */
   getComponentName(renderType: string): string {
     const componentName = RENDER_TO_COMPONENT_MAP[renderType];
-    
+
     if (!componentName) {
       console.warn(`Unknown render type: ${renderType}, falling back to TextAreaWidget`);
       return 'TextAreaWidget';
     }
-    
+
     return componentName;
   }
 
@@ -102,7 +102,7 @@ export class ComponentMapper {
     props: Record<string, any>;
   } {
     const componentName = this.getComponentName(renderSpec.render);
-    
+
     // 型別にpropsを構築
     let props: Record<string, any> = {
       value: data,
@@ -183,24 +183,24 @@ export class ComponentMapper {
     switch (derived.operation) {
       case 'COUNT':
         return items.length;
-      
+
       case 'SUM':
         if (!derived.field) return 0;
         return items.reduce((sum, item) => sum + (item[derived.field!] || 0), 0);
-      
+
       case 'AVG':
         if (!derived.field) return 0;
         const sum = items.reduce((s, item) => s + (item[derived.field!] || 0), 0);
         return sum / items.length;
-      
+
       case 'MIN':
         if (!derived.field) return 0;
         return Math.min(...items.map(item => item[derived.field!] || 0));
-      
+
       case 'MAX':
         if (!derived.field) return 0;
         return Math.max(...items.map(item => item[derived.field!] || 0));
-      
+
       default:
         return '-';
     }
@@ -234,4 +234,3 @@ export class ComponentMapper {
     return renderSpec.render === 'custom';
   }
 }
-

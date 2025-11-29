@@ -14,6 +14,7 @@ import {
   LEVEL_COLORS,
   type MindMapNode,
 } from './MindMapController';
+import { useReactivePorts } from '../../../../hooks/useReactivePorts';
 import styles from './MindMap.module.css';
 
 interface NodeComponentProps {
@@ -157,7 +158,18 @@ export const MindMap: React.FC<BaseWidgetProps> = ({
   spec,
   onComplete,
   onUpdate,
+  onPortChange,
+  getPortValue,
+  initialPortValues,
 }) => {
+  // Reactive Ports
+  const { emitPort, setCompleted, setError } = useReactivePorts({
+    widgetId: spec.id,
+    onPortChange,
+    getPortValue,
+    initialPortValues,
+  });
+
   const [, forceUpdate] = useState({});
   const [centerTopic, setCenterTopic] = useState(
     spec.config.centerTopic || '中心テーマ'
@@ -199,12 +211,22 @@ export const MindMap: React.FC<BaseWidgetProps> = ({
   const maxDepth = controllerRef.current.getMaxDepth();
 
   /**
+   * 全出力Portに値を発行
+   */
+  const emitAllPorts = useCallback(() => {
+    emitPort('nodes', controllerRef.current.getState().nodes);
+    emitPort('summary', controllerRef.current.generateSummary());
+  }, [emitPort]);
+
+  /**
    * 中心テーマ更新
    */
   const handleCenterTopicChange = useCallback((topic: string) => {
     setCenterTopic(topic);
     controllerRef.current.setCenterTopic(topic);
-  }, []);
+    // Reactive Port出力
+    emitAllPorts();
+  }, [emitAllPorts]);
 
   /**
    * ルートノード追加
@@ -212,11 +234,13 @@ export const MindMap: React.FC<BaseWidgetProps> = ({
   const handleAddRoot = useCallback(() => {
     controllerRef.current.addNode('新しいアイデア', null);
     forceUpdate({});
+    // Reactive Port出力
+    emitAllPorts();
     if (onUpdate) {
       const result = controllerRef.current.getResult(spec.id);
       onUpdate(spec.id, result.data);
     }
-  }, [onUpdate, spec.id]);
+  }, [emitAllPorts, onUpdate, spec.id]);
 
   /**
    * 子ノード追加
@@ -225,12 +249,14 @@ export const MindMap: React.FC<BaseWidgetProps> = ({
     (parentId: string) => {
       controllerRef.current.addNode('サブアイデア', parentId);
       forceUpdate({});
+      // Reactive Port出力
+      emitAllPorts();
       if (onUpdate) {
         const result = controllerRef.current.getResult(spec.id);
         onUpdate(spec.id, result.data);
       }
     },
-    [onUpdate, spec.id]
+    [emitAllPorts, onUpdate, spec.id]
   );
 
   /**
@@ -240,12 +266,14 @@ export const MindMap: React.FC<BaseWidgetProps> = ({
     (nodeId: string) => {
       controllerRef.current.removeNode(nodeId);
       forceUpdate({});
+      // Reactive Port出力
+      emitAllPorts();
       if (onUpdate) {
         const result = controllerRef.current.getResult(spec.id);
         onUpdate(spec.id, result.data);
       }
     },
-    [onUpdate, spec.id]
+    [emitAllPorts, onUpdate, spec.id]
   );
 
   /**
@@ -255,12 +283,14 @@ export const MindMap: React.FC<BaseWidgetProps> = ({
     (nodeId: string, text: string) => {
       controllerRef.current.updateNode(nodeId, text);
       forceUpdate({});
+      // Reactive Port出力
+      emitAllPorts();
       if (onUpdate) {
         const result = controllerRef.current.getResult(spec.id);
         onUpdate(spec.id, result.data);
       }
     },
-    [onUpdate, spec.id]
+    [emitAllPorts, onUpdate, spec.id]
   );
 
   /**
@@ -285,27 +315,40 @@ export const MindMap: React.FC<BaseWidgetProps> = ({
   const handleReset = useCallback(() => {
     controllerRef.current.reset();
     forceUpdate({});
+    // Reactive Port出力
+    emitAllPorts();
     if (onUpdate) {
       const result = controllerRef.current.getResult(spec.id);
       onUpdate(spec.id, result.data);
     }
-  }, [onUpdate, spec.id]);
+  }, [emitAllPorts, onUpdate, spec.id]);
 
   /**
    * 完了
    */
   const handleComplete = useCallback(() => {
+    if (nodeCount === 0) {
+      setError(true, ['アイデアを追加してください']);
+      return;
+    }
+
+    setError(false);
+    setCompleted(true);
+
     if (onComplete) {
       onComplete(spec.id);
     }
-  }, [onComplete, spec.id]);
+  }, [nodeCount, setError, setCompleted, onComplete, spec.id]);
 
   /**
    * 結果取得
    */
-  const getResult = (): WidgetResult => {
+  /**
+   * 結果取得
+   */
+  const getResult = useCallback((): WidgetResult => {
     return controllerRef.current.getResult(spec.id);
-  };
+  }, [spec.id]);
 
   // 外部から結果を取得できるようにrefを設定
   useEffect(() => {
@@ -313,7 +356,7 @@ export const MindMap: React.FC<BaseWidgetProps> = ({
     return () => {
       delete (window as any)[`widget_${spec.id}_getResult`];
     };
-  }, [spec.id, state]);
+  }, [spec.id, getResult]);
 
   return (
     <div className={styles.container} role="region" aria-label="マインドマップ" data-testid="mindmap-container">

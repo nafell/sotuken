@@ -36,7 +36,7 @@ export const DependencyMapping: React.FC<BaseWidgetProps> = ({
   initialPortValues,
 }) => {
   // Reactive Ports
-  const { emitPort, setCompleted, setError } = useReactivePorts({
+  const { emitPort, setCompleted } = useReactivePorts({
     widgetId: spec.id,
     onPortChange,
     getPortValue,
@@ -259,9 +259,12 @@ export const DependencyMapping: React.FC<BaseWidgetProps> = ({
   /**
    * 結果取得
    */
-  const getResult = (): WidgetResult => {
+  /**
+   * 結果取得
+   */
+  const getResult = useCallback((): WidgetResult => {
     return controllerRef.current.getResult(spec.id);
-  };
+  }, [spec.id]);
 
   // 外部から結果を取得できるようにrefを設定
   useEffect(() => {
@@ -269,7 +272,7 @@ export const DependencyMapping: React.FC<BaseWidgetProps> = ({
     return () => {
       delete (window as any)[`widget_${spec.id}_getResult`];
     };
-  }, [spec.id, state]);
+  }, [spec.id, getResult]);
 
   return (
     <div className={styles.container} role="region" aria-label="依存関係マッピング" data-testid="dep-map-container">

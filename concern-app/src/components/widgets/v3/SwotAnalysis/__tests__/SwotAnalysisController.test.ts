@@ -4,7 +4,7 @@
  */
 
 import { describe, test, expect, beforeEach } from 'vitest';
-import { SwotAnalysisController, type SwotQuadrant } from '../SwotAnalysisController';
+import { SwotAnalysisController } from '../SwotAnalysisController';
 
 describe('SwotAnalysisController', () => {
   let controller: SwotAnalysisController;

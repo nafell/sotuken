@@ -9,7 +9,6 @@ import {
   ReactiveBindingEngine,
   RESERVED_PORTS,
   type PropagationEvent,
-  type FlowValidationState,
 } from '../ReactiveBindingEngine';
 import type { DependencyGraphSpec } from '../../../types/ui-spec.types';
 
@@ -275,7 +274,7 @@ describe('ReactiveBindingEngine', () => {
         defaultDebounceMs: 10,
       });
 
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
 
       engine.updatePort('a.out', 1);
       vi.advanceTimersByTime(50);

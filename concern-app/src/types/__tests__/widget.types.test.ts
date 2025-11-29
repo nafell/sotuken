@@ -47,7 +47,7 @@ describe('Widget Types', () => {
       onPortChange: (widgetId, portId, value) => {
         console.log(widgetId, portId, value);
       },
-      getPortValue: (portKey) => null,
+      getPortValue: (_portKey) => null,
       initialPortValues: { balance: 0 },
     };
 
@@ -60,11 +60,11 @@ describe('Widget Types', () => {
     const fullProps: BaseWidgetProps = {
       spec: mockSpec,
       // 既存
-      onComplete: (id) => {},
-      onUpdate: (id, data) => {},
+      onComplete: (_id) => { },
+      onUpdate: (_id, _data) => { },
       // 新規
-      onPortChange: (widgetId, portId, value) => {},
-      getPortValue: (portKey) => undefined,
+      onPortChange: (_widgetId, _portId, _value) => { },
+      getPortValue: (_portKey) => undefined,
       initialPortValues: { _completed: { isCompleted: false } },
     };
 
@@ -97,7 +97,7 @@ describe('PortChangeCallback', () => {
 
   test('様々な型の値を渡せる', () => {
     const values: unknown[] = [];
-    const callback: PortChangeCallback = (widgetId, portId, value) => {
+    const callback: PortChangeCallback = (_widgetId, _portId, value) => {
       values.push(value);
     };
 

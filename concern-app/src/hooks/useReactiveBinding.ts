@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { useAtomValue, useSetAtom } from 'jotai';
+import { useAtomValue, useSetAtom, atom } from 'jotai';
 import { getWidgetAtom } from '../store/widgetAtoms';
 import { DependencyExecutor } from '../services/ui/DependencyExecutor';
 import type {
@@ -34,24 +34,29 @@ export function useReactiveBinding(
   const sourceWidgetId = extractWidgetId(sourceKey);
   const targetWidgetId = extractWidgetId(targetKey);
 
-  const sourceAtom = getWidgetAtom(sourceWidgetId);
-  const targetAtom = getWidgetAtom(targetWidgetId);
+  // ダミーatomを用意して、atomが見つからない場合でもフックが呼ばれるようにする
+  const dummyAtom = useRef(atom(null)).current;
+  const foundSourceAtom = getWidgetAtom(sourceWidgetId);
+  const foundTargetAtom = getWidgetAtom(targetWidgetId);
 
-  if (!sourceAtom || !targetAtom) {
-    console.warn(
-      `useReactiveBinding: atom not found for ${sourceKey} or ${targetKey}`
-    );
-    return;
-  }
+  const sourceAtom = foundSourceAtom || dummyAtom;
+  const targetAtom = foundTargetAtom || dummyAtom;
 
   const sourceValue = useAtomValue(sourceAtom);
-  // @ts-ignore - Jotai型の互換性問題を回避
+  // @ts-expect-error - Jotai型の互換性問題を回避
   const setTargetValue = useSetAtom(targetAtom);
 
   const executorRef = useRef(new DependencyExecutor());
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    if (!foundSourceAtom || !foundTargetAtom) {
+      console.warn(
+        `useReactiveBinding: atom not found for ${sourceKey} or ${targetKey}`
+      );
+      return;
+    }
+
     const updateTarget = () => {
       const result = executorRef.current.executeTransform(
         relationship,
@@ -90,7 +95,16 @@ export function useReactiveBinding(
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [sourceValue, targetKey, relationship, updateMode, setTargetValue]);
+  }, [
+    sourceValue,
+    targetKey,
+    relationship,
+    updateMode,
+    setTargetValue,
+    foundSourceAtom,
+    foundTargetAtom,
+    sourceKey,
+  ]);
 }
 
 /**

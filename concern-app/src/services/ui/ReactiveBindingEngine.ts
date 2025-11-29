@@ -11,7 +11,7 @@
  * - Transform関数の実行
  */
 
-import type { DependencyGraphSpec, DependencySpec } from '../../types/ui-spec.types';
+import type { DependencyGraphSpec } from '../../types/ui-spec.types';
 import { DependencyGraph } from './DependencyGraph';
 import { DependencyExecutor } from './DependencyExecutor';
 

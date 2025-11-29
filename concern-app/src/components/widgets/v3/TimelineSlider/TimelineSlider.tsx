@@ -16,6 +16,7 @@ import {
   type TimeUnit,
   type TimelineEvent,
 } from './TimelineSliderController';
+import { useReactivePorts } from '../../../../hooks/useReactivePorts';
 import styles from './TimelineSlider.module.css';
 
 /**
@@ -25,7 +26,18 @@ export const TimelineSlider: React.FC<BaseWidgetProps> = ({
   spec,
   onComplete,
   onUpdate,
+  onPortChange,
+  getPortValue,
+  initialPortValues,
 }) => {
+  // Reactive Ports
+  const { emitPort, setCompleted, setError } = useReactivePorts({
+    widgetId: spec.id,
+    onPortChange,
+    getPortValue,
+    initialPortValues,
+  });
+
   const [, forceUpdate] = useState({});
   const [newEventText, setNewEventText] = useState('');
   const [newEventPosition, setNewEventPosition] = useState(50);
@@ -60,14 +72,24 @@ export const TimelineSlider: React.FC<BaseWidgetProps> = ({
   const config = TIME_UNIT_CONFIG[state.timeUnit];
 
   /**
+   * 全出力Portに値を発行
+   */
+  const emitAllPorts = useCallback(() => {
+    emitPort('events', controllerRef.current.getSortedEvents());
+    emitPort('summary', controllerRef.current.generateSummary());
+  }, [emitPort]);
+
+  /**
    * 時間単位変更
    */
   const handleTimeUnitChange = useCallback(
     (unit: TimeUnit) => {
       controllerRef.current.setTimeUnit(unit);
       forceUpdate({});
+      // Reactive Port出力
+      emitAllPorts();
     },
-    []
+    [emitAllPorts]
   );
 
   /**
@@ -87,12 +109,15 @@ export const TimelineSlider: React.FC<BaseWidgetProps> = ({
       setNewEventPosition(50);
       forceUpdate({});
 
+      // Reactive Port出力
+      emitAllPorts();
+
       if (onUpdate) {
         const result = controllerRef.current.getResult(spec.id);
         onUpdate(spec.id, result.data);
       }
     },
-    [newEventText, newEventPosition, newEventPriority, onUpdate, spec.id]
+    [newEventText, newEventPosition, newEventPriority, emitAllPorts, onUpdate, spec.id]
   );
 
   /**
@@ -103,12 +128,15 @@ export const TimelineSlider: React.FC<BaseWidgetProps> = ({
       controllerRef.current.setEventPosition(eventId, position);
       forceUpdate({});
 
+      // Reactive Port出力
+      emitAllPorts();
+
       if (onUpdate) {
         const result = controllerRef.current.getResult(spec.id);
         onUpdate(spec.id, result.data);
       }
     },
-    [onUpdate, spec.id]
+    [emitAllPorts, onUpdate, spec.id]
   );
 
   /**
@@ -127,12 +155,15 @@ export const TimelineSlider: React.FC<BaseWidgetProps> = ({
       controllerRef.current.removeEvent(eventId);
       forceUpdate({});
 
+      // Reactive Port出力
+      emitAllPorts();
+
       if (onUpdate) {
         const result = controllerRef.current.getResult(spec.id);
         onUpdate(spec.id, result.data);
       }
     },
-    [onUpdate, spec.id]
+    [emitAllPorts, onUpdate, spec.id]
   );
 
   /**
@@ -144,27 +175,41 @@ export const TimelineSlider: React.FC<BaseWidgetProps> = ({
     setNewEventPosition(50);
     forceUpdate({});
 
+    // Reactive Port出力
+    emitAllPorts();
+
     if (onUpdate) {
       const result = controllerRef.current.getResult(spec.id);
       onUpdate(spec.id, result.data);
     }
-  }, [onUpdate, spec.id]);
+  }, [emitAllPorts, onUpdate, spec.id]);
 
   /**
    * 完了
    */
   const handleComplete = useCallback(() => {
+    if (sortedEvents.length === 0) {
+      setError(true, ['イベントを追加してください']);
+      return;
+    }
+
+    setError(false);
+    setCompleted(true);
+
     if (onComplete) {
       onComplete(spec.id);
     }
-  }, [onComplete, spec.id]);
+  }, [sortedEvents.length, setError, setCompleted, onComplete, spec.id]);
 
   /**
    * 結果取得
    */
-  const getResult = (): WidgetResult => {
+  /**
+   * 結果取得
+   */
+  const getResult = useCallback((): WidgetResult => {
     return controllerRef.current.getResult(spec.id);
-  };
+  }, [spec.id]);
 
   // 外部から結果を取得できるようにrefを設定
   useEffect(() => {
@@ -172,7 +217,7 @@ export const TimelineSlider: React.FC<BaseWidgetProps> = ({
     return () => {
       delete (window as any)[`widget_${spec.id}_getResult`];
     };
-  }, [spec.id, state]);
+  }, [spec.id, getResult]);
 
   return (
     <div className={styles.container} role="region" aria-label="タイムライン" data-testid="timeline-container">

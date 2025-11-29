@@ -29,7 +29,7 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
   initialPortValues,
 }) => {
   // Reactive Ports
-  const { emitPort, setCompleted, setError } = useReactivePorts({
+  const { emitPort, setCompleted } = useReactivePorts({
     widgetId: spec.id,
     onPortChange,
     getPortValue,
@@ -64,7 +64,7 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
     }
   }, [spec.config.items]);
 
-  const state = controllerRef.current.getState();
+
   const leftItems = controllerRef.current.getItemsBySide('left');
   const rightItems = controllerRef.current.getItemsBySide('right');
   const tiltAngle = controllerRef.current.getTiltAngle();
@@ -205,9 +205,12 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
   /**
    * 結果取得
    */
-  const getResult = (): WidgetResult => {
+  /**
+   * 結果取得
+   */
+  const getResult = useCallback((): WidgetResult => {
     return controllerRef.current.getResult(spec.id);
-  };
+  }, [spec.id]);
 
   // 外部から結果を取得できるようにrefを設定
   useEffect(() => {
@@ -215,7 +218,7 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
     return () => {
       delete (window as any)[`widget_${spec.id}_getResult`];
     };
-  }, [spec.id, state]);
+  }, [spec.id, getResult]);
 
   return (
     <div className={styles.container} role="region" aria-label="トレードオフ天秤" data-testid="tradeoff-container">

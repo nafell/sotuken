@@ -22,8 +22,7 @@ test.describe('StructuredSummary Widget', () => {
         // We need to find the new section. It should be the last one (or first if empty).
         // Let's look for a section with "アクションアイテム" title (default for action_items)
         // Or we can just check count of sections
-        const sections = page.locator('[data-testid^="struct-summary-section-"]');
-        // Default might have some sections.
+        await expect(page.locator('[data-testid^="struct-summary-section-"]')).toHaveCount(3);
 
         // Let's find the specific section we added.
         // We can check the input value of the section title

@@ -16,6 +16,7 @@ import {
   type SortingCard,
   type SortingCategory,
 } from './CardSortingController';
+import { useReactivePorts } from '../../../../hooks/useReactivePorts';
 import styles from './CardSorting.module.css';
 
 /**
@@ -25,7 +26,18 @@ export const CardSorting: React.FC<BaseWidgetProps> = ({
   spec,
   onComplete,
   onUpdate,
+  onPortChange,
+  getPortValue,
+  initialPortValues,
 }) => {
+  // Reactive Ports
+  const { emitPort, setCompleted, setError } = useReactivePorts({
+    widgetId: spec.id,
+    onPortChange,
+    getPortValue,
+    initialPortValues,
+  });
+
   const [, forceUpdate] = useState({});
   const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
   const [dragOverCategory, setDragOverCategory] = useState<string | null>(null);
@@ -57,6 +69,15 @@ export const CardSorting: React.FC<BaseWidgetProps> = ({
   const unsortedCards = controllerRef.current.getUnsortedCards();
   const progress = controllerRef.current.getProgress();
   const isAllSorted = controllerRef.current.isAllSorted();
+
+  /**
+   * 全出力Portに値を発行
+   */
+  const emitAllPorts = useCallback(() => {
+    emitPort('cards', controllerRef.current.getState().cards);
+    emitPort('summary', controllerRef.current.generateSummary());
+    emitPort('progress', controllerRef.current.getProgress());
+  }, [emitPort]);
 
   /**
    * ドラッグ開始
@@ -94,6 +115,9 @@ export const CardSorting: React.FC<BaseWidgetProps> = ({
           controllerRef.current.placeCard(draggedCardId, categoryId);
           forceUpdate({});
 
+          // Reactive Port出力
+          emitAllPorts();
+
           // 親に通知
           if (onUpdate) {
             const result = controllerRef.current.getResult(spec.id);
@@ -106,7 +130,7 @@ export const CardSorting: React.FC<BaseWidgetProps> = ({
       setDraggedCardId(null);
       setDragOverCategory(null);
     },
-    [draggedCardId, onUpdate, spec.id]
+    [draggedCardId, emitAllPorts, onUpdate, spec.id]
   );
 
   /**
@@ -117,12 +141,15 @@ export const CardSorting: React.FC<BaseWidgetProps> = ({
       controllerRef.current.unplaceCard(cardId);
       forceUpdate({});
 
+      // Reactive Port出力
+      emitAllPorts();
+
       if (onUpdate) {
         const result = controllerRef.current.getResult(spec.id);
         onUpdate(spec.id, result.data);
       }
     },
-    [onUpdate, spec.id]
+    [emitAllPorts, onUpdate, spec.id]
   );
 
   /**
@@ -132,27 +159,41 @@ export const CardSorting: React.FC<BaseWidgetProps> = ({
     controllerRef.current.reset();
     forceUpdate({});
 
+    // Reactive Port出力
+    emitAllPorts();
+
     if (onUpdate) {
       const result = controllerRef.current.getResult(spec.id);
       onUpdate(spec.id, result.data);
     }
-  }, [onUpdate, spec.id]);
+  }, [emitAllPorts, onUpdate, spec.id]);
 
   /**
    * 完了
    */
   const handleComplete = useCallback(() => {
+    if (!isAllSorted) {
+      setError(true, ['全てのカードを分類してください']);
+      return;
+    }
+
+    setError(false);
+    setCompleted(true);
+
     if (onComplete) {
       onComplete(spec.id);
     }
-  }, [onComplete, spec.id]);
+  }, [isAllSorted, setError, setCompleted, onComplete, spec.id]);
 
   /**
    * 結果取得
    */
-  const getResult = (): WidgetResult => {
+  /**
+   * 結果取得
+   */
+  const getResult = useCallback((): WidgetResult => {
     return controllerRef.current.getResult(spec.id);
-  };
+  }, [spec.id]);
 
   // 外部から結果を取得できるようにrefを設定
   useEffect(() => {
@@ -160,7 +201,7 @@ export const CardSorting: React.FC<BaseWidgetProps> = ({
     return () => {
       delete (window as any)[`widget_${spec.id}_getResult`];
     };
-  }, [spec.id, state]);
+  }, [spec.id, getResult]);
 
   return (
     <div className={styles.container} role="region" aria-label="カード仕分け" data-testid="card-sorting-container">
@@ -236,8 +277,8 @@ export const CardSorting: React.FC<BaseWidgetProps> = ({
               <div
                 key={category.id}
                 className={`${styles.categoryBox} ${dragOverCategory === category.id
-                    ? styles.categoryBoxDragOver
-                    : ''
+                  ? styles.categoryBoxDragOver
+                  : ''
                   }`}
                 style={{
                   backgroundColor: `${category.color}20`,

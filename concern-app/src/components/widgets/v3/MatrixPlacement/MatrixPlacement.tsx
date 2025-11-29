@@ -6,13 +6,14 @@
  * 2軸のマトリックス上にアイテムを配置するWidget
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import type { BaseWidgetProps } from '../../../../types/widget.types';
 import type { WidgetResult } from '../../../../types/result.types';
 import {
   MatrixPlacementController,
   type MatrixItem,
 } from './MatrixPlacementController';
+import { useReactivePorts } from '../../../../hooks/useReactivePorts';
 import styles from './MatrixPlacement.module.css';
 
 /**
@@ -22,7 +23,18 @@ export const MatrixPlacement: React.FC<BaseWidgetProps> = ({
   spec,
   onComplete,
   onUpdate,
+  onPortChange,
+  getPortValue,
+  initialPortValues,
 }) => {
+  // Reactive Ports
+  const { emitPort, setCompleted, setError } = useReactivePorts({
+    widgetId: spec.id,
+    onPortChange,
+    getPortValue,
+    initialPortValues,
+  });
+
   const [items, setItems] = useState<MatrixItem[]>([]);
   const [newItemLabel, setNewItemLabel] = useState<string>('');
   const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
@@ -48,15 +60,26 @@ export const MatrixPlacement: React.FC<BaseWidgetProps> = ({
   const matrixRef = useRef<HTMLDivElement>(null);
 
   /**
+   * 全出力Portに値を発行
+   */
+  const emitAllPorts = useCallback(() => {
+    emitPort('items', controllerRef.current.getItems());
+    emitPort('summary', controllerRef.current.generateSummary());
+  }, [emitPort]);
+
+  /**
    * アイテム追加ハンドラー
    */
-  const handleAddItem = () => {
+  const handleAddItem = useCallback(() => {
     if (newItemLabel.trim() === '') return;
 
     try {
       controllerRef.current.addItem(newItemLabel);
       setItems(controllerRef.current.getItems());
       setNewItemLabel('');
+
+      // Reactive Port出力
+      emitAllPorts();
 
       // 親コンポーネントに通知
       if (onUpdate) {
@@ -66,27 +89,30 @@ export const MatrixPlacement: React.FC<BaseWidgetProps> = ({
     } catch (error) {
       alert(error instanceof Error ? error.message : 'エラーが発生しました');
     }
-  };
+  }, [newItemLabel, emitAllPorts, onUpdate, spec.id]);
 
   /**
    * アイテム削除ハンドラー
    */
-  const handleDeleteItem = (itemId: string) => {
+  const handleDeleteItem = useCallback((itemId: string) => {
     if (confirm('このアイテムを削除しますか？')) {
       controllerRef.current.deleteItem(itemId);
       setItems(controllerRef.current.getItems());
+
+      // Reactive Port出力
+      emitAllPorts();
 
       if (onUpdate) {
         const result = controllerRef.current.getResult(spec.id);
         onUpdate(spec.id, result.data);
       }
     }
-  };
+  }, [emitAllPorts, onUpdate, spec.id]);
 
   /**
    * マトリックス内でのクリックでアイテムを配置
    */
-  const handleMatrixClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleMatrixClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!matrixRef.current) return;
     if (draggingItemId) return; // ドラッグ中は無視
 
@@ -101,6 +127,9 @@ export const MatrixPlacement: React.FC<BaseWidgetProps> = ({
         controllerRef.current.updateItemPosition(lastItem.id, x, y);
         setItems(controllerRef.current.getItems());
 
+        // Reactive Port出力
+        emitAllPorts();
+
         if (onUpdate) {
           const result = controllerRef.current.getResult(spec.id);
           onUpdate(spec.id, result.data);
@@ -109,7 +138,7 @@ export const MatrixPlacement: React.FC<BaseWidgetProps> = ({
         console.error('Failed to update position:', error);
       }
     }
-  };
+  }, [draggingItemId, items, emitAllPorts, onUpdate, spec.id]);
 
   /**
    * ドラッグ開始
@@ -121,7 +150,7 @@ export const MatrixPlacement: React.FC<BaseWidgetProps> = ({
   /**
    * ドラッグ中
    */
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!draggingItemId || !matrixRef.current) return;
 
     const rect = matrixRef.current.getBoundingClientRect();
@@ -138,18 +167,23 @@ export const MatrixPlacement: React.FC<BaseWidgetProps> = ({
     } catch (error) {
       console.error('Failed to update position:', error);
     }
-  };
+  }, [draggingItemId]);
 
   /**
    * ドラッグ終了
    */
-  const handleMouseUp = () => {
-    if (draggingItemId && onUpdate) {
-      const result = controllerRef.current.getResult(spec.id);
-      onUpdate(spec.id, result.data);
+  const handleMouseUp = useCallback(() => {
+    if (draggingItemId) {
+      // Reactive Port出力
+      emitAllPorts();
+
+      if (onUpdate) {
+        const result = controllerRef.current.getResult(spec.id);
+        onUpdate(spec.id, result.data);
+      }
     }
     setDraggingItemId(null);
-  };
+  }, [draggingItemId, emitAllPorts, onUpdate, spec.id]);
 
   /**
    * Enterキーでアイテム追加
@@ -164,23 +198,30 @@ export const MatrixPlacement: React.FC<BaseWidgetProps> = ({
   /**
    * 完了ハンドラー
    */
-  const handleComplete = () => {
+  const handleComplete = useCallback(() => {
     if (items.length === 0) {
+      setError(true, ['少なくとも1つのアイテムを配置してください']);
       alert('少なくとも1つのアイテムを配置してください');
       return;
     }
 
+    setError(false);
+    setCompleted(true);
+
     if (onComplete) {
       onComplete(spec.id);
     }
-  };
+  }, [items.length, setError, setCompleted, onComplete, spec.id]);
 
   /**
    * 結果取得メソッド（外部から呼び出し可能）
    */
-  const getResult = (): WidgetResult => {
+  /**
+   * 結果取得メソッド（外部から呼び出し可能）
+   */
+  const getResult = useCallback((): WidgetResult => {
     return controllerRef.current.getResult(spec.id);
-  };
+  }, [spec.id]);
 
   // 外部から結果を取得できるようにrefを設定
   useEffect(() => {
@@ -188,7 +229,7 @@ export const MatrixPlacement: React.FC<BaseWidgetProps> = ({
     return () => {
       delete (window as any)[`widget_${spec.id}_getResult`];
     };
-  }, [spec.id, items]);
+  }, [spec.id, getResult]);
 
   const state = controllerRef.current.getState();
 

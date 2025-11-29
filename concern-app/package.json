@@ -13,6 +13,7 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
+    "mcp:playwright": "mcp-server-playwright",
     "type-check": "tsc -b --noEmit"
   },
   "dependencies": {
@@ -32,6 +33,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
+    "@playwright/mcp": "^0.0.48",
     "@playwright/test": "^1.57.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",

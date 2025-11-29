@@ -94,7 +94,13 @@ export class ExperimentConfigService {
   private testCasesPath: string;
 
   constructor(configBasePath?: string) {
-    const basePath = configBasePath || join(process.cwd(), '..', 'config');
+    // 本番環境（Docker）: /config/
+    // 開発環境: ../config/ (server/から見て)
+    const basePath = configBasePath || (
+      existsSync('/config/experiment-settings.json')
+        ? '/config'
+        : join(process.cwd(), '..', 'config')
+    );
     this.configPath = join(basePath, 'experiment-settings.json');
     this.testCasesPath = join(basePath, 'test-cases');
   }

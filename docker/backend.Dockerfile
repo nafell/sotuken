@@ -29,6 +29,9 @@ COPY --from=builder --chown=bunjs:nodejs /app/drizzle ./drizzle
 COPY --from=builder --chown=bunjs:nodejs /app/src/database ./src/database
 COPY server/package.json ./
 
+# Phase 6: 実験設定ファイル
+COPY --chown=bunjs:nodejs config/ /config/
+
 USER bunjs
 
 EXPOSE 3000

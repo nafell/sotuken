@@ -8,7 +8,7 @@
 // 開発環境では8000、本番環境では3000を使用
 const API_BASE_URL = import.meta.env.DEV
   ? 'http://localhost:8000'
-  : (import.meta.env.VITE_API_URL || 'http://localhost:3000');
+  : (import.meta.env.VITE_API_URL || 'http://localhost:8000');
 
 console.log('[ExperimentApiService] DEV:', import.meta.env.DEV);
 console.log('[ExperimentApiService] API_BASE_URL:', API_BASE_URL);

@@ -17,7 +17,7 @@ const app = new Hono();
 // Middleware
 const allowedOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',')
-  : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'];
+  : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000', 'http://localhost:8000'];
 
 app.use('*', cors({
   origin: allowedOrigins,
@@ -28,9 +28,9 @@ app.use('*', logger());
 // Health check endpoint
 app.get('/health', async (c) => {
   const dbHealth = await checkDatabaseHealth();
-  
-  return c.json({ 
-    status: 'ok', 
+
+  return c.json({
+    status: 'ok',
     timestamp: new Date().toISOString(),
     service: 'concern-app-server',
     database: dbHealth
@@ -97,7 +97,7 @@ app.get('/', (c) => {
 console.log('🔧 Initializing database...');
 await initializeDatabase();
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 8000;
 console.log(`🚀 Server running on http://localhost:${port}`);
 console.log(`📊 Database health: http://localhost:${port}/health/database`);
 

@@ -30,7 +30,7 @@ class EventLogger {
   constructor() {
     // 自動フラッシュタイマー開始
     this.startAutoFlush();
-    
+
     // ページ離脱時にフラッシュ
     if (typeof window !== 'undefined') {
       window.addEventListener('beforeunload', () => {
@@ -52,20 +52,20 @@ class EventLogger {
         componentId: options.componentId,
         metadata: options.metadata || {},
       });
-      
+
       // バッファに追加（将来のバッチ送信用）
       this.buffer.push({
         ...options,
         timestamp: new Date().toISOString(),
       });
-      
+
       // バッファがいっぱいになったらフラッシュ
       if (this.buffer.length >= this.BUFFER_SIZE) {
         await this.flush();
       }
-      
+
       console.log(`📝 Event logged: ${options.eventType} @ ${options.screenId}`);
-      
+
     } catch (error) {
       console.error('❌ Event logging failed:', error);
     }
@@ -81,7 +81,7 @@ class EventLogger {
     this.buffer = [];
 
     try {
-      const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       const batchId = crypto.randomUUID();
 
       // サーバーへのバッチ送信
@@ -125,19 +125,19 @@ class EventLogger {
    */
   private flushSync(): void {
     if (this.buffer.length === 0) return;
-    
+
     // Beacon APIで同期送信（ページ離脱時も送信できる）
     if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
-      const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       const data = JSON.stringify({
         batchId: crypto.randomUUID(),
         events: this.buffer,
       });
-      
+
       navigator.sendBeacon(`${serverUrl}/v1/events/batch`, data);
       console.log(`📤 Sent ${this.buffer.length} events via Beacon`);
     }
-    
+
     this.buffer = [];
   }
 

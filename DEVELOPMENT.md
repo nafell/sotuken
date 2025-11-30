@@ -130,7 +130,7 @@ cd concern-app && bun run dev
 ```
 
 - フロントエンド: http://localhost:5173
-- バックエンド API: http://localhost:3000
+- バックエンド API: http://localhost:8000
 
 ### git pull 後の作業
 
@@ -195,7 +195,7 @@ docker compose -f docker-compose.dev.yml up -d
 ```bash
 # 使用中のポートを確認
 lsof -i :5432  # PostgreSQL
-lsof -i :3000  # バックエンド
+lsof -i :8000  # バックエンド
 lsof -i :5173  # フロントエンド
 ```
 

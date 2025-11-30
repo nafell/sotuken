@@ -21,7 +21,7 @@
 cd /home/tk220307/sotuken/server
 export PATH="$HOME/.bun/bin:$PATH"
 bun run dev
-# → http://localhost:3000 で起動
+# → http://localhost:8000 で起動
 
 # 2. フロントエンド起動（別ターミナル）
 cd /home/tk220307/sotuken/concern-app
@@ -40,8 +40,8 @@ bun run dev
 | **メインアプリ** | http://localhost:5173 | ユーザー向けアプリケーション |
 | **データベーステスト** | http://localhost:5173/dev/database | IndexedDB動作確認画面 |
 | **factors辞書テスト** | http://localhost:5173/dev/factors | factors収集・API連携テスト |
-| **API健康チェック** | http://localhost:3000/health | サーバー・DB状態確認 |
-| **設定API** | http://localhost:3000/v1/config | 実験条件・重み配布 |
+| **API健康チェック** | http://localhost:8000/health | サーバー・DB状態確認 |
+| **設定API** | http://localhost:8000/v1/config | 実験条件・重み配布 |
 
 ### **開発専用機能**
 - **React Developer Tools**: ブラウザ拡張機能で状態管理確認
@@ -73,18 +73,18 @@ node test_pwa.js
 ### **API直接テスト**
 ```bash
 # 健康チェック
-curl http://localhost:3000/health
+curl http://localhost:8000/health
 
 # 設定取得
-curl http://localhost:3000/v1/config
+curl http://localhost:8000/v1/config
 
 # UI生成（サンプル）
-curl -X POST http://localhost:3000/v1/ui/generate \
+curl -X POST http://localhost:8000/v1/ui/generate \
   -H "Content-Type: application/json" \
   -d '{"sessionId":"test","userExplicitInput":{"concernText":"テスト","concernLevel":"medium"},"factors":{"time_of_day":"morning"}}'
 
 # イベント送信（サンプル）
-curl -X POST http://localhost:3000/v1/events/batch \
+curl -X POST http://localhost:8000/v1/events/batch \
   -H "Content-Type: application/json" \
   -d '{"events":[{"eventId":"test","sessionId":"test","anonymousUserId":"test","eventType":"ui_shown","timestamp":"2025-09-18T00:00:00Z"}]}'
 ```
@@ -109,7 +109,7 @@ window.indexedDB.databases().then(console.log);
 **接続確認:**
 ```bash
 # ヘルスチェックでDB状態確認
-curl http://localhost:3000/health | jq .database
+curl http://localhost:8000/health | jq .database
 ```
 
 **主要テーブル:**
@@ -135,7 +135,7 @@ curl http://localhost:3000/health | jq .database
 open http://localhost:5173/dev/factors
 
 # APIテスト
-curl -X POST http://localhost:3000/v1/ui/generate \
+curl -X POST http://localhost:8000/v1/ui/generate \
   -H "Content-Type: application/json" \
   -d '{"factors":{"time_of_day":"morning","day_of_week":1},"userExplicitInput":{"concernText":"test"}}'
 ```
@@ -176,11 +176,11 @@ cd server && bun run db:generate && bun run db:migrate
 
 #### **2. ポート競合**
 ```
-Error: listen EADDRINUSE: address already in use :::3000
+Error: listen EADDRINUSE: address already in use :::8000
 ```
 **解決法:**
 ```bash
-lsof -ti:3000 | xargs kill -9  # ポート3000使用プロセス終了
+lsof -ti:8000 | xargs kill -9  # ポート8000使用プロセス終了
 lsof -ti:5173 | xargs kill -9  # ポート5173使用プロセス終了
 ```
 

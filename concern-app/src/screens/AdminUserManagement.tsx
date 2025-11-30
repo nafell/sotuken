@@ -49,7 +49,7 @@ export const AdminUserManagement: React.FC = () => {
   const [counts, setCounts] = useState<AssignmentCounts | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+  const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
   useEffect(() => {
     loadData();
@@ -60,7 +60,7 @@ export const AdminUserManagement: React.FC = () => {
    */
   const loadData = async () => {
     setIsLoading(true);
-    
+
     try {
       // 割り当て状況を取得
       const assignmentsResponse = await fetch(`${serverUrl}/admin/assignments`);
@@ -68,17 +68,17 @@ export const AdminUserManagement: React.FC = () => {
         const assignmentsData = await assignmentsResponse.json();
         const assignments = assignmentsData.assignments || [];
         setAssignments(assignments);
-        
+
         // 割り当て済みのユーザーIDからユーザー一覧を作成
         const assignedUserIds = assignments.map((a: ExperimentAssignment) => a.userId);
         const usersFromAssignments = assignedUserIds.map((userId: string) => ({ userId }));
-        
+
         // 現在のユーザーも追加（割り当て済みでない場合）
         const currentUserId = experimentService.getUserId();
         if (!assignedUserIds.includes(currentUserId)) {
           usersFromAssignments.push({ userId: currentUserId });
         }
-        
+
         setUsers(usersFromAssignments);
       } else {
         // APIが失敗した場合は現在のユーザーのみ表示
@@ -96,7 +96,7 @@ export const AdminUserManagement: React.FC = () => {
     } catch (error) {
       console.error('[AdminUserManagement] データ取得エラー:', error);
       alert('データの取得に失敗しました');
-      
+
       // エラー時は現在のユーザーのみ表示
       const currentUserId = experimentService.getUserId();
       setUsers([{ userId: currentUserId }]);
@@ -110,7 +110,7 @@ export const AdminUserManagement: React.FC = () => {
    */
   const handleAssign = async (userId: string, condition: 'dynamic_ui' | 'static_ui') => {
     const note = prompt('割り当てメモ（オプション）:');
-    
+
     try {
       const response = await fetch(`${serverUrl}/admin/assignments`, {
         method: 'POST',
@@ -130,7 +130,7 @@ export const AdminUserManagement: React.FC = () => {
       }
 
       alert(`ユーザー ${userId} を「${condition === 'dynamic_ui' ? '動的UI' : '固定UI'}」に割り当てました`);
-      
+
       // データ再読み込み
       await loadData();
 
@@ -158,7 +158,7 @@ export const AdminUserManagement: React.FC = () => {
       }
 
       alert(`ユーザー ${userId} の割り当てを削除しました`);
-      
+
       // データ再読み込み
       await loadData();
 
@@ -190,14 +190,14 @@ export const AdminUserManagement: React.FC = () => {
             {counts?.dynamic_ui || 0}名
           </p>
         </div>
-        
+
         <div style={{ padding: '20px', backgroundColor: '#D1FAE5', border: '2px solid #10B981', borderRadius: '12px' }}>
           <p style={{ fontSize: '14px', color: '#065F46', margin: '0 0 8px 0' }}>固定UI群</p>
           <p style={{ fontSize: '36px', fontWeight: 'bold', color: '#064E3B', margin: 0 }}>
             {counts?.static_ui || 0}名
           </p>
         </div>
-        
+
         <div style={{ padding: '20px', backgroundColor: '#F3F4F6', border: '2px solid #9CA3AF', borderRadius: '12px' }}>
           <p style={{ fontSize: '14px', color: '#4B5563', margin: '0 0 8px 0' }}>未割り当て</p>
           <p style={{ fontSize: '36px', fontWeight: 'bold', color: '#1F2937', margin: 0 }}>
@@ -231,14 +231,14 @@ export const AdminUserManagement: React.FC = () => {
           <tbody>
             {users.map((user) => {
               const assignment = assignments.find(a => a.userId === user.userId);
-              
+
               return (
                 <tr key={user.userId} style={{ borderBottom: '1px solid #E5E7EB' }}>
                   {/* ユーザーID */}
                   <td style={{ padding: '16px', fontFamily: 'monospace', fontSize: '14px' }}>
                     {user.userId}
                   </td>
-                  
+
                   {/* 実験条件 */}
                   <td style={{ padding: '16px' }}>
                     {assignment?.condition ? (
@@ -265,19 +265,19 @@ export const AdminUserManagement: React.FC = () => {
                       </span>
                     )}
                   </td>
-                  
+
                   {/* 割り当て日時 */}
                   <td style={{ padding: '16px', fontSize: '14px', color: '#6B7280' }}>
-                    {assignment?.assignedAt 
+                    {assignment?.assignedAt
                       ? new Date(assignment.assignedAt).toLocaleString('ja-JP')
                       : '-'}
                   </td>
-                  
+
                   {/* メモ */}
                   <td style={{ padding: '16px', fontSize: '14px', color: '#6B7280' }}>
                     {assignment?.note || '-'}
                   </td>
-                  
+
                   {/* 操作ボタン */}
                   <td style={{ padding: '16px' }}>
                     <div style={{ display: 'flex', gap: '8px' }}>
@@ -303,7 +303,7 @@ export const AdminUserManagement: React.FC = () => {
                       >
                         動的UI
                       </button>
-                      
+
                       <button
                         onClick={() => handleAssign(user.userId, 'static_ui')}
                         style={{
@@ -326,7 +326,7 @@ export const AdminUserManagement: React.FC = () => {
                       >
                         固定UI
                       </button>
-                      
+
                       {assignment && (
                         <button
                           onClick={() => handleRemove(user.userId)}

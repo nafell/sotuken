@@ -38,6 +38,7 @@ export interface DependencyMappingState {
   nodes: DependencyNode[];
   edges: DependencyEdge[];
   selectedNodeId: string | null;
+  selectedEdgeId: string | null;
 }
 
 /**
@@ -82,6 +83,7 @@ export class DependencyMappingController {
       nodes: nodes ? [...nodes] : [...DEFAULT_NODES],
       edges: [],
       selectedNodeId: null,
+      selectedEdgeId: null,
     };
   }
 
@@ -133,15 +135,7 @@ export class DependencyMappingController {
     node.y = y;
   }
 
-  /**
-   * ノードを選択
-   */
-  public selectNode(nodeId: string | null): void {
-    if (nodeId && !this.state.nodes.some((n) => n.id === nodeId)) {
-      throw new Error(`Node not found: ${nodeId}`);
-    }
-    this.state.selectedNodeId = nodeId;
-  }
+
 
   /**
    * エッジを追加
@@ -408,10 +402,50 @@ export class DependencyMappingController {
   }
 
   /**
+   * エッジを選択
+   */
+  public selectEdge(edgeId: string | null): void {
+    if (edgeId && !this.state.edges.some((e) => e.id === edgeId)) {
+      throw new Error(`Edge not found: ${edgeId}`);
+    }
+    this.state.selectedEdgeId = edgeId;
+    // エッジ選択時はノード選択を解除
+    if (edgeId) {
+      this.state.selectedNodeId = null;
+    }
+  }
+
+  /**
+   * ノードを選択
+   */
+  public selectNode(nodeId: string | null): void {
+    if (nodeId && !this.state.nodes.some((n) => n.id === nodeId)) {
+      throw new Error(`Node not found: ${nodeId}`);
+    }
+    this.state.selectedNodeId = nodeId;
+    // ノード選択時はエッジ選択を解除
+    if (nodeId) {
+      this.state.selectedEdgeId = null;
+    }
+  }
+
+  /**
+   * エッジのタイプを更新
+   */
+  public updateEdgeType(edgeId: string, type: DependencyEdge['type']): void {
+    const edge = this.state.edges.find((e) => e.id === edgeId);
+    if (!edge) {
+      throw new Error(`Edge not found: ${edgeId}`);
+    }
+    edge.type = type;
+  }
+
+  /**
    * リセット
    */
   public reset(): void {
     this.state.edges = [];
     this.state.selectedNodeId = null;
+    this.state.selectedEdgeId = null;
   }
 }

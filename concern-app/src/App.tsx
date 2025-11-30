@@ -29,9 +29,12 @@ const FullFlowDemoPage = lazy(() => import('./pages/dev-demo/FullFlowDemoPage'))
 const WidgetShowcaseIndex = lazy(() => import('./pages/dev-demo/widgets/WidgetShowcaseIndex'));
 const WidgetShowcasePage = lazy(() => import('./pages/dev-demo/widgets/WidgetShowcasePage'));
 
-// Phase 6: Research Experiment Pages
+// Phase 6 & 7: Research Experiment Pages
 const ExperimentDashboard = lazy(() => import('./pages/research-experiment/ExperimentDashboard'));
-const CaseSelection = lazy(() => import('./pages/research-experiment/CaseSelection'));
+const ExperimentLauncher = lazy(() => import('./pages/research-experiment/ExperimentLauncher'));
+const TechnicalModeConfig = lazy(() => import('./pages/research-experiment/modes/TechnicalModeConfig'));
+const ExpertModeConfig = lazy(() => import('./pages/research-experiment/modes/ExpertModeConfig'));
+const UserModeConfig = lazy(() => import('./pages/research-experiment/modes/UserModeConfig'));
 const CaseExecution = lazy(() => import('./pages/research-experiment/CaseExecution'));
 const SessionList = lazy(() => import('./pages/research-experiment/SessionList'));
 const SessionDetail = lazy(() => import('./pages/research-experiment/SessionDetail'));
@@ -40,7 +43,7 @@ const ReplayView = lazy(() => import('./pages/research-experiment/ReplayView'));
 function App() {
   const [condition, setCondition] = useState<ExperimentCondition>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   useEffect(() => {
     // アプリ起動時に実験条件を取得
     experimentService.fetchCondition()
@@ -51,11 +54,11 @@ function App() {
       })
       .finally(() => setIsLoading(false));
   }, []);
-  
+
   // ローディング中
   if (isLoading) {
     return (
-      <div 
+      <div
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -65,7 +68,7 @@ function App() {
         }}
       >
         <div style={{ textAlign: 'center' }}>
-          <div 
+          <div
             style={{
               width: '48px',
               height: '48px',
@@ -86,7 +89,7 @@ function App() {
       </div>
     );
   }
-  
+
   return (
     <Router>
       <div className="min-h-screen">
@@ -143,7 +146,7 @@ function App() {
             }
           />
 
-          {/* Phase 6: Research Experiment Routes */}
+          {/* Phase 6 & 7: Research Experiment Routes */}
           <Route
             path="/research-experiment"
             element={
@@ -153,10 +156,34 @@ function App() {
             }
           />
           <Route
-            path="/research-experiment/cases"
+            path="/research-experiment/new"
             element={
-              <Suspense fallback={<div style={{ padding: '20px' }}>Loading Cases...</div>}>
-                <CaseSelection />
+              <Suspense fallback={<div style={{ padding: '20px' }}>Loading Launcher...</div>}>
+                <ExperimentLauncher />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/research-experiment/new/technical"
+            element={
+              <Suspense fallback={<div style={{ padding: '20px' }}>Loading Technical Config...</div>}>
+                <TechnicalModeConfig />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/research-experiment/new/expert"
+            element={
+              <Suspense fallback={<div style={{ padding: '20px' }}>Loading Expert Config...</div>}>
+                <ExpertModeConfig />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/research-experiment/new/user"
+            element={
+              <Suspense fallback={<div style={{ padding: '20px' }}>Loading User Config...</div>}>
+                <UserModeConfig />
               </Suspense>
             }
           />
@@ -169,7 +196,7 @@ function App() {
             }
           />
           <Route
-            path="/research-experiment/sessions"
+            path="/research-experiment/data/sessions"
             element={
               <Suspense fallback={<div style={{ padding: '20px' }}>Loading Sessions...</div>}>
                 <SessionList />
@@ -177,7 +204,7 @@ function App() {
             }
           />
           <Route
-            path="/research-experiment/sessions/:sessionId"
+            path="/research-experiment/data/sessions/:sessionId"
             element={
               <Suspense fallback={<div style={{ padding: '20px' }}>Loading Session...</div>}>
                 <SessionDetail />
@@ -185,13 +212,17 @@ function App() {
             }
           />
           <Route
-            path="/research-experiment/replay/:sessionId"
+            path="/research-experiment/data/replay/:sessionId"
             element={
               <Suspense fallback={<div style={{ padding: '20px' }}>Loading Replay...</div>}>
                 <ReplayView />
               </Suspense>
             }
           />
+          {/* Backward compatibility redirects */}
+          <Route path="/research-experiment/sessions" element={<Navigate to="/research-experiment/data/sessions" replace />} />
+          <Route path="/research-experiment/sessions/:sessionId" element={<Navigate to="/research-experiment/data/sessions/:sessionId" replace />} />
+          <Route path="/research-experiment/replay/:sessionId" element={<Navigate to="/research-experiment/data/replay/:sessionId" replace />} />
 
           {/* メインルート: Full-Flow Demo（現行メイン） */}
           <Route

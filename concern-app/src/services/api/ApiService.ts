@@ -102,11 +102,13 @@ export class ApiService {
   private anonymousUserId: string;
 
   private constructor() {
-    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
     this.baseUrl = `${apiBaseUrl}/v1`;
     this.anonymousUserId = this.generateAnonymousUserId();
 
     console.log(`🔧 ApiService初期化完了 - UserID: ${this.anonymousUserId}`);
+    console.log('🔧 VITE_API_URL:', import.meta.env.VITE_API_URL);
+    console.log('🔧 Resolved Base URL:', this.baseUrl);
   }
 
   static getInstance(): ApiService {
@@ -141,9 +143,9 @@ export class ApiService {
 
       const config = await response.json();
       console.log('✅ 設定取得成功:', config);
-      
+
       return config;
-      
+
     } catch (error) {
       console.error('❌ 設定取得エラー:', error);
       throw error;
@@ -298,7 +300,7 @@ export class ApiService {
 
       const result = await response.json();
       console.log('✅ イベント送信成功:', result);
-      
+
     } catch (error) {
       console.error('❌ イベント送信エラー:', error);
       throw error;
@@ -324,9 +326,9 @@ export class ApiService {
   /**
    * APIヘルスチェック
    */
-  async healthCheck(): Promise<{status: string; timestamp: string}> {
+  async healthCheck(): Promise<{ status: string; timestamp: string }> {
     try {
-      const healthUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const healthUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       const response = await fetch(`${healthUrl}/health`, {
         method: 'GET'
       });
@@ -336,7 +338,7 @@ export class ApiService {
       }
 
       return await response.json();
-      
+
     } catch (error) {
       console.error('❌ Health check failed:', error);
       throw error;
@@ -359,7 +361,7 @@ export class ApiService {
    */
   private generateAnonymousUserId(): string {
     const stored = localStorage.getItem('concern_app_anonymous_user_id');
-    
+
     if (stored) {
       return stored;
     }
@@ -367,7 +369,7 @@ export class ApiService {
     // 新規生成
     const newId = 'user_' + Date.now().toString(36) + Math.random().toString(36).substr(2);
     localStorage.setItem('concern_app_anonymous_user_id', newId);
-    
+
     console.log(`🔑 Generated anonymous user ID: ${newId}`);
     return newId;
   }

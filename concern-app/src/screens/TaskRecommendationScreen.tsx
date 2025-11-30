@@ -36,26 +36,26 @@ interface RecommendationResult {
 export const TaskRecommendationScreen: React.FC<TaskRecommendationScreenProps> = ({ userId: propUserId }) => {
   const routeLocation = useLocation();
   const locationState = routeLocation.state as LocationState;
-  
+
   // Phase 2 Step 3: userIdをprops、localStorage、flowStateManagerから取得
   const userId = propUserId || localStorage.getItem('anonymousUserId') || '';
-  
+
   // State管理
   const [location, setLocation] = useState<'home' | 'work' | 'transit' | 'other'>('home');
   const [timeOfDay, setTimeOfDay] = useState<'morning' | 'afternoon' | 'evening' | 'night'>('morning');
   const [availableTime, setAvailableTime] = useState<number>(30);
-  
+
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [recommendation, setRecommendation] = useState<RecommendationResult | null>(null);
   const [recommendationShownAt, setRecommendationShownAt] = useState<Date | null>(null);
-  
+
   // Modal state
   const [showActionModal, setShowActionModal] = useState<boolean>(false);
   const [showClarityModal, setShowClarityModal] = useState<boolean>(false);
   const [currentReportId, setCurrentReportId] = useState<string>('');
   const [actionElapsedSec, setActionElapsedSec] = useState<number>(0);
-  
+
   // Phase 2 Step 3: 生成されたタスク表示用
   const [showGeneratedTasksMessage, setShowGeneratedTasksMessage] = useState<boolean>(false);
 
@@ -67,19 +67,19 @@ export const TaskRecommendationScreen: React.FC<TaskRecommendationScreenProps> =
     else if (hour >= 17 && hour < 21) setTimeOfDay('evening');
     else setTimeOfDay('night');
   }, []);
-  
+
   // Phase 2 Step 3: 思考整理フローから遷移した場合の処理
   useEffect(() => {
     if (locationState?.generatedTasks && locationState.generatedTasks.length > 0) {
       console.log('[TaskRecommendationScreen] 思考整理フローからのタスク生成:', locationState.generatedTasks.length, '件');
       setShowGeneratedTasksMessage(true);
-      
+
       // 自動的に推奨を取得
       setTimeout(() => {
         fetchRecommendation();
       }, 1000);
     }
-    
+
     if (locationState?.taskGenerationError) {
       console.error('[TaskRecommendationScreen] タスク生成エラー:', locationState.taskGenerationError);
       setError(`タスクの自動生成に失敗しました: ${locationState.taskGenerationError}`);
@@ -90,11 +90,11 @@ export const TaskRecommendationScreen: React.FC<TaskRecommendationScreenProps> =
   const fetchRecommendation = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       // アクティブタスク取得
       const tasks = await TaskService.getActiveTasks(userId);
-      
+
       if (tasks.length === 0) {
         setError('推奨できるタスクがありません。タスクを作成してください。');
         setLoading(false);
@@ -102,8 +102,8 @@ export const TaskRecommendationScreen: React.FC<TaskRecommendationScreenProps> =
       }
 
       // /v1/task/rank API呼び出し
-      const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-      
+      const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
       const response = await fetch(`${serverUrl}/v1/task/rank`, {
         method: 'POST',
         headers: {
@@ -136,11 +136,11 @@ export const TaskRecommendationScreen: React.FC<TaskRecommendationScreenProps> =
       }
 
       const result = await response.json();
-      
+
       // 推奨タスクを取得
       const recommendedTaskId = result.recommendedTaskId || result.topTask?.taskId;
       const recommendedTask = tasks.find(t => t.taskId === recommendedTaskId) || tasks[0];
-      
+
       const recResult = {
         task: recommendedTask,
         variant: result.uiVariant || result.topTask?.variant || 'task_card',
@@ -148,12 +148,12 @@ export const TaskRecommendationScreen: React.FC<TaskRecommendationScreenProps> =
         score: result.topScore || result.topTask?.score || 0,
         generationId: result.generationId,
       };
-      
+
       setRecommendation(recResult);
-      
+
       const shownAt = new Date();
       setRecommendationShownAt(shownAt);
-      
+
       // task_recommendation_shown イベント記録 ⭐️
       await eventLogger.log({
         eventType: 'task_recommendation_shown',
@@ -172,7 +172,7 @@ export const TaskRecommendationScreen: React.FC<TaskRecommendationScreenProps> =
           },
         },
       });
-      
+
     } catch (err) {
       console.error('Recommendation fetch error:', err);
       setError('タスク推奨の取得に失敗しました。');
@@ -252,14 +252,14 @@ export const TaskRecommendationScreen: React.FC<TaskRecommendationScreenProps> =
   return (
     <div className="task-recommendation-screen" style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
       <h1>タスク推奨</h1>
-      
+
       {/* Phase 2 Step 3: 思考整理フローからの成功メッセージ */}
       {showGeneratedTasksMessage && locationState?.generatedTasks && (
-        <div style={{ 
-          marginBottom: '20px', 
-          padding: '15px', 
-          backgroundColor: '#d4edda', 
-          border: '1px solid #c3e6cb', 
+        <div style={{
+          marginBottom: '20px',
+          padding: '15px',
+          backgroundColor: '#d4edda',
+          border: '1px solid #c3e6cb',
           borderRadius: '8px',
           color: '#155724'
         }}>
@@ -268,9 +268,9 @@ export const TaskRecommendationScreen: React.FC<TaskRecommendationScreenProps> =
             思考整理から {locationState.generatedTasks.length} 件のタスクを生成しました。
             以下で最適なタスクを推奨します。
           </p>
-          <button 
+          <button
             onClick={() => setShowGeneratedTasksMessage(false)}
-            style={{ 
+            style={{
               marginTop: '10px',
               padding: '5px 10px',
               backgroundColor: 'transparent',
@@ -284,11 +284,11 @@ export const TaskRecommendationScreen: React.FC<TaskRecommendationScreenProps> =
           </button>
         </div>
       )}
-      
+
       {/* Factors入力欄（タスク2.3で詳細実装） */}
       <div className="factors-input" style={{ marginBottom: '20px', padding: '15px', border: '1px solid #ccc', borderRadius: '8px' }}>
         <h2>現在の状況</h2>
-        
+
         <div style={{ marginBottom: '10px' }}>
           <label>
             場所：
@@ -300,7 +300,7 @@ export const TaskRecommendationScreen: React.FC<TaskRecommendationScreenProps> =
             </select>
           </label>
         </div>
-        
+
         <div style={{ marginBottom: '10px' }}>
           <label>
             時間帯：
@@ -312,13 +312,13 @@ export const TaskRecommendationScreen: React.FC<TaskRecommendationScreenProps> =
             </select>
           </label>
         </div>
-        
+
         <div style={{ marginBottom: '10px' }}>
           <label>
             利用可能時間（分）：
-            <input 
-              type="number" 
-              value={availableTime} 
+            <input
+              type="number"
+              value={availableTime}
               onChange={(e) => setAvailableTime(Number(e.target.value))}
               min={5}
               max={180}
@@ -326,15 +326,15 @@ export const TaskRecommendationScreen: React.FC<TaskRecommendationScreenProps> =
             />
           </label>
         </div>
-        
-        <button 
+
+        <button
           onClick={fetchRecommendation}
           disabled={loading}
-          style={{ 
-            padding: '10px 20px', 
-            backgroundColor: loading ? '#ccc' : '#007bff', 
-            color: 'white', 
-            border: 'none', 
+          style={{
+            padding: '10px 20px',
+            backgroundColor: loading ? '#ccc' : '#007bff',
+            color: 'white',
+            border: 'none',
             borderRadius: '5px',
             cursor: loading ? 'not-allowed' : 'pointer'
           }}
@@ -374,14 +374,14 @@ export const TaskRecommendationScreen: React.FC<TaskRecommendationScreenProps> =
           <p>重要度: {(recommendation.task.importance * 100).toFixed(0)}%</p>
           <p>緊急度: {(recommendation.task.urgency * 100).toFixed(0)}%</p>
           <p>スコア: {(recommendation.score * 100).toFixed(1)}%</p>
-          
-          <button 
+
+          <button
             onClick={handleActionStart}
-            style={{ 
-              padding: '15px 30px', 
-              backgroundColor: '#4caf50', 
-              color: 'white', 
-              border: 'none', 
+            style={{
+              padding: '15px 30px',
+              backgroundColor: '#4caf50',
+              color: 'white',
+              border: 'none',
               borderRadius: '8px',
               fontSize: '16px',
               fontWeight: 'bold',

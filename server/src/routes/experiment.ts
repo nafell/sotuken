@@ -7,7 +7,7 @@
 
 import { Hono } from 'hono';
 import { db } from '../database/index';
-import { experimentSessions, widgetStates } from '../database/schema';
+import { experimentSessions, widgetStates, experimentGenerations } from '../database/schema';
 import { eq, desc } from 'drizzle-orm';
 import { getExperimentConfigService } from '../services/ExperimentConfigService';
 
@@ -93,19 +93,15 @@ experimentRoutes.get('/sessions', async (c) => {
       .from(experimentSessions)
       .orderBy(desc(experimentSessions.startedAt))
       .limit(limit)
-      .offset(offset);
+      .offset(offset)
+      .$dynamic();
 
     if (experimentType) {
-      query = db
-        .select()
-        .from(experimentSessions)
-        .where(eq(experimentSessions.experimentType, experimentType))
-        .orderBy(desc(experimentSessions.startedAt))
-        .limit(limit)
-        .offset(offset);
+      query = query.where(eq(experimentSessions.experimentType, experimentType));
     }
 
     const sessions = await query;
+
 
     return c.json({
       success: true,
@@ -410,4 +406,54 @@ experimentRoutes.get('/health', async (c) => {
   }
 });
 
-export { experimentRoutes };
+
+// ========================================
+// 生成履歴管理エンドポイント (Phase 7)
+// ========================================
+
+/**
+ * PATCH /api/experiment/generations/:generationId
+ * 生成履歴更新（レンダリング時間など）
+ */
+experimentRoutes.patch('/generations/:generationId', async (c) => {
+  try {
+    const generationId = c.req.param('generationId');
+    const updates = await c.req.json();
+
+    // バリデーション
+    if (updates.renderDuration === undefined) {
+      return c.json({
+        success: false,
+        error: 'renderDuration is required'
+      }, 400);
+    }
+
+    const [updated] = await db
+      .update(experimentGenerations)
+      .set({
+        renderDuration: updates.renderDuration
+      })
+      .where(eq(experimentGenerations.id, generationId))
+      .returning();
+
+    if (!updated) {
+      return c.json({
+        success: false,
+        error: 'Generation not found'
+      }, 404);
+    }
+
+    return c.json({
+      success: true,
+      generation: updated
+    });
+  } catch (error) {
+    console.error('Failed to update generation:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+
+

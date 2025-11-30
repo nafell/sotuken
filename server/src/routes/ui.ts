@@ -1,4 +1,6 @@
 import { Hono } from 'hono';
+import { db } from '../database/index';
+import { experimentGenerations } from '../database/schema';
 import { createGeminiService } from '../services/GeminiService';
 import {
   createUISpecGeneratorV3,
@@ -29,7 +31,7 @@ function getGeminiService() {
 uiRoutes.post('/generate', async (c) => {
   try {
     const request = await c.req.json();
-    
+
     // バリデーション
     if (!request.sessionId) {
       return c.json({
@@ -39,7 +41,7 @@ uiRoutes.post('/generate', async (c) => {
         }
       }, 400);
     }
-    
+
     if (!request.userExplicitInput?.concernText) {
       return c.json({
         error: {
@@ -48,17 +50,17 @@ uiRoutes.post('/generate', async (c) => {
         }
       }, 400);
     }
-    
+
     console.log(`🎨 UI generation request for session: ${request.sessionId}`);
     console.log(`📝 Concern: "${request.userExplicitInput.concernText.slice(0, 50)}..."`);
-    
+
     // Phase 0: 固定UI返却（フォールバック版）
     const generationId = crypto.randomUUID();
     const staticUI = {
       version: "1.1",
-      theme: { 
-        style: "daily-rotating", 
-        noveltyLevel: request.noveltyLevel || "low", 
+      theme: {
+        style: "daily-rotating",
+        noveltyLevel: request.noveltyLevel || "low",
         seed: Math.floor(Math.random() * 10000)
       },
       layoutHints: {
@@ -78,12 +80,12 @@ uiRoutes.post('/generate', async (c) => {
             items: [{
               component: "card",
               title: "2分で始めてみる",
-              subtitle: request.userExplicitInput.concernText.length > 50 
-                ? request.userExplicitInput.concernText.slice(0, 50) + "..." 
+              subtitle: request.userExplicitInput.concernText.length > 50
+                ? request.userExplicitInput.concernText.slice(0, 50) + "..."
                 : request.userExplicitInput.concernText,
               accent: "priority",
-              actions: [{ 
-                id: "start_action", 
+              actions: [{
+                id: "start_action",
                 label: "開始",
                 params: {
                   actionId: "quick_start",
@@ -114,10 +116,10 @@ uiRoutes.post('/generate', async (c) => {
         }
       }
     };
-    
+
     // TODO: Phase 1でデータベースに生成ログを記録
     // await db.ui_generation_requests.create({...});
-    
+
     const response = {
       sessionId: request.sessionId,
       generationId,
@@ -132,14 +134,14 @@ uiRoutes.post('/generate', async (c) => {
         responseTokens: 0
       }
     };
-    
+
     console.log(`✅ Static UI generated, ID: ${generationId}`);
-    
+
     return c.json(response);
-    
+
   } catch (error) {
     console.error('❌ UI generation error:', error);
-    
+
     // フォールバック処理
     const fallbackUI = {
       version: "1.1",
@@ -174,7 +176,7 @@ uiRoutes.post('/generate', async (c) => {
         ]
       }
     };
-    
+
     return c.json({
       error: {
         code: "UI_GENERATION_FAILED",
@@ -301,6 +303,38 @@ uiRoutes.post('/generate-v3', async (c) => {
       );
     }
 
+    // Phase 7: 生成履歴をDBに保存 (1-to-N)
+    let generationId: string | undefined;
+    try {
+      // sessionIdがUUID形式か簡易チェック
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.sessionId);
+
+      if (isUuid) {
+        const [inserted] = await db.insert(experimentGenerations).values({
+          sessionId: body.sessionId,
+          stage: stage,
+          modelId: gemini.getModelName(),
+          prompt: result.prompt || '',
+          generatedOodm: result.uiSpec?.oodm,
+          generatedDsl: result.uiSpec,
+          promptTokens: result.metrics?.promptTokens,
+          responseTokens: result.metrics?.responseTokens,
+          generateDuration: result.metrics?.processingTimeMs,
+          // renderDuration: null (Client側で更新)
+        }).returning({ id: experimentGenerations.id });
+
+        if (inserted) {
+          generationId = inserted.id;
+          console.log(`💾 Generation saved to DB: ${generationId}`);
+        }
+      } else {
+        console.warn('⚠️ Session ID is not UUID, skipping DB save:', body.sessionId);
+      }
+    } catch (dbError) {
+      console.error('❌ Failed to save generation to DB:', dbError);
+      // DB保存失敗してもクライアントには成功を返す（ログだけ残す）
+    }
+
     console.log(`✅ UISpec v3 generated successfully (mode: ${result.mode})`);
 
     return c.json({
@@ -308,6 +342,7 @@ uiRoutes.post('/generate-v3', async (c) => {
       uiSpec: result.uiSpec,
       textSummary: result.textSummary,
       mode: result.mode,
+      generationId, // クライアントに返す
       generation: {
         model: gemini.getModelName(),
         generatedAt: new Date().toISOString(),

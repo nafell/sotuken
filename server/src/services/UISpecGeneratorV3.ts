@@ -67,6 +67,7 @@ export interface UISpecV3GenerationResponse {
   error?: string;
   retryCount?: number;
   mode?: 'widget' | 'text'; // 生成モード
+  prompt?: string; // 生成に使用したプロンプト
 }
 
 /** 実装済みWidgetの一覧（全12種） */
@@ -189,6 +190,7 @@ export class UISpecGeneratorV3 {
           metrics: response.metrics,
           retryCount: attempt - 1,
           mode: 'widget',
+          prompt,
         };
       } catch (error) {
         lastError = error instanceof Error ? error.message : 'Unknown error';
@@ -246,6 +248,7 @@ export class UISpecGeneratorV3 {
         textSummary: response.data,
         metrics: response.metrics,
         mode: 'text',
+        prompt,
       };
     } catch (error) {
       return {

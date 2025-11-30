@@ -17,6 +17,7 @@ import {
   type SortingCategory,
 } from './CardSortingController';
 import { useReactivePorts } from '../../../../hooks/useReactivePorts';
+import { EmptyState } from '../../../ui/EmptyState';
 import styles from './CardSorting.module.css';
 
 /**
@@ -299,7 +300,12 @@ export const CardSorting: React.FC<BaseWidgetProps> = ({
                 <div className={styles.cardsContainer}>
                   {cardsInCategory.length === 0 ? (
                     <div className={styles.emptyState}>
-                      ここにドロップ
+                      <EmptyState
+                        message="ここにドロップ"
+                        description=""
+                        icon={<span role="img" aria-label="drop">📥</span>}
+                        className="py-4 border-none bg-transparent"
+                      />
                     </div>
                   ) : (
                     cardsInCategory.map((card) => (

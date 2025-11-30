@@ -14,6 +14,7 @@ import {
   type BrainstormCard,
 } from './BrainstormCardsController';
 import { useReactivePorts } from '../../../../hooks/useReactivePorts';
+import { EmptyState } from '../../../ui/EmptyState';
 import styles from './BrainstormCards.module.css';
 
 /**
@@ -221,6 +222,17 @@ export const BrainstormCards: React.FC<BaseWidgetProps> = ({
             onEditKeyDown={handleEditKeyDown}
           />
         ))}
+
+        {/* Empty State */}
+        {cards.length === 0 && (
+          <div className="col-span-full mb-4">
+            <EmptyState
+              message="アイデアがまだありません"
+              description="思いついたことを自由に入力してみましょう！"
+              icon={<span role="img" aria-label="idea">💡</span>}
+            />
+          </div>
+        )}
 
         {/* 新規カード追加フォーム */}
         {controllerRef.current.getRemainingCards() > 0 && (

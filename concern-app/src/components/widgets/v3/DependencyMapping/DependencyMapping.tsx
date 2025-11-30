@@ -287,6 +287,28 @@ export const DependencyMapping: React.FC<BaseWidgetProps> = ({
 
       {/* Toolbar */}
       <div className={styles.toolbar}>
+        {/* Guide Banner for Connection Mode */}
+        {isAddingEdge && (
+          <div className="absolute top-0 left-0 right-0 bg-blue-50 p-2 text-center border-b border-blue-200 z-10 flex justify-between items-center px-4">
+            <span className="text-blue-800 font-medium">
+              {edgeSourceId
+                ? "【ステップ2】接続先のノードをクリックしてください"
+                : "【ステップ1】接続元のノードをクリックしてください"}
+            </span>
+            <button
+              className="text-xs bg-white border border-gray-300 px-2 py-1 rounded hover:bg-gray-50"
+              onClick={() => {
+                setIsAddingEdge(false);
+                setEdgeSourceId(null);
+                controllerRef.current.selectNode(null);
+                forceUpdate({});
+              }}
+            >
+              キャンセル (Esc)
+            </button>
+          </div>
+        )}
+
         <div className={styles.toolbarLeft}>
           <button className={`${styles.toolButton} ${styles.addNodeButton}`} onClick={handleAddNode} data-testid="dep-map-add-node-btn">
             + ノード追加
@@ -302,7 +324,7 @@ export const DependencyMapping: React.FC<BaseWidgetProps> = ({
             }}
             data-testid="dep-map-connect-btn"
           >
-            {isAddingEdge ? '接続中...' : '→ 接続'}
+            {isAddingEdge ? '接続モード終了' : '→ 接続モード'}
           </button>
           <button
             className={`${styles.toolButton} ${styles.deleteButton}`}
@@ -333,7 +355,7 @@ export const DependencyMapping: React.FC<BaseWidgetProps> = ({
       </div>
 
       {/* Canvas */}
-      <div className={styles.canvasArea}>
+      <div className={styles.canvasArea} style={{ cursor: isAddingEdge ? 'crosshair' : 'default' }}>
         <svg
           ref={svgRef}
           className={styles.svg}

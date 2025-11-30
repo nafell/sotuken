@@ -13,6 +13,7 @@ import {
   type ExperimentSettings,
   type ExperimentSession
 } from '../../services/ExperimentApiService';
+import { ExperimentExecutor } from '../../components/experiment/ExperimentExecutor';
 
 type ExecutionState = 'config' | 'running' | 'completed' | 'error';
 
@@ -35,6 +36,18 @@ export default function CaseExecution() {
   const [executionState, setExecutionState] = useState<ExecutionState>('config');
   const [session, setSession] = useState<ExperimentSession | null>(null);
   const [executionError, setExecutionError] = useState<string | null>(null);
+
+  const handleComplete = async () => {
+    if (!session) return;
+    try {
+      await experimentApi.updateSession(session.sessionId, { status: 'completed' });
+      setSession(prev => prev ? { ...prev, status: 'completed' } : null);
+      setExecutionState('completed');
+    } catch (err) {
+      console.error('Failed to complete session:', err);
+      setExecutionError('Failed to complete session');
+    }
+  };
 
   useEffect(() => {
     async function loadData() {
@@ -222,14 +235,18 @@ export default function CaseExecution() {
           </section>
         )}
 
-        {/* Running State */}
-        {executionState === 'running' && (
+        {/* Running State (ExperimentExecutor) */}
+        {executionState === 'running' && session && (
           <section style={styles.section}>
-            <div style={styles.runningCard}>
-              <div style={styles.spinner} />
-              <p style={styles.runningText}>Generating UI...</p>
-              <p style={styles.runningSubtext}>This may take a few seconds</p>
-            </div>
+            <ExperimentExecutor
+              sessionId={session.sessionId}
+              mode={experimentType as 'user' | 'expert' | 'technical'} // Using experimentType as mode
+              initialContext={testCase ? {
+                concernText: testCase.concernText,
+                bottleneckType: testCase.expectedBottlenecks?.[0]
+              } : undefined}
+              onComplete={handleComplete}
+            />
           </section>
         )}
 

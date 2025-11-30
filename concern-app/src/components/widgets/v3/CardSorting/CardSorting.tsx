@@ -282,8 +282,13 @@ export const CardSorting: React.FC<BaseWidgetProps> = ({
                   : ''
                   }`}
                 style={{
-                  backgroundColor: `${category.color}20`,
+                  backgroundColor: dragOverCategory === category.id
+                    ? `${category.color}40` // Darker background on drag over
+                    : `${category.color}20`,
                   borderColor: category.color,
+                  borderWidth: dragOverCategory === category.id ? '3px' : '1px', // Thicker border on drag over
+                  transform: dragOverCategory === category.id ? 'scale(1.02)' : 'scale(1)', // Slight scale up
+                  transition: 'all 0.2s ease'
                 }}
                 onDragOver={(e) => handleDragOver(e, category.id)}
                 onDrop={() => handleDrop(category.id)}

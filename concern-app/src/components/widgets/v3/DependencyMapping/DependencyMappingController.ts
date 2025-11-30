@@ -339,6 +339,27 @@ export class DependencyMappingController {
   }
 
   /**
+   * 逆方向のエッジが存在するか確認（双方向検出用）
+   */
+  public hasInverseEdge(sourceId: string, targetId: string): boolean {
+    return this.state.edges.some(
+      (e) => e.sourceId === targetId && e.targetId === sourceId
+    );
+  }
+
+  /**
+   * ノードのラベルを更新
+   */
+  public updateNodeLabel(nodeId: string, label: string): void {
+    const node = this.state.nodes.find((n) => n.id === nodeId);
+    if (!node) {
+      throw new Error(`Node not found: ${nodeId}`);
+    }
+    node.label = label;
+  }
+
+
+  /**
    * WidgetResultを生成
    */
   public getResult(widgetId: string): WidgetResult {

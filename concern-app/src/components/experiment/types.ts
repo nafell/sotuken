@@ -3,14 +3,14 @@ export type PlanStage = 'diverge' | 'organize' | 'converge' | 'summary';
 export interface WidgetResultData {
     widgetId: string;
     component: string;
-    data: any;
+    data: Record<string, unknown>;
     timestamp: string;
 }
 
 export interface StageResult {
     stage: PlanStage;
     mode: 'widget' | 'text';
-    uiSpec?: any;
+    uiSpec?: Record<string, unknown>;
     textSummary?: string;
     widgetResults: WidgetResultData[];
     generationId?: string;
@@ -23,3 +23,12 @@ export const PLAN_STAGE_CONFIGS = [
     { stage: 'converge', title: '収束', description: '優先順位をつける' },
     { stage: 'summary', title: 'まとめ', description: 'ネクストアクション' },
 ] as const;
+
+export interface Task {
+    title: string;
+    description: string;
+    estimatedMin: number;
+    difficulty: string;
+    importance?: number;
+    urgency?: number;
+}

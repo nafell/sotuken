@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
-import { experimentApi, ExperimentSession } from '../services/ExperimentApiService';
-import { ConcernAnalyzer } from '../services/ConcernAnalyzer';
-import { DiagnosticQuestionService } from '../services/DiagnosticQuestionService';
+import { experimentApi } from '../../../services/ExperimentApiService';
+import type { Task } from '../types';
 
 export type FlowPhase = 'capture' | 'plan' | 'breakdown' | 'complete';
 
@@ -9,15 +8,15 @@ export interface ExperimentFlowState {
     currentPhase: FlowPhase;
     concernText: string;
     bottleneckType: string | null;
-    planStageResults: Record<string, any>;
-    breakdownTasks: any[];
+    planStageResults: Record<string, unknown>;
+    breakdownTasks: Task[];
     isProcessing: boolean;
     error: string | null;
 }
 
 export interface UseExperimentFlowProps {
     sessionId: string;
-    mode: 'user' | 'expert' | 'technical';
+    // 'mode' is not used in this hook, so it's removed.
     initialContext?: {
         concernText?: string;
         bottleneckType?: string;
@@ -27,7 +26,7 @@ export interface UseExperimentFlowProps {
 
 export function useExperimentFlow({
     sessionId,
-    mode,
+    // 'mode' is not used in this hook, so it's removed from destructuring.
     initialContext,
     onComplete
 }: UseExperimentFlowProps) {
@@ -83,7 +82,7 @@ export function useExperimentFlow({
     // Planフェーズ: 各ステージ完了時の処理
     const handlePlanStageComplete = useCallback(async (
         stage: string,
-        result: any,
+        result: Record<string, unknown>,
         generationId?: string,
         renderDuration?: number
     ) => {
@@ -114,7 +113,7 @@ export function useExperimentFlow({
     }, []);
 
     // Breakdownフェーズ完了処理
-    const handleBreakdownComplete = useCallback(async (tasks: any[]) => {
+    const handleBreakdownComplete = useCallback(async (tasks: Task[]) => {
         setState(prev => ({ ...prev, isProcessing: true }));
         try {
             // 最終結果保存（必要に応じて）
@@ -134,7 +133,7 @@ export function useExperimentFlow({
             console.error('Failed to complete breakdown phase:', error);
             setState(prev => ({ ...prev, isProcessing: false }));
         }
-    }, [sessionId, onComplete]);
+    }, [onComplete]);
 
     return {
         state,

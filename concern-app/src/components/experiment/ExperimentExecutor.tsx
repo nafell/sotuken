@@ -25,7 +25,6 @@ export function ExperimentExecutor({
 }: ExperimentExecutorProps) {
     const { state, actions } = useExperimentFlow({
         sessionId,
-        mode,
         initialContext,
         onComplete
     });

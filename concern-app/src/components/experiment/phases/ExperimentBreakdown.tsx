@@ -1,22 +1,22 @@
 import { useState, useEffect } from 'react';
-import { TaskGenerationService } from '../../../services/TaskGenerationService';
+import { taskGenerationService } from '../../../services/TaskGenerationService';
+import type { Task } from '../types';
 
 interface ExperimentBreakdownProps {
     sessionId: string;
     concernText: string;
-    planStageResults: Record<string, any>;
-    onComplete: (tasks: any[]) => void;
+    planStageResults: Record<string, unknown>;
+    onComplete: (tasks: Task[]) => void;
     mode: 'user' | 'expert' | 'technical';
 }
 
 export function ExperimentBreakdown({
-    sessionId: _sessionId,
     concernText,
     planStageResults,
     onComplete,
     mode
 }: ExperimentBreakdownProps) {
-    const [tasks, setTasks] = useState<any[]>([]);
+    const [tasks, setTasks] = useState<Task[]>([]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -26,9 +26,10 @@ export function ExperimentBreakdown({
             try {
                 // Planフェーズの結果からタスクを生成
                 // ここでは簡易的にTaskGenerationServiceを使用（実際はLLM呼び出しを含むかも）
-                const generatedTasks = await TaskGenerationService.generateTasksFromPlan(
+                const generatedTasks = await taskGenerationService.generateTasksFromPlan(
                     concernText,
-                    planStageResults
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    planStageResults as any
                 );
                 setTasks(generatedTasks);
 

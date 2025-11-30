@@ -45,94 +45,94 @@ export class TaskGenerationService {
    */
   async generateTasksFromBreakdown(): Promise<TaskGenerationResult> {
     console.log('[TaskGenerationService] タスク生成開始');
-    
+
     // 1. ConcernFlowStateManagerからフロー状態を取得
     const flowState = flowStateManager.loadState();
-    
+
     if (!flowState) {
       throw new Error('フロー状態が見つかりません。関心事入力から始めてください。');
     }
-    
+
     if (!flowState.breakdownResult) {
       throw new Error('Breakdown結果が見つかりません。思考整理を完了してください。');
     }
-    
+
     const { concernId, userId, breakdownResult } = flowState;
-    
+
     console.log('[TaskGenerationService] Breakdown結果:', breakdownResult);
-    
+
     // 2. Breakdown結果からTaskエンティティを生成
     const tasks: Task[] = [];
-    
+
     for (const taskData of breakdownResult.tasks) {
       const task: Task = {
         taskId: generateId('task'),
         userId,
         concernId,
-        
+
         // タスクの基本情報
         title: taskData.title,
         description: taskData.description || '',
-        
+
         // 優先度
         importance: this.normalizeScore(taskData.importance, 1, 5),
         urgency: this.normalizeScore(taskData.urgency, 1, 5),
-        
+
         // 時間見積もり
         estimateMin: taskData.estimatedMinutes || 30,
-        
+
         // マイクロステップ情報
         hasIndependentMicroStep: false,
-        
+
         // ステータス
         status: 'active',
-        
+
         // 行動履歴
         actionHistory: [],
         totalActionsStarted: 0,
         totalActionsCompleted: 0,
-        
+
         // タイムスタンプ
         createdAt: new Date(),
         updatedAt: new Date(),
         lastTouchAt: new Date(),
-        
+
         // メタデータ
         tags: this.extractTags(taskData.title, taskData.description || ''),
         priority: this.calculatePriority(taskData.importance || 3, taskData.urgency || 3),
-        
+
         // ステータス管理（追加フィールド）
         progress: 0,
-        
+
         // タスク生成元
         source: 'breakdown_flow',
-        
+
         // 同期管理
         syncedToServer: false
       };
-      
+
       tasks.push(task);
     }
-    
+
     console.log('[TaskGenerationService] 生成されたタスク:', tasks.length, '件');
-    
+
     // 3. IndexedDBに保存
     await this.saveTasks(tasks);
-    
+
     // 4. ConcernFlowStateManagerに記録
     flowStateManager.saveGeneratedTasks(tasks);
-    
+
     const result: TaskGenerationResult = {
       tasks,
       concernId,
       generatedAt: new Date().toISOString()
     };
-    
+
     console.log('[TaskGenerationService] タスク生成完了:', result);
-    
+
     return result;
   }
-  
+
   /**
    * スコアを正規化（1-5の範囲に収める）
    */
@@ -140,32 +140,32 @@ export class TaskGenerationService {
     if (score === undefined) {
       return 3; // デフォルト: 中間値
     }
-    
+
     // 範囲チェック
     if (score < min) return min;
     if (score > max) return max;
-    
+
     return Math.round(score);
   }
-  
+
   /**
    * 重要度と緊急度から優先度を計算
    */
   private calculatePriority(importance: number, urgency: number): 'low' | 'medium' | 'high' {
     const score = importance + urgency;
-    
+
     if (score >= 8) return 'high';
     if (score >= 5) return 'medium';
     return 'low';
   }
-  
+
   /**
    * タイトルと説明からタグを抽出
    */
   private extractTags(title: string, description: string): string[] {
     const tags: string[] = [];
     const text = `${title} ${description}`.toLowerCase();
-    
+
     // キーワードベースのタグ抽出（簡易版）
     const keywords: Record<string, string[]> = {
       '学習': ['学習', '勉強', '読書', '調べる', '学ぶ'],
@@ -176,7 +176,7 @@ export class TaskGenerationService {
       '健康': ['健康', '病院', '診察', '薬', '睡眠'],
       '人間関係': ['友達', '家族', '連絡', '会う', '話す']
     };
-    
+
     for (const [tag, words] of Object.entries(keywords)) {
       for (const word of words) {
         if (text.includes(word)) {
@@ -185,11 +185,11 @@ export class TaskGenerationService {
         }
       }
     }
-    
+
     // 重複削除
     return Array.from(new Set(tags));
   }
-  
+
   /**
    * タスクをIndexedDBに保存
    */
@@ -204,7 +204,7 @@ export class TaskGenerationService {
       throw error;
     }
   }
-  
+
   /**
    * 特定の関心事から生成されたタスクを取得
    */
@@ -214,7 +214,7 @@ export class TaskGenerationService {
         .where('[userId+concernId]')
         .equals([userId, concernId])
         .toArray();
-      
+
       console.log('[TaskGenerationService] 関心事のタスク取得:', tasks.length, '件');
       return tasks;
     } catch (error) {
@@ -222,36 +222,72 @@ export class TaskGenerationService {
       throw error;
     }
   }
-  
+
   /**
    * タスク生成が必要かチェック
    */
   isGenerationNeeded(): boolean {
     const flowState = flowStateManager.loadState();
-    
+
     if (!flowState) {
       return false;
     }
-    
+
     // Breakdown完了かつタスク未生成
     return !!flowState.breakdownResult && !flowState.generatedTasks;
   }
-  
+
   /**
    * デバッグ用: 生成予定のタスクをプレビュー
    */
   previewTasks(): Array<{ title: string; importance: number; urgency: number }> {
     const flowState = flowStateManager.loadState();
-    
+
     if (!flowState || !flowState.breakdownResult) {
       return [];
     }
-    
+
     return flowState.breakdownResult.tasks.map(task => ({
       title: task.title,
       importance: this.normalizeScore(task.importance, 1, 5),
       urgency: this.normalizeScore(task.urgency, 1, 5)
     }));
+  }
+  /**
+   * Planフェーズの結果からタスクを生成 (Phase 7)
+   */
+  async generateTasksFromPlan(concernText: string, _planStageResults: Record<string, any>): Promise<any[]> {
+    console.log('[TaskGenerationService] Plan結果からタスク生成:', concernText);
+
+    // Mock implementation for now
+    // In a real scenario, this would call an LLM to generate tasks based on the plan
+
+    return [
+      {
+        title: '現状の整理',
+        description: '書き出した悩みを整理し、具体的な問題点を特定する',
+        estimatedMin: 15,
+        difficulty: 'Easy',
+        importance: 5,
+        urgency: 4
+      },
+      {
+        title: '解決策の検討',
+        description: '特定した問題点に対して、実行可能な解決策を3つ考える',
+        estimatedMin: 30,
+        difficulty: 'Medium',
+        importance: 5,
+        urgency: 3
+      },
+      {
+        title: '行動計画の作成',
+        description: '選んだ解決策を実行するための具体的なステップを書き出す',
+        estimatedMin: 20,
+        difficulty: 'Medium',
+        importance: 4,
+        urgency: 3
+      }
+    ];
   }
 }
 

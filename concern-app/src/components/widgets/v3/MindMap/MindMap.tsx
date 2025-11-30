@@ -15,6 +15,7 @@ import {
   type MindMapNode,
 } from './MindMapController';
 import { useReactivePorts } from '../../../../hooks/useReactivePorts';
+import { EmptyState } from '../../../ui/EmptyState';
 import styles from './MindMap.module.css';
 
 interface NodeComponentProps {
@@ -386,9 +387,18 @@ export const MindMap: React.FC<BaseWidgetProps> = ({
       {/* Mind map area */}
       <div className={styles.mindMapArea}>
         {rootNodes.length === 0 ? (
-          <button className={styles.addRootButton} onClick={handleAddRoot} data-testid="mindmap-add-root-btn">
-            + 最初のアイデアを追加
-          </button>
+          <div className="mb-8">
+            <EmptyState
+              message="アイデアマップを作成しましょう"
+              description="中心テーマから連想するアイデアを追加して、思考を広げていきましょう"
+              icon={<span role="img" aria-label="mindmap">🧠</span>}
+              action={
+                <button className={styles.addRootButton} onClick={handleAddRoot} data-testid="mindmap-add-root-btn">
+                  + 最初のアイデアを追加
+                </button>
+              }
+            />
+          </div>
         ) : (
           <>
             <div className={styles.branchesContainer}>

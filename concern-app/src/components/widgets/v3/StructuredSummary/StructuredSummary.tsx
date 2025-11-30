@@ -15,6 +15,7 @@ import {
   type SectionType,
 } from './StructuredSummaryController';
 import { useReactivePorts } from '../../../../hooks/useReactivePorts';
+import { EmptyState } from '../../../ui/EmptyState';
 import styles from './StructuredSummary.module.css';
 
 /**
@@ -278,6 +279,15 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
 
       {/* Sections */}
       <div className={styles.sectionsContainer}>
+        {state.sections.length === 0 && (
+          <div className="mb-8">
+            <EmptyState
+              message="セクションを追加してまとめを作成しましょう"
+              description="下のボタンから必要なセクションを選んで追加してください"
+              icon={<span role="img" aria-label="document">📝</span>}
+            />
+          </div>
+        )}
         {state.sections.map((section, index) => {
           const config = SECTION_TYPE_CONFIG[section.type];
           return (

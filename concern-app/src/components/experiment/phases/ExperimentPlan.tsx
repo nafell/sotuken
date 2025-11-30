@@ -33,7 +33,6 @@ export function ExperimentPlan({
     onWidgetUpdate,
     onNextStage,
     onPrevStage,
-    canGoNext: _canGoNext,
     canGoPrev,
     mode
 }: ExperimentPlanProps) {
@@ -48,6 +47,52 @@ export function ExperimentPlan({
     const currentStageIndex = STAGE_ORDER.indexOf(currentStage);
     const existingResult = stageResults[currentStage];
     const stageConfig = PLAN_STAGE_CONFIGS.find(c => c.stage === currentStage);
+
+    const handleGenerate = useCallback(async () => {
+        setStatus('generating');
+        setError(null);
+
+        try {
+            // 前ステージの結果をコンテキストとして収集
+            const previousResults: Record<string, unknown> = {};
+            STAGE_ORDER.slice(0, currentStageIndex).forEach((stage) => {
+                if (stageResults[stage]) {
+                    previousResults[stage] = {
+                        widgetResults: stageResults[stage]?.widgetResults,
+                        textSummary: stageResults[stage]?.textSummary,
+                    };
+                }
+            });
+
+            const response = await apiService.generateUIV3(
+                concernText,
+                currentStage,
+                sessionId,
+                undefined,
+                {
+                    restrictToImplementedWidgets: true,
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    previousStageResults: Object.keys(previousResults).length > 0 ? previousResults as Record<string, any> : undefined,
+                    bottleneckType,
+                }
+            );
+
+            if (!response.success) {
+                setError(response.error?.message || 'Generation failed');
+                setStatus('error');
+                return;
+            }
+
+            // レンダリング開始時刻を記録してState更新 -> Re-render -> useEffect発火
+            setRenderStartTime(performance.now());
+            setCurrentResponse(response);
+            setStatus('ready');
+
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Unknown error');
+            setStatus('error');
+        }
+    }, [currentStage, currentStageIndex, sessionId, concernText, stageResults, bottleneckType]);
 
     // ステージ変更時にリセット
     useEffect(() => {
@@ -71,7 +116,7 @@ export function ExperimentPlan({
         }
         setError(null);
         setRenderStartTime(0);
-    }, [currentStage, existingResult, mode]);
+    }, [currentStage, existingResult, mode, handleGenerate]);
 
     // レンダリング完了検知とメトリクス保存
     useEffect(() => {
@@ -108,57 +153,14 @@ export function ExperimentPlan({
         }
     }, [status, renderStartTime, currentResponse, currentStage, onStageResult, mode, onNextStage]);
 
-    const handleGenerate = useCallback(async () => {
-        setStatus('generating');
-        setError(null);
-
-        try {
-            // 前ステージの結果をコンテキストとして収集
-            const previousResults: Record<string, any> = {};
-            STAGE_ORDER.slice(0, currentStageIndex).forEach((stage) => {
-                if (stageResults[stage]) {
-                    previousResults[stage] = {
-                        widgetResults: stageResults[stage]?.widgetResults,
-                        textSummary: stageResults[stage]?.textSummary,
-                    };
-                }
-            });
-
-            const response = await apiService.generateUIV3(
-                concernText,
-                currentStage,
-                sessionId,
-                undefined,
-                {
-                    restrictToImplementedWidgets: true,
-                    previousStageResults: Object.keys(previousResults).length > 0 ? previousResults : undefined,
-                    bottleneckType,
-                }
-            );
-
-            if (!response.success) {
-                setError(response.error?.message || 'Generation failed');
-                setStatus('error');
-                return;
-            }
-
-            // レンダリング開始時刻を記録してState更新 -> Re-render -> useEffect発火
-            setRenderStartTime(performance.now());
-            setCurrentResponse(response);
-            setStatus('ready');
-
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Unknown error');
-            setStatus('error');
-        }
-    }, [currentStage, currentStageIndex, sessionId, concernText, stageResults, bottleneckType]);
+    // ... (rest of the file)
 
     // Widget更新ハンドラ
     const handleWidgetUpdate = useCallback(
-        (widgetId: string, data: any) => {
+        (widgetId: string, data: Record<string, unknown>) => {
             const widgetResult: WidgetResultData = {
                 widgetId,
-                component: currentResponse?.uiSpec?.widgets?.find((w: any) => w.id === widgetId)?.component || 'unknown',
+                component: currentResponse?.uiSpec?.widgets?.find((w: { id: string; component: string }) => w.id === widgetId)?.component || 'unknown',
                 data,
                 timestamp: new Date().toISOString(),
             };

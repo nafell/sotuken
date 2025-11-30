@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
 import { ConcernAnalyzer } from '../../../services/ConcernAnalyzer';
-import { DiagnosticQuestionService } from '../../../services/DiagnosticQuestionService';
 
 interface ExperimentCaptureProps {
     onComplete: (concernText: string, bottleneckType: string) => void;
@@ -22,7 +21,7 @@ export function ExperimentCapture({ onComplete, initialText = '', mode }: Experi
                     // 簡易的な解析（実際はLLMを呼ぶかもしれないが、ここではモック的に処理）
                     // Technicalモードではボトルネックも既知の前提だが、一応解析フローを通す
                     const bottleneck = await ConcernAnalyzer.inferBottleneckType(initialText);
-                    onComplete(initialText, bottleneck);
+                    onComplete(initialText, bottleneck || '');
                 } catch (err) {
                     console.error('Auto-proceed failed:', err);
                     setError('Auto-proceed failed');
@@ -40,8 +39,8 @@ export function ExperimentCapture({ onComplete, initialText = '', mode }: Experi
         setError(null);
 
         try {
-            // 1. 悩み深度分析 (Phase 0 logic)
-            const depth = await ConcernAnalyzer.analyzeConcernDepth(text);
+            // 1. 悩み深度分析 (Phase 0 logic) - depth variable is not used
+            await ConcernAnalyzer.analyzeConcernDepth(text);
 
             // 2. ボトルネック推定
             const bottleneck = await ConcernAnalyzer.inferBottleneckType(text);
@@ -49,7 +48,7 @@ export function ExperimentCapture({ onComplete, initialText = '', mode }: Experi
             // 3. 診断質問 (省略: Phase 7ではシンプルに進行)
             // 必要ならここで DiagnosticQuestionService を呼ぶ
 
-            onComplete(text, bottleneck);
+            onComplete(text, bottleneck || '');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Analysis failed');
             setIsAnalyzing(false);

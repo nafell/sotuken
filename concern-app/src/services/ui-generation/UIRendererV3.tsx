@@ -53,6 +53,7 @@ export interface UIRendererV3Props {
   uiSpec: UISpec;
   onWidgetUpdate?: (widgetId: string, data: any) => void;
   onWidgetComplete?: (widgetId: string) => void;
+  onWidgetAction?: () => void;
   onPortChange?: (widgetId: string, portId: string, value: any) => void;
   className?: string;
 }

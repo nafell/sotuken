@@ -79,6 +79,7 @@ export interface UISpecV3GenerationResponse {
   uiSpec?: any;
   textSummary?: string;
   mode?: 'widget' | 'text';
+  generationId?: string;
   generation?: {
     model: string;
     generatedAt: string;

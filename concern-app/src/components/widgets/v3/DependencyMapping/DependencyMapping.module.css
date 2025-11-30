@@ -74,10 +74,11 @@
   filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.05));
 }
 
-.nodeSelected .nodeRect {
-  stroke: #3b82f6;
-  stroke-width: 3;
-  filter: drop-shadow(0 0 0 4px rgba(59, 130, 246, 0.1));
+/* Use specific selector to override hover */
+.nodeGroup.selected .nodeRect {
+  stroke: #3b82f6 !important;
+  stroke-width: 4px !important;
+  filter: drop-shadow(0 0 0 4px rgba(59, 130, 246, 0.2)) !important;
 }
 
 .nodeLabel {
@@ -122,14 +123,26 @@
   transition: stroke-width 0.2s;
 }
 
-.edgeBlocks { stroke: #ef4444; }
-.edgeRequires { stroke: #3b82f6; }
-.edgeInfluences { stroke: #22c55e; }
-.edgeCustom { stroke: #8b5cf6; }
+.edgeBlocks {
+  stroke: #ef4444;
+}
+
+.edgeRequires {
+  stroke: #3b82f6;
+}
+
+.edgeInfluences {
+  stroke: #22c55e;
+}
+
+.edgeCustom {
+  stroke: #8b5cf6;
+}
 
 /* Toolbar (Legacy - mostly replaced by floating toolbar but keeping for layout safety if needed) */
 .toolbar {
-  display: none; /* Hidden as we use floating toolbar */
+  display: none;
+  /* Hidden as we use floating toolbar */
 }
 
 /* Info panel */
@@ -154,9 +167,20 @@
   margin: 0.25rem 0;
 }
 
-.warning { color: #f59e0b; font-weight: 500; }
-.error { color: #ef4444; font-weight: 500; }
-.criticalPath { color: #22c55e; font-weight: 500; }
+.warning {
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+.error {
+  color: #ef4444;
+  font-weight: 500;
+}
+
+.criticalPath {
+  color: #22c55e;
+  font-weight: 500;
+}
 
 /* Legend */
 .legend {
@@ -184,7 +208,8 @@
 
 /* Actions */
 .actions {
-  display: none; /* Replaced by floating toolbar */
+  display: none;
+  /* Replaced by floating toolbar */
 }
 
 /* Responsive */
@@ -192,6 +217,7 @@
   .container {
     padding: 1rem;
   }
+
   .canvasArea {
     height: 300px;
   }

@@ -40,7 +40,7 @@ export const uiGenerationRequests = pgTable('ui_generation_requests', {
   sessionId: text('session_id').notNull(),
   anonymousUserId: text('anonymous_user_id').notNull(),
   requestedAt: timestamp('requested_at', { withTimezone: true }).default(sql`now()`),
-  
+
   // ユーザー明示入力
   concernText: text('concern_text').notNull(),
   selectedCategory: text('selected_category').notNull(),
@@ -48,17 +48,17 @@ export const uiGenerationRequests = pgTable('ui_generation_requests', {
   urgencyChoice: text('urgency_choice').notNull(),
   concernLevel: text('concern_level').notNull(),
   customActionText: text('custom_action_text'),
-  
+
   // システム推論コンテキスト（抽象化済み）
   timeOfDay: text('time_of_day').notNull(),
   availableTimeMin: integer('available_time_min').notNull(),
   factors: jsonb('factors').notNull(), // factors辞書（抽象化済み）
-  
+
   // 生成結果
   uiVariant: text('ui_variant').notNull(), // 'static' | 'dynamic'
   noveltyLevel: text('novelty_level'), // 'low' | 'med' | 'high'
   uiDsl: jsonb('ui_dsl').notNull(), // 生成されたDSL
-  
+
   // メタデータ
   modelUsed: text('model_used').notNull(),
   seedUsed: integer('seed_used'),
@@ -81,15 +81,15 @@ export const measurementEvents = pgTable('measurement_events', {
   sessionId: text('session_id').notNull(),
   anonymousUserId: text('anonymous_user_id').notNull(),
   recordedAt: timestamp('recorded_at', { withTimezone: true }).default(sql`now()`),
-  
+
   eventType: text('event_type').notNull(), // 'ui_shown' | 'action_started' | etc.
   screenId: text('screen_id'),
   uiVariant: text('ui_variant'), // 'static' | 'dynamic'
   generationId: uuid('generation_id').references(() => uiGenerationRequests.generationId),
-  
+
   // 測定用メタデータ
   metadata: jsonb('metadata').notNull(),
-  
+
   // 研究分析用
   experimentCondition: text('experiment_condition'),
   configVersion: text('config_version')
@@ -108,12 +108,12 @@ export const priorityScores = pgTable('priority_scores', {
   scoreId: uuid('score_id').primaryKey().default(sql`gen_random_uuid()`),
   anonymousUserId: text('anonymous_user_id').notNull(),
   calculatedAt: timestamp('calculated_at', { withTimezone: true }).default(sql`now()`),
-  
+
   // コンテキスト情報
   contextFactors: jsonb('context_factors').notNull(),
   configVersion: text('config_version').notNull(),
   weightsVersion: text('weights_version').notNull(),
-  
+
   // 計算結果
   concernScores: jsonb('concern_scores').notNull() // [{"id": "concern_001", "score": 0.75, "reasoning": {...}}]
 }, (table) => ({
@@ -182,6 +182,33 @@ export const experimentSessions = pgTable('experiment_sessions', {
 }));
 
 // ========================================
+// Phase 7: 生成履歴管理テーブル (1-to-N)
+// ========================================
+
+export const experimentGenerations = pgTable('experiment_generations', {
+  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: uuid('session_id').notNull().references(() => experimentSessions.sessionId),
+  stage: text('stage').notNull(), // 'diverge' | 'organize' | 'converge' | 'summary'
+  modelId: text('model_id').notNull(),
+  prompt: text('prompt').notNull(),
+
+  // 生成結果
+  generatedOodm: jsonb('generated_oodm'),
+  generatedDsl: jsonb('generated_dsl'),
+
+  // メトリクス
+  promptTokens: integer('prompt_tokens'),
+  responseTokens: integer('response_tokens'),
+  generateDuration: integer('generate_duration'), // ms
+  renderDuration: integer('render_duration'),     // ms (Client側で計測・更新)
+
+  createdAt: timestamp('created_at', { withTimezone: true }).default(sql`now()`)
+}, (table) => ({
+  generationsSessionIdx: index('idx_generations_session').on(table.sessionId),
+  generationsStageIdx: index('idx_generations_stage').on(table.sessionId, table.stage)
+}));
+
+// ========================================
 // Phase 6: Widget状態記録テーブル
 // ========================================
 
@@ -227,6 +254,9 @@ export type NewSystemLog = typeof systemLogs.$inferInsert;
 
 export type ExperimentSession = typeof experimentSessions.$inferSelect;
 export type NewExperimentSession = typeof experimentSessions.$inferInsert;
+
+export type ExperimentGeneration = typeof experimentGenerations.$inferSelect;
+export type NewExperimentGeneration = typeof experimentGenerations.$inferInsert;
 
 export type WidgetState = typeof widgetStates.$inferSelect;
 export type NewWidgetState = typeof widgetStates.$inferInsert;

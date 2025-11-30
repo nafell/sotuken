@@ -220,9 +220,10 @@ function App() {
             }
           />
           {/* Backward compatibility redirects */}
-          <Route path="/research-experiment/sessions" element={<Navigate to="/research-experiment/data/sessions" replace />} />
-          <Route path="/research-experiment/sessions/:sessionId" element={<Navigate to="/research-experiment/data/sessions/:sessionId" replace />} />
-          <Route path="/research-experiment/replay/:sessionId" element={<Navigate to="/research-experiment/data/replay/:sessionId" replace />} />
+          {/* Backward compatibility redirects - Removed to avoid :sessionId literal bug */}
+          {/* <Route path="/research-experiment/sessions" element={<Navigate to="/research-experiment/data/sessions" replace />} /> */}
+          {/* <Route path="/research-experiment/sessions/:sessionId" element={<Navigate to="/research-experiment/data/sessions/:sessionId" replace />} /> */}
+          {/* <Route path="/research-experiment/replay/:sessionId" element={<Navigate to="/research-experiment/data/replay/:sessionId" replace />} /> */}
 
           {/* メインルート: Full-Flow Demo（現行メイン） */}
           <Route

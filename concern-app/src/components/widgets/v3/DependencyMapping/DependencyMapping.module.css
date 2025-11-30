@@ -35,11 +35,166 @@
 .canvasArea {
   position: relative;
   width: 100%;
-  height: 400px;
+  height: 500px;
   background-color: #f8fafc;
-  border: 2px dashed #e5e7eb;
-  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
   overflow: hidden;
+  /* Dot pattern background */
+  background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Nodes */
+.nodeGroup {
+  cursor: move;
+  user-select: none;
+  transition: opacity 0.2s;
+}
+
+.nodeGroup:hover .handles {
+  opacity: 1;
+}
+
+.nodeRect {
+  fill: white;
+  stroke: #cbd5e1;
+  stroke-width: 2;
+  transition: all 0.2s ease;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.05));
+}
+
+.nodeGroup:hover .nodeRect {
+  stroke: #94a3b8;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.05));
+}
+
+.nodeSelected .nodeRect {
+  stroke: #3b82f6;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 0 4px rgba(59, 130, 246, 0.1));
+}
+
+.nodeLabel {
+  font-size: 14px;
+  font-weight: 500;
+  fill: #1e293b;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+/* Handles */
+.handles {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.handle {
+  cursor: crosshair;
+  fill: #3b82f6;
+  stroke: white;
+  stroke-width: 2;
+  transition: r 0.2s ease;
+}
+
+.handle:hover {
+  r: 8;
+  fill: #2563eb;
+}
+
+/* Edges */
+.edgeGroup {
+  cursor: pointer;
+}
+
+.edgeGroup:hover path[stroke="transparent"] {
+  stroke: rgba(0, 0, 0, 0.05);
+}
+
+.edge {
+  stroke-width: 2;
+  fill: none;
+  transition: stroke-width 0.2s;
+}
+
+.edgeBlocks { stroke: #ef4444; }
+.edgeRequires { stroke: #3b82f6; }
+.edgeInfluences { stroke: #22c55e; }
+.edgeCustom { stroke: #8b5cf6; }
+
+/* Toolbar (Legacy - mostly replaced by floating toolbar but keeping for layout safety if needed) */
+.toolbar {
+  display: none; /* Hidden as we use floating toolbar */
+}
+
+/* Info panel */
+.infoPanel {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #f1f5f9;
+}
+
+.infoPanelTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 0.5rem 0;
+}
+
+.infoItem {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin: 0.25rem 0;
+}
+
+.warning { color: #f59e0b; font-weight: 500; }
+.error { color: #ef4444; font-weight: 500; }
+.criticalPath { color: #22c55e; font-weight: 500; }
+
+/* Legend */
+.legend {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.legendLine {
+  width: 20px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+/* Actions */
+.actions {
+  display: none; /* Replaced by floating toolbar */
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .container {
+    padding: 1rem;
+  }
+  .canvasArea {
+    height: 300px;
+  }
 }
 
 .svg {

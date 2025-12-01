@@ -53,19 +53,56 @@ export default function CaseExecution() {
     }
   };
 
+  // URLからクエリパラメータを取得
+  const searchParams = new URLSearchParams(window.location.search);
+  const urlMode = searchParams.get('mode');
+  const urlModel = searchParams.get('model');
+  const urlWidgets = searchParams.get('widgets');
+  const urlEvaluator = searchParams.get('evaluator');
+
+  // userモード判定: caseId === 'custom' または mode=user
+  const isUserMode = caseId === 'custom' || urlMode === 'user';
+
   useEffect(() => {
     async function loadData() {
       if (!caseId) return;
       try {
-        const [caseData, settingsData] = await Promise.all([
-          experimentApi.getTestCase(caseId),
-          experimentApi.getSettings()
-        ]);
-        setTestCase(caseData);
-        setSettings(settingsData);
-        setWidgetCount(settingsData.defaults.widgetCount);
-        setModelId(settingsData.defaults.modelId);
-        setExperimentType(settingsData.defaults.experimentType);
+        // userモードの場合、テストケースは取得しない
+        if (isUserMode) {
+          const settingsData = await experimentApi.getSettings();
+          setSettings(settingsData);
+          // URLパラメータから設定を取得、なければデフォルト
+          setWidgetCount(urlWidgets ? parseInt(urlWidgets) : settingsData.defaults.widgetCount);
+          setModelId(urlModel || settingsData.defaults.modelId);
+          setExperimentType('user');
+          setEvaluatorId(urlEvaluator || '');
+          // userモード用のダミーテストケースを作成
+          setTestCase({
+            caseId: 'custom',
+            title: 'User Experiment',
+            description: 'Free-form concern input by user',
+            concernText: '', // ユーザが入力する
+            contextFactors: {
+              mood: 'neutral',
+              timeAvailable: 15,
+              preferredStyle: 'guided'
+            },
+            expectedBottlenecks: [],
+            evaluationCriteria: ['User satisfaction', 'Task completion'],
+            complexity: 'medium',
+            hasReactivity: true
+          });
+        } else {
+          const [caseData, settingsData] = await Promise.all([
+            experimentApi.getTestCase(caseId),
+            experimentApi.getSettings()
+          ]);
+          setTestCase(caseData);
+          setSettings(settingsData);
+          setWidgetCount(settingsData.defaults.widgetCount);
+          setModelId(settingsData.defaults.modelId);
+          setExperimentType(settingsData.defaults.experimentType);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load data');
       } finally {
@@ -73,7 +110,7 @@ export default function CaseExecution() {
       }
     }
     loadData();
-  }, [caseId]);
+  }, [caseId, isUserMode, urlWidgets, urlModel, urlEvaluator]);
 
   const handleStartExecution = async () => {
     if (!testCase) return;
@@ -83,13 +120,15 @@ export default function CaseExecution() {
 
     try {
       // Create session
+      // userモードの場合、concernTextはユーザがcaptureフェーズで入力するため
+      // プレースホルダーを使用（後で更新される）
       const newSession = await experimentApi.createSession({
         experimentType,
         caseId: testCase.caseId,
         evaluatorId: evaluatorId || undefined,
         widgetCount,
         modelId,
-        concernText: testCase.concernText,
+        concernText: isUserMode ? '(pending user input)' : testCase.concernText,
         contextFactors: testCase.contextFactors
       });
 
@@ -165,10 +204,10 @@ export default function CaseExecution() {
           <ExperimentExecutor
             sessionId={session.sessionId}
             mode={experimentType as 'user' | 'expert' | 'technical'}
-            initialContext={testCase ? {
+            initialContext={isUserMode ? undefined : (testCase ? {
               concernText: testCase.concernText,
               bottleneckType: testCase.expectedBottlenecks?.[0]
-            } : undefined}
+            } : undefined)}
             onComplete={handleComplete}
           />
         </ErrorBoundary>
@@ -183,105 +222,136 @@ export default function CaseExecution() {
           <h1 style={styles.title}>Execute: {testCase.caseId}</h1>
           <p style={styles.subtitle}>{testCase.title}</p>
         </div>
-        <Link to="/research-experiment/new" style={styles.backButton}>← Back to Launcher</Link>
+        <Link to={isUserMode ? "/research-experiment/new/user" : "/research-experiment/new"} style={styles.backButton}>
+          ← Back to {isUserMode ? 'User Setup' : 'Launcher'}
+        </Link>
       </header>
 
       <div style={styles.content}>
-        {/* Test Case Info */}
-        <section style={styles.section}>
-          <h2 style={styles.sectionTitle}>Test Case Details</h2>
-          <div style={styles.infoCard}>
-            <div style={styles.infoRow}>
-              <span style={styles.infoLabel}>Concern Text:</span>
-              <span style={styles.infoValue}>{testCase.concernText}</span>
+        {/* Test Case Info - ユーザモードでは非表示 */}
+        {!isUserMode && (
+          <section style={styles.section}>
+            <h2 style={styles.sectionTitle}>Test Case Details</h2>
+            <div style={styles.infoCard}>
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Concern Text:</span>
+                <span style={styles.infoValue}>{testCase.concernText}</span>
+              </div>
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Complexity:</span>
+                <span style={styles.infoValue}>{testCase.complexity}</span>
+              </div>
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Has Reactivity:</span>
+                <span style={styles.infoValue}>{testCase.hasReactivity ? 'Yes' : 'No'}</span>
+              </div>
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Expected Bottlenecks:</span>
+                <span style={styles.infoValue}>{testCase.expectedBottlenecks.join(', ')}</span>
+              </div>
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Evaluation Criteria:</span>
+                <ul style={styles.criteriaList}>
+                  {testCase.evaluationCriteria.map((c, i) => (
+                    <li key={i}>{c}</li>
+                  ))}
+                </ul>
+              </div>
             </div>
-            <div style={styles.infoRow}>
-              <span style={styles.infoLabel}>Complexity:</span>
-              <span style={styles.infoValue}>{testCase.complexity}</span>
-            </div>
-            <div style={styles.infoRow}>
-              <span style={styles.infoLabel}>Has Reactivity:</span>
-              <span style={styles.infoValue}>{testCase.hasReactivity ? 'Yes' : 'No'}</span>
-            </div>
-            <div style={styles.infoRow}>
-              <span style={styles.infoLabel}>Expected Bottlenecks:</span>
-              <span style={styles.infoValue}>{testCase.expectedBottlenecks.join(', ')}</span>
-            </div>
-            <div style={styles.infoRow}>
-              <span style={styles.infoLabel}>Evaluation Criteria:</span>
-              <ul style={styles.criteriaList}>
-                {testCase.evaluationCriteria.map((c, i) => (
-                  <li key={i}>{c}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* Execution Config */}
         {executionState === 'config' && (
           <section style={styles.section}>
-            <h2 style={styles.sectionTitle}>Execution Configuration</h2>
+            <h2 style={styles.sectionTitle}>
+              {isUserMode ? 'Session Configuration' : 'Execution Configuration'}
+            </h2>
             <div style={styles.configForm}>
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Experiment Type</label>
-                <select
-                  value={experimentType}
-                  onChange={(e) => setExperimentType(e.target.value)}
-                  style={styles.formSelect}
-                >
-                  {settings?.experimentTypes.map(type => (
-                    <option key={type.id} value={type.id}>{type.name}</option>
-                  ))}
-                </select>
-              </div>
+              {/* ユーザモードでは設定は固定されているので読み取り専用で表示 */}
+              {isUserMode ? (
+                <>
+                  <div style={styles.infoCard}>
+                    <div style={styles.infoRow}>
+                      <span style={styles.infoLabel}>Participant ID:</span>
+                      <span style={styles.infoValue}>{evaluatorId || '(not set)'}</span>
+                    </div>
+                    <div style={styles.infoRow}>
+                      <span style={styles.infoLabel}>Widget Count:</span>
+                      <span style={styles.infoValue}>{widgetCount}</span>
+                    </div>
+                    <div style={styles.infoRow}>
+                      <span style={styles.infoLabel}>Model:</span>
+                      <span style={styles.infoValue}>{modelId}</span>
+                    </div>
+                  </div>
+                  <p style={styles.userModeHint}>
+                    You will be asked to input your concern in the next step.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>Experiment Type</label>
+                    <select
+                      value={experimentType}
+                      onChange={(e) => setExperimentType(e.target.value)}
+                      style={styles.formSelect}
+                    >
+                      {settings?.experimentTypes.map(type => (
+                        <option key={type.id} value={type.id}>{type.name}</option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Widget Count</label>
-                <select
-                  value={widgetCount}
-                  onChange={(e) => setWidgetCount(parseInt(e.target.value))}
-                  style={styles.formSelect}
-                >
-                  {settings?.widgetCountConditions.map(c => (
-                    <option key={c.id} value={c.widgetCount}>
-                      {c.widgetCount} - {c.description}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>Widget Count</label>
+                    <select
+                      value={widgetCount}
+                      onChange={(e) => setWidgetCount(parseInt(e.target.value))}
+                      style={styles.formSelect}
+                    >
+                      {settings?.widgetCountConditions.map(c => (
+                        <option key={c.id} value={c.widgetCount}>
+                          {c.widgetCount} - {c.description}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Model</label>
-                <select
-                  value={modelId}
-                  onChange={(e) => setModelId(e.target.value)}
-                  style={styles.formSelect}
-                >
-                  {settings?.modelConditions.map(c => (
-                    <option key={c.id} value={c.modelId}>
-                      {c.id} - {c.description}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>Model</label>
+                    <select
+                      value={modelId}
+                      onChange={(e) => setModelId(e.target.value)}
+                      style={styles.formSelect}
+                    >
+                      {settings?.modelConditions.map(c => (
+                        <option key={c.id} value={c.modelId}>
+                          {c.id} - {c.description}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Evaluator ID (optional)</label>
-                <input
-                  type="text"
-                  value={evaluatorId}
-                  onChange={(e) => setEvaluatorId(e.target.value)}
-                  placeholder="e.g., evaluator_01"
-                  style={styles.formInput}
-                />
-              </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>Evaluator ID (optional)</label>
+                    <input
+                      type="text"
+                      value={evaluatorId}
+                      onChange={(e) => setEvaluatorId(e.target.value)}
+                      placeholder="e.g., evaluator_01"
+                      style={styles.formInput}
+                    />
+                  </div>
+                </>
+              )}
 
               <button
                 onClick={handleStartExecution}
                 style={styles.startButton}
               >
-                Start Execution
+                {isUserMode ? 'Begin Session' : 'Start Execution'}
               </button>
             </div>
           </section>
@@ -536,6 +606,12 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     cursor: 'pointer',
     marginTop: '8px'
+  },
+  userModeHint: {
+    fontSize: '14px',
+    color: '#6B7280',
+    margin: '16px 0 0 0',
+    textAlign: 'center'
   },
   runningCard: {
     textAlign: 'center',

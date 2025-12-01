@@ -3,11 +3,17 @@
  * 実験セッション詳細画面
  *
  * Phase 6: 実験・評価環境構築
+ * Phase 7: 生成履歴（Generations）タブ追加
  */
 
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { experimentApi, type ExperimentSession, type WidgetState } from '../../services/ExperimentApiService';
+import {
+  experimentApi,
+  type ExperimentSession,
+  type WidgetState,
+  type ExperimentGeneration
+} from '../../services/ExperimentApiService';
 
 export default function SessionDetail() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -15,20 +21,24 @@ export default function SessionDetail() {
 
   const [session, setSession] = useState<ExperimentSession | null>(null);
   const [widgetStates, setWidgetStates] = useState<WidgetState[]>([]);
+  const [generations, setGenerations] = useState<ExperimentGeneration[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'generated' | 'metrics' | 'states'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'generations' | 'generated' | 'metrics' | 'states'>('overview');
+  const [expandedGeneration, setExpandedGeneration] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
       if (!sessionId) return;
       try {
-        const [sessionData, statesData] = await Promise.all([
+        const [sessionData, statesData, generationsData] = await Promise.all([
           experimentApi.getSession(sessionId),
-          experimentApi.getWidgetStates(sessionId)
+          experimentApi.getWidgetStates(sessionId),
+          experimentApi.getGenerations(sessionId)
         ]);
         setSession(sessionData);
         setWidgetStates(statesData);
+        setGenerations(generationsData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load data');
       } finally {
@@ -86,7 +96,7 @@ export default function SessionDetail() {
 
       {/* Tabs */}
       <div style={styles.tabs}>
-        {(['overview', 'generated', 'metrics', 'states'] as const).map(tab => (
+        {(['overview', 'generations', 'generated', 'metrics', 'states'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -95,7 +105,7 @@ export default function SessionDetail() {
               ...(activeTab === tab ? styles.tabActive : {})
             }}
           >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {tab === 'generations' ? `Generations (${generations.length})` : tab.charAt(0).toUpperCase() + tab.slice(1)}
           </button>
         ))}
       </div>
@@ -234,6 +244,81 @@ export default function SessionDetail() {
               {session.dslMetrics ? formatJson(session.dslMetrics) : 'N/A'}
             </pre>
           </div>
+        </div>
+      )}
+
+      {/* Generations Tab */}
+      {activeTab === 'generations' && (
+        <div style={styles.content}>
+          {generations.length > 0 ? (
+            generations.map((gen) => (
+              <div key={gen.id} style={styles.generationCard}>
+                <div
+                  style={styles.generationHeader}
+                  onClick={() => setExpandedGeneration(expandedGeneration === gen.id ? null : gen.id)}
+                >
+                  <div style={styles.generationHeaderLeft}>
+                    <span style={styles.generationStage}>{gen.stage}</span>
+                    <span style={styles.generationModel}>{gen.modelId}</span>
+                  </div>
+                  <div style={styles.generationHeaderRight}>
+                    <span style={styles.generationMetric}>
+                      {gen.promptTokens || 0} + {gen.responseTokens || 0} tokens
+                    </span>
+                    <span style={styles.generationMetric}>
+                      {gen.generateDuration ? `${gen.generateDuration}ms` : '-'}
+                    </span>
+                    <span style={styles.generationTime}>{formatDate(gen.createdAt)}</span>
+                    <span style={styles.expandIcon}>{expandedGeneration === gen.id ? '▼' : '▶'}</span>
+                  </div>
+                </div>
+
+                {expandedGeneration === gen.id && (
+                  <div style={styles.generationBody}>
+                    <div style={styles.generationSection}>
+                      <h4 style={styles.generationSectionTitle}>Prompt</h4>
+                      <pre style={styles.promptPre}>{gen.prompt}</pre>
+                    </div>
+
+                    {gen.generatedOodm && (
+                      <div style={styles.generationSection}>
+                        <h4 style={styles.generationSectionTitle}>Generated OODM</h4>
+                        <pre style={styles.jsonPre}>{formatJson(gen.generatedOodm)}</pre>
+                      </div>
+                    )}
+
+                    {gen.generatedDsl && (
+                      <div style={styles.generationSection}>
+                        <h4 style={styles.generationSectionTitle}>Generated DSL</h4>
+                        <pre style={styles.jsonPre}>{formatJson(gen.generatedDsl)}</pre>
+                      </div>
+                    )}
+
+                    <div style={styles.generationMetrics}>
+                      <div style={styles.generationMetricItem}>
+                        <span style={styles.generationMetricLabel}>Prompt Tokens:</span>
+                        <span style={styles.generationMetricValue}>{gen.promptTokens || '-'}</span>
+                      </div>
+                      <div style={styles.generationMetricItem}>
+                        <span style={styles.generationMetricLabel}>Response Tokens:</span>
+                        <span style={styles.generationMetricValue}>{gen.responseTokens || '-'}</span>
+                      </div>
+                      <div style={styles.generationMetricItem}>
+                        <span style={styles.generationMetricLabel}>Generate Duration:</span>
+                        <span style={styles.generationMetricValue}>{gen.generateDuration ? `${gen.generateDuration}ms` : '-'}</span>
+                      </div>
+                      <div style={styles.generationMetricItem}>
+                        <span style={styles.generationMetricLabel}>Render Duration:</span>
+                        <span style={styles.generationMetricValue}>{gen.renderDuration ? `${gen.renderDuration}ms` : '-'}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
+          ) : (
+            <div style={styles.empty}>No generations recorded for this session.</div>
+          )}
         </div>
       )}
 
@@ -512,5 +597,104 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#6B7280',
     backgroundColor: '#F9FAFB',
     borderRadius: '8px'
+  },
+  // Generation tab styles
+  generationCard: {
+    backgroundColor: '#fff',
+    borderRadius: '8px',
+    border: '1px solid #E5E7EB',
+    marginBottom: '12px',
+    overflow: 'hidden'
+  },
+  generationHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '12px 16px',
+    backgroundColor: '#F9FAFB',
+    borderBottom: '1px solid #E5E7EB',
+    cursor: 'pointer'
+  },
+  generationHeaderLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px'
+  },
+  generationHeaderRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px'
+  },
+  generationStage: {
+    fontSize: '13px',
+    fontWeight: 600,
+    color: '#7C3AED',
+    backgroundColor: '#EDE9FE',
+    padding: '4px 10px',
+    borderRadius: '4px'
+  },
+  generationModel: {
+    fontSize: '12px',
+    color: '#6B7280',
+    fontFamily: 'monospace'
+  },
+  generationMetric: {
+    fontSize: '12px',
+    color: '#6B7280'
+  },
+  generationTime: {
+    fontSize: '12px',
+    color: '#9CA3AF'
+  },
+  expandIcon: {
+    fontSize: '10px',
+    color: '#9CA3AF'
+  },
+  generationBody: {
+    padding: '16px'
+  },
+  generationSection: {
+    marginBottom: '16px'
+  },
+  generationSectionTitle: {
+    fontSize: '13px',
+    fontWeight: 600,
+    color: '#374151',
+    margin: '0 0 8px 0'
+  },
+  promptPre: {
+    backgroundColor: '#FEF3C7',
+    padding: '12px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    overflow: 'auto',
+    maxHeight: '300px',
+    margin: 0,
+    fontFamily: 'monospace',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+    border: '1px solid #FCD34D'
+  },
+  generationMetrics: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+    gap: '12px',
+    padding: '12px',
+    backgroundColor: '#F9FAFB',
+    borderRadius: '6px'
+  },
+  generationMetricItem: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px'
+  },
+  generationMetricLabel: {
+    fontSize: '11px',
+    color: '#6B7280'
+  },
+  generationMetricValue: {
+    fontSize: '14px',
+    fontWeight: 500,
+    color: '#111827'
   }
 };

@@ -77,6 +77,21 @@ export interface WidgetState {
   recordedAt: string;
 }
 
+export interface ExperimentGeneration {
+  id: string;
+  sessionId: string;
+  stage: string;
+  modelId: string;
+  prompt: string;
+  generatedOodm?: any;
+  generatedDsl?: any;
+  promptTokens?: number;
+  responseTokens?: number;
+  generateDuration?: number;
+  renderDuration?: number;
+  createdAt: string;
+}
+
 export interface ExperimentSettings {
   version: string;
   widgetCountConditions: Array<{
@@ -317,6 +332,36 @@ class ExperimentApiService {
       console.error('❌ Failed to update generation:', error);
       throw error;
     }
+  }
+
+  /**
+   * セッションの生成履歴一覧を取得
+   */
+  async getGenerations(sessionId: string): Promise<ExperimentGeneration[]> {
+    const response = await fetch(`${this.baseUrl}/api/experiment/sessions/${sessionId}/generations`);
+    if (!response.ok) {
+      throw new Error(`Failed to get generations: ${response.statusText}`);
+    }
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to get generations');
+    }
+    return data.generations;
+  }
+
+  /**
+   * 生成履歴詳細を取得
+   */
+  async getGeneration(generationId: string): Promise<ExperimentGeneration> {
+    const response = await fetch(`${this.baseUrl}/api/experiment/generations/${generationId}`);
+    if (!response.ok) {
+      throw new Error(`Failed to get generation: ${response.statusText}`);
+    }
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to get generation');
+    }
+    return data.generation;
   }
 }
 

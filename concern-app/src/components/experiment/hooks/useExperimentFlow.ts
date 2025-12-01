@@ -116,10 +116,23 @@ export function useExperimentFlow({
     const handleBreakdownComplete = useCallback(async (tasks: Task[]) => {
         setState(prev => ({ ...prev, isProcessing: true }));
         try {
-            // 最終結果保存: generationSuccess と completedAt を設定
+            // generationsからメトリクスを集計
+            let totalTokens = 0;
+            let totalLatencyMs = 0;
+            try {
+                const generations = await experimentApi.getGenerations(sessionId);
+                totalTokens = generations.reduce((sum, g) => sum + (g.promptTokens || 0) + (g.responseTokens || 0), 0);
+                totalLatencyMs = generations.reduce((sum, g) => sum + (g.generateDuration || 0), 0);
+            } catch (e) {
+                console.warn('Failed to aggregate generation metrics:', e);
+            }
+
+            // 最終結果保存: generationSuccess, completedAt, メトリクスを設定
             await experimentApi.updateSession(sessionId, {
                 generationSuccess: true,
-                completedAt: new Date().toISOString()
+                completedAt: new Date().toISOString(),
+                totalTokens: totalTokens || undefined,
+                totalLatencyMs: totalLatencyMs || undefined
             });
 
             setState(prev => ({

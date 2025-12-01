@@ -57,6 +57,15 @@ export default function SessionDetail() {
     return JSON.stringify(obj, null, 2);
   };
 
+  // Calculate aggregated metrics from generations
+  const aggregatedMetrics = {
+    totalTokens: generations.reduce((sum, g) => sum + (g.promptTokens || 0) + (g.responseTokens || 0), 0),
+    totalPromptTokens: generations.reduce((sum, g) => sum + (g.promptTokens || 0), 0),
+    totalResponseTokens: generations.reduce((sum, g) => sum + (g.responseTokens || 0), 0),
+    totalGenerateDuration: generations.reduce((sum, g) => sum + (g.generateDuration || 0), 0),
+    totalRenderDuration: generations.reduce((sum, g) => sum + (g.renderDuration || 0), 0),
+  };
+
   if (loading) {
     return (
       <div style={styles.container}>
@@ -220,30 +229,62 @@ export default function SessionDetail() {
         <div style={styles.content}>
           <div style={styles.metricsGrid}>
             <div style={styles.metricCard}>
-              <div style={styles.metricValue}>{session.totalTokens?.toLocaleString() || '-'}</div>
+              <div style={styles.metricValue}>{aggregatedMetrics.totalTokens.toLocaleString()}</div>
               <div style={styles.metricLabel}>Total Tokens</div>
             </div>
             <div style={styles.metricCard}>
-              <div style={styles.metricValue}>
-                {session.totalLatencyMs ? `${session.totalLatencyMs}ms` : '-'}
-              </div>
-              <div style={styles.metricLabel}>Total Latency</div>
+              <div style={styles.metricValue}>{aggregatedMetrics.totalPromptTokens.toLocaleString()}</div>
+              <div style={styles.metricLabel}>Prompt Tokens</div>
+            </div>
+            <div style={styles.metricCard}>
+              <div style={styles.metricValue}>{aggregatedMetrics.totalResponseTokens.toLocaleString()}</div>
+              <div style={styles.metricLabel}>Response Tokens</div>
+            </div>
+            <div style={styles.metricCard}>
+              <div style={styles.metricValue}>{aggregatedMetrics.totalGenerateDuration.toLocaleString()}ms</div>
+              <div style={styles.metricLabel}>Generate Time</div>
+            </div>
+            <div style={styles.metricCard}>
+              <div style={styles.metricValue}>{aggregatedMetrics.totalRenderDuration.toLocaleString()}ms</div>
+              <div style={styles.metricLabel}>Render Time</div>
+            </div>
+            <div style={styles.metricCard}>
+              <div style={styles.metricValue}>{generations.length}</div>
+              <div style={styles.metricLabel}>Stages</div>
             </div>
           </div>
 
           <div style={styles.card}>
-            <h3 style={styles.cardTitle}>OODM Metrics</h3>
-            <pre style={styles.jsonPre}>
-              {session.oodmMetrics ? formatJson(session.oodmMetrics) : 'N/A'}
-            </pre>
+            <h3 style={styles.cardTitle}>Per-Stage Breakdown</h3>
+            <div style={styles.stageBreakdown}>
+              {generations.map((gen, idx) => (
+                <div key={gen.id} style={styles.stageRow}>
+                  <span style={styles.stageName}>{idx + 1}. {gen.stage}</span>
+                  <span style={styles.stageMetric}>{(gen.promptTokens || 0) + (gen.responseTokens || 0)} tokens</span>
+                  <span style={styles.stageMetric}>{gen.generateDuration || 0}ms gen</span>
+                  <span style={styles.stageMetric}>{gen.renderDuration || 0}ms render</span>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div style={styles.card}>
-            <h3 style={styles.cardTitle}>DSL Metrics</h3>
-            <pre style={styles.jsonPre}>
-              {session.dslMetrics ? formatJson(session.dslMetrics) : 'N/A'}
-            </pre>
-          </div>
+          {session.oodmMetrics && (
+            <div style={styles.card}>
+              <h3 style={styles.cardTitle}>OODM Metrics (Legacy)</h3>
+              <pre style={styles.jsonPre}>
+                {formatJson(session.oodmMetrics)}
+              </pre>
+            </div>
+          )}
+
+          {session.dslMetrics && (
+            <div style={styles.card}>
+              <h3 style={styles.cardTitle}>DSL Metrics (Legacy)</h3>
+              <pre style={styles.jsonPre}>
+                {formatJson(session.dslMetrics)}
+              </pre>
+            </div>
+          )}
         </div>
       )}
 
@@ -696,5 +737,30 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '14px',
     fontWeight: 500,
     color: '#111827'
+  },
+  // Stage breakdown styles
+  stageBreakdown: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px'
+  },
+  stageRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+    padding: '8px 12px',
+    backgroundColor: '#F9FAFB',
+    borderRadius: '6px'
+  },
+  stageName: {
+    fontSize: '13px',
+    fontWeight: 500,
+    color: '#374151',
+    minWidth: '120px'
+  },
+  stageMetric: {
+    fontSize: '12px',
+    color: '#6B7280',
+    fontFamily: 'monospace'
   }
 };

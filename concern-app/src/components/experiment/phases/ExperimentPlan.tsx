@@ -116,6 +116,11 @@ export function ExperimentPlan({
         }
         setError(null);
         setRenderStartTime(0);
+
+        // クリーンアップ: ステージ変更時にフラグをリセット
+        return () => {
+            autoProceedRef.current = false;
+        };
     }, [currentStage, existingResult, handleGenerate]);
 
     // レンダリング完了検知とメトリクス保存
@@ -240,6 +245,7 @@ export function ExperimentPlan({
                                 uiSpec={currentResponse.uiSpec}
                                 onWidgetUpdate={handleWidgetUpdate}
                                 onWidgetAction={() => { }}
+                                contextSummary={concernText ? `Your Concern: ${concernText}` : undefined}
                             />
                         )}
                     </div>

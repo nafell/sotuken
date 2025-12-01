@@ -56,6 +56,7 @@ export interface UIRendererV3Props {
   onWidgetAction?: () => void;
   onPortChange?: (widgetId: string, portId: string, value: any) => void;
   className?: string;
+  contextSummary?: string; // 追加: コンテキストサマリー
 }
 
 /**
@@ -114,6 +115,7 @@ export const UIRendererV3: React.FC<UIRendererV3Props> = ({
   onWidgetComplete,
   onPortChange,
   className,
+  contextSummary,
 }) => {
   // ReactiveBindingEngineの初期化
   const engine = useMemo(() => {
@@ -188,6 +190,14 @@ export const UIRendererV3: React.FC<UIRendererV3Props> = ({
 
   return (
     <div className={className} style={containerStyle}>
+      {/* Context Summary Section */}
+      {contextSummary && (
+        <div style={summaryStyle}>
+          <h3 style={summaryTitleStyle}>Current Context</h3>
+          <p style={summaryTextStyle}>{contextSummary}</p>
+        </div>
+      )}
+
       <div style={headerStyle}>
         <span style={badgeStyle}>{uiSpec.stage}</span>
         <span style={sessionIdStyle}>Session: {uiSpec.sessionId}</span>
@@ -221,10 +231,18 @@ export const UIRendererV3: React.FC<UIRendererV3Props> = ({
           return (
             <div key={widgetSpec.id} style={widgetWrapperStyle}>
               <div style={widgetHeaderStyle}>
-                <span style={widgetLabelStyle}>
-                  #{widgetSpec.position} - {widgetSpec.component}
-                </span>
-                <span style={widgetIdStyle}>{widgetSpec.id}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={widgetLabelStyle}>
+                    #{widgetSpec.position} - {widgetSpec.component}
+                  </span>
+                  <span style={widgetIdStyle}>{widgetSpec.id}</span>
+                </div>
+                {/* Widget Description in Header */}
+                {widgetSpec.metadata.description && (
+                  <span style={widgetDescriptionStyle} title={widgetSpec.metadata.description}>
+                    {widgetSpec.metadata.description}
+                  </span>
+                )}
               </div>
               <WidgetComponent
                 spec={specObject}
@@ -315,6 +333,42 @@ const errorWidgetStyle: React.CSSProperties = {
   border: '1px solid #ef5350',
   borderRadius: '8px',
   color: '#c62828',
+};
+
+const summaryStyle: React.CSSProperties = {
+  marginBottom: '24px',
+  padding: '16px',
+  backgroundColor: '#fff',
+  borderRadius: '8px',
+  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+  borderLeft: '4px solid #3B82F6',
+};
+
+const summaryTitleStyle: React.CSSProperties = {
+  fontSize: '14px',
+  fontWeight: 'bold',
+  color: '#3B82F6',
+  margin: '0 0 8px 0',
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+};
+
+const summaryTextStyle: React.CSSProperties = {
+  fontSize: '16px',
+  color: '#374151',
+  margin: 0,
+  lineHeight: 1.5,
+};
+
+const widgetDescriptionStyle: React.CSSProperties = {
+  fontSize: '12px',
+  color: '#546e7a',
+  marginLeft: '12px',
+  fontStyle: 'italic',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  maxWidth: '400px',
 };
 
 export default UIRendererV3;

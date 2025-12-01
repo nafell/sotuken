@@ -163,7 +163,7 @@ export default function SessionList() {
                     >
                       View
                     </button>
-                    {session.generationSuccess && (
+                    {(session.generationSuccess || session.completedAt) && (
                       <button
                         onClick={() => navigate(`/research-experiment/data/replay/${session.sessionId}`)}
                         style={styles.replayButton}

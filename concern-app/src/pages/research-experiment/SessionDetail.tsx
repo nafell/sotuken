@@ -82,7 +82,7 @@ export default function SessionDetail() {
           <p style={styles.sessionId}>{session.sessionId}</p>
         </div>
         <div style={styles.headerActions}>
-          {session.generationSuccess && (
+          {(session.generationSuccess || session.completedAt) && (
             <button
               onClick={() => navigate(`/research-experiment/data/replay/${session.sessionId}`)}
               style={styles.replayButton}
@@ -90,7 +90,7 @@ export default function SessionDetail() {
               Replay Session
             </button>
           )}
-          <Link to="/research-experiment/sessions" style={styles.backButton}>← Back</Link>
+          <Link to="/research-experiment/data/sessions" style={styles.backButton}>← Back</Link>
         </div>
       </header>
 

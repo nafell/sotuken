@@ -293,7 +293,7 @@ export default function CaseExecution() {
               <p style={styles.completedText}>Session ID: {session.sessionId}</p>
               <div style={styles.completedActions}>
                 <button
-                  onClick={() => navigate(`/research-experiment/sessions/${session.sessionId}`)}
+                  onClick={() => navigate(`/research-experiment/data/sessions/${session.sessionId}`)}
                   style={styles.viewButton}
                 >
                   View Session Details

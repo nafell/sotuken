@@ -120,7 +120,7 @@ export default function ReplayView() {
         <div style={styles.emptyState}>
           <h2>No Widget States</h2>
           <p>This session has no recorded widget states to replay.</p>
-          <Link to={`/research-experiment/sessions/${sessionId}`} style={styles.backLink}>
+          <Link to={`/research-experiment/data/sessions/${sessionId}`} style={styles.backLink}>
             View Session Details
           </Link>
         </div>
@@ -133,7 +133,7 @@ export default function ReplayView() {
       {/* Header */}
       <header style={styles.header}>
         <div style={styles.headerLeft}>
-          <Link to={`/research-experiment/sessions/${sessionId}`} style={styles.backButton}>
+          <Link to={`/research-experiment/data/sessions/${sessionId}`} style={styles.backButton}>
             Back
           </Link>
           <div>

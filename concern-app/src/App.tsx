@@ -2,7 +2,8 @@
  * App.tsx
  *
  * ルーティング構成:
- * - / → Full-Flow Demo（現行メイン）
+ * - / → /research-experiment にリダイレクト
+ * - /research-experiment/* → 実験管理ダッシュボード（Phase 6-7）
  * - /dev-demo/* → 開発用デモページ
  * - /legacy/* → 旧実験条件別ルーティング（Phase 2 Step 5）
  * - /admin/* → 管理者画面
@@ -225,14 +226,10 @@ function App() {
           {/* <Route path="/research-experiment/sessions/:sessionId" element={<Navigate to="/research-experiment/data/sessions/:sessionId" replace />} /> */}
           {/* <Route path="/research-experiment/replay/:sessionId" element={<Navigate to="/research-experiment/data/replay/:sessionId" replace />} /> */}
 
-          {/* メインルート: Full-Flow Demo（現行メイン） */}
+          {/* メインルート: Research Experiment Dashboard */}
           <Route
             path="/"
-            element={
-              <Suspense fallback={<div style={{ padding: '20px' }}>Loading...</div>}>
-                <FullFlowDemoPage />
-              </Suspense>
-            }
+            element={<Navigate to="/research-experiment" replace />}
           />
 
           {/* Legacy: 旧実験条件別ルーティング（Phase 2 Step 5） */}

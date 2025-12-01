@@ -84,7 +84,7 @@ export default function SessionDetail() {
         <div style={styles.headerActions}>
           {session.generationSuccess && (
             <button
-              onClick={() => navigate(`/research-experiment/replay/${session.sessionId}`)}
+              onClick={() => navigate(`/research-experiment/data/replay/${session.sessionId}`)}
               style={styles.replayButton}
             >
               Replay Session

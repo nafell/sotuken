@@ -3,6 +3,7 @@
  * 実験セッションのリプレイ表示
  *
  * Phase 6: 実験・評価環境構築
+ * Phase 7: Generationsデータを使用したリプレイ
  * - 保存されたセッションの読み取り専用再生
  * - ステップバイステップナビゲーション
  * - メタ情報・メトリクス表示
@@ -10,13 +11,17 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { experimentApi, type ExperimentSession, type WidgetState } from '../../services/ExperimentApiService';
+import {
+  experimentApi,
+  type ExperimentSession,
+  type ExperimentGeneration
+} from '../../services/ExperimentApiService';
 
 export default function ReplayView() {
   const { sessionId } = useParams<{ sessionId: string }>();
 
   const [session, setSession] = useState<ExperimentSession | null>(null);
-  const [widgetStates, setWidgetStates] = useState<WidgetState[]>([]);
+  const [generations, setGenerations] = useState<ExperimentGeneration[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,20 +30,20 @@ export default function ReplayView() {
 
   // Panel visibility toggles
   const [showMetaPanel, setShowMetaPanel] = useState(true);
-  const [showPortValues, setShowPortValues] = useState(false);
+  const [showPrompt, setShowPrompt] = useState(false);
 
-  // Load session and widget states
+  // Load session and generations
   useEffect(() => {
     async function loadData() {
       if (!sessionId) return;
       try {
-        const [sessionData, statesData] = await Promise.all([
+        const [sessionData, generationsData] = await Promise.all([
           experimentApi.getSession(sessionId),
-          experimentApi.getWidgetStates(sessionId)
+          experimentApi.getGenerations(sessionId)
         ]);
         setSession(sessionData);
-        setWidgetStates(statesData);
-        if (statesData.length > 0) {
+        setGenerations(generationsData);
+        if (generationsData.length > 0) {
           setCurrentStep(0);
         }
       } catch (err) {
@@ -52,10 +57,10 @@ export default function ReplayView() {
 
   // Navigation handlers
   const goToStep = useCallback((step: number) => {
-    if (step >= 0 && step < widgetStates.length) {
+    if (step >= 0 && step < generations.length) {
       setCurrentStep(step);
     }
-  }, [widgetStates.length]);
+  }, [generations.length]);
 
   const goToPrevStep = useCallback(() => {
     goToStep(currentStep - 1);
@@ -86,8 +91,16 @@ export default function ReplayView() {
     return JSON.stringify(obj, null, 2);
   };
 
-  // Get current widget state
-  const currentWidgetState = widgetStates[currentStep];
+  // Get current generation
+  const currentGeneration = generations[currentStep];
+
+  // Stage display names
+  const stageNames: Record<string, string> = {
+    diverge: '発散 (Diverge)',
+    organize: '整理 (Organize)',
+    converge: '収束 (Converge)',
+    summary: 'まとめ (Summary)'
+  };
 
   if (loading) {
     return (
@@ -106,7 +119,7 @@ export default function ReplayView() {
         <div style={styles.errorState}>
           <h2>Error Loading Replay</h2>
           <p>{error || 'Session not found'}</p>
-          <Link to="/research-experiment/sessions" style={styles.backLink}>
+          <Link to="/research-experiment/data/sessions" style={styles.backLink}>
             Back to Sessions
           </Link>
         </div>
@@ -114,12 +127,12 @@ export default function ReplayView() {
     );
   }
 
-  if (widgetStates.length === 0) {
+  if (generations.length === 0) {
     return (
       <div style={styles.container}>
         <div style={styles.emptyState}>
-          <h2>No Widget States</h2>
-          <p>This session has no recorded widget states to replay.</p>
+          <h2>No Generation Data</h2>
+          <p>This session has no recorded generations to replay.</p>
           <Link to={`/research-experiment/data/sessions/${sessionId}`} style={styles.backLink}>
             View Session Details
           </Link>
@@ -184,8 +197,8 @@ export default function ReplayView() {
                 />
                 <MetaItem
                   label="Status"
-                  value={session.generationSuccess ? 'Success' : 'Failed'}
-                  highlight={session.generationSuccess ? 'success' : 'error'}
+                  value={session.generationSuccess ? 'Success' : session.completedAt ? 'Completed' : 'In Progress'}
+                  highlight={session.generationSuccess ? 'success' : undefined}
                 />
               </div>
             </div>
@@ -208,7 +221,7 @@ export default function ReplayView() {
           </aside>
         )}
 
-        {/* Widget Display Area */}
+        {/* Generation Display Area */}
         <main style={styles.widgetArea}>
           {/* Progress Bar */}
           <div style={styles.progressContainer}>
@@ -216,20 +229,20 @@ export default function ReplayView() {
               <div
                 style={{
                   ...styles.progressFill,
-                  width: `${((currentStep + 1) / widgetStates.length) * 100}%`
+                  width: `${((currentStep + 1) / generations.length) * 100}%`
                 }}
               />
             </div>
             <span style={styles.progressText}>
-              Step {currentStep + 1} of {widgetStates.length}
+              Stage {currentStep + 1} of {generations.length}
             </span>
           </div>
 
           {/* Step Indicator Pills */}
           <div style={styles.stepIndicators}>
-            {widgetStates.map((state, idx) => (
+            {generations.map((gen, idx) => (
               <button
-                key={state.stateId}
+                key={gen.id}
                 onClick={() => goToStep(idx)}
                 style={{
                   ...styles.stepPill,
@@ -237,61 +250,87 @@ export default function ReplayView() {
                                    idx < currentStep ? '#10B981' : '#E5E7EB',
                   color: idx <= currentStep ? '#fff' : '#6B7280'
                 }}
-                title={`Step ${idx + 1}: ${state.widgetType}`}
+                title={`Stage ${idx + 1}: ${stageNames[gen.stage] || gen.stage}`}
               >
                 {idx + 1}
               </button>
             ))}
           </div>
 
-          {/* Current Widget State Display */}
-          {currentWidgetState && (
+          {/* Current Generation Display */}
+          {currentGeneration && (
             <div style={styles.widgetCard}>
               <div style={styles.widgetHeader}>
                 <div>
-                  <span style={styles.widgetStep}>Step {currentWidgetState.stepIndex}</span>
-                  <h2 style={styles.widgetType}>{currentWidgetState.widgetType}</h2>
+                  <span style={styles.widgetStep}>Stage {currentStep + 1}</span>
+                  <h2 style={styles.widgetType}>{stageNames[currentGeneration.stage] || currentGeneration.stage}</h2>
                 </div>
-                <span style={styles.widgetTime}>
-                  {formatDate(currentWidgetState.recordedAt)}
-                </span>
+                <div style={styles.headerRight}>
+                  <span style={styles.widgetTime}>
+                    {formatDate(currentGeneration.createdAt)}
+                  </span>
+                </div>
               </div>
 
-              {/* Widget Config */}
+              {/* Generation Metrics */}
+              <div style={styles.metricsBar}>
+                <div style={styles.metricItem}>
+                  <span style={styles.metricLabel}>Model:</span>
+                  <span style={styles.metricValue}>{currentGeneration.modelId}</span>
+                </div>
+                <div style={styles.metricItem}>
+                  <span style={styles.metricLabel}>Prompt Tokens:</span>
+                  <span style={styles.metricValue}>{currentGeneration.promptTokens || '-'}</span>
+                </div>
+                <div style={styles.metricItem}>
+                  <span style={styles.metricLabel}>Response Tokens:</span>
+                  <span style={styles.metricValue}>{currentGeneration.responseTokens || '-'}</span>
+                </div>
+                <div style={styles.metricItem}>
+                  <span style={styles.metricLabel}>Generate:</span>
+                  <span style={styles.metricValue}>{currentGeneration.generateDuration ? `${currentGeneration.generateDuration}ms` : '-'}</span>
+                </div>
+                <div style={styles.metricItem}>
+                  <span style={styles.metricLabel}>Render:</span>
+                  <span style={styles.metricValue}>{currentGeneration.renderDuration ? `${currentGeneration.renderDuration}ms` : '-'}</span>
+                </div>
+              </div>
+
+              {/* Prompt (collapsible) */}
               <div style={styles.widgetSection}>
-                <h4 style={styles.sectionTitle}>Widget Configuration</h4>
-                <pre style={styles.jsonPre}>
-                  {formatJson(currentWidgetState.widgetConfig)}
-                </pre>
+                <div style={styles.sectionHeader}>
+                  <h4 style={styles.sectionTitle}>Prompt</h4>
+                  <button
+                    onClick={() => setShowPrompt(!showPrompt)}
+                    style={styles.expandButton}
+                  >
+                    {showPrompt ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+                {showPrompt && (
+                  <pre style={styles.promptPre}>
+                    {currentGeneration.prompt}
+                  </pre>
+                )}
               </div>
 
-              {/* User Inputs */}
-              {currentWidgetState.userInputs && (
+              {/* Generated OODM */}
+              {currentGeneration.generatedOodm && (
                 <div style={styles.widgetSection}>
-                  <h4 style={styles.sectionTitle}>User Inputs</h4>
+                  <h4 style={styles.sectionTitle}>Generated OODM</h4>
                   <pre style={styles.jsonPre}>
-                    {formatJson(currentWidgetState.userInputs)}
+                    {formatJson(currentGeneration.generatedOodm)}
                   </pre>
                 </div>
               )}
 
-              {/* Port Values (toggle) */}
-              {currentWidgetState.portValues && (
+              {/* Generated DSL */}
+              {currentGeneration.generatedDsl && (
                 <div style={styles.widgetSection}>
-                  <div style={styles.sectionHeader}>
-                    <h4 style={styles.sectionTitle}>Port Values (Debug)</h4>
-                    <button
-                      onClick={() => setShowPortValues(!showPortValues)}
-                      style={styles.expandButton}
-                    >
-                      {showPortValues ? 'Hide' : 'Show'}
-                    </button>
-                  </div>
-                  {showPortValues && (
-                    <pre style={styles.jsonPre}>
-                      {formatJson(currentWidgetState.portValues)}
-                    </pre>
-                  )}
+                  <h4 style={styles.sectionTitle}>Generated DSL (UISpec)</h4>
+                  <pre style={styles.jsonPre}>
+                    {formatJson(currentGeneration.generatedDsl)}
+                  </pre>
                 </div>
               )}
             </div>
@@ -314,10 +353,10 @@ export default function ReplayView() {
             </div>
             <button
               onClick={goToNextStep}
-              disabled={currentStep === widgetStates.length - 1}
+              disabled={currentStep === generations.length - 1}
               style={{
                 ...styles.navButton,
-                opacity: currentStep === widgetStates.length - 1 ? 0.5 : 1
+                opacity: currentStep === generations.length - 1 ? 0.5 : 1
               }}
             >
               Next
@@ -410,6 +449,12 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     gap: '16px'
+  },
+  headerRight: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: '4px'
   },
   backButton: {
     padding: '8px 16px',
@@ -559,8 +604,8 @@ const styles: Record<string, React.CSSProperties> = {
   widgetStep: {
     fontSize: '12px',
     fontWeight: 600,
-    color: '#3B82F6',
-    backgroundColor: '#EFF6FF',
+    color: '#7C3AED',
+    backgroundColor: '#EDE9FE',
     padding: '4px 8px',
     borderRadius: '4px'
   },
@@ -573,6 +618,29 @@ const styles: Record<string, React.CSSProperties> = {
   widgetTime: {
     fontSize: '12px',
     color: '#6B7280'
+  },
+  metricsBar: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '16px',
+    padding: '12px 20px',
+    backgroundColor: '#F9FAFB',
+    borderBottom: '1px solid #E5E7EB'
+  },
+  metricItem: {
+    display: 'flex',
+    gap: '6px',
+    alignItems: 'center'
+  },
+  metricLabel: {
+    fontSize: '12px',
+    color: '#6B7280'
+  },
+  metricValue: {
+    fontSize: '12px',
+    color: '#111827',
+    fontWeight: 500,
+    fontFamily: 'monospace'
   },
   widgetSection: {
     padding: '16px 20px',
@@ -599,6 +667,19 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#6B7280',
     cursor: 'pointer'
   },
+  promptPre: {
+    backgroundColor: '#FEF3C7',
+    padding: '12px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    fontFamily: 'monospace',
+    overflow: 'auto',
+    maxHeight: '300px',
+    margin: '8px 0 0 0',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+    border: '1px solid #FCD34D'
+  },
   jsonPre: {
     backgroundColor: '#F9FAFB',
     padding: '12px',
@@ -606,7 +687,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '12px',
     fontFamily: 'monospace',
     overflow: 'auto',
-    maxHeight: '300px',
+    maxHeight: '400px',
     margin: '8px 0 0 0'
   },
   navControls: {

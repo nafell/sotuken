@@ -6,6 +6,7 @@
  * Phase 7: Generationsデータを使用したリプレイ
  * - 保存されたセッションの読み取り専用再生
  * - ステップバイステップナビゲーション
+ * - 生成されたウィジェットの実体表示
  * - メタ情報・メトリクス表示
  */
 
@@ -16,6 +17,9 @@ import {
   type ExperimentSession,
   type ExperimentGeneration
 } from '../../services/ExperimentApiService';
+import UIRendererV3 from '../../services/ui-generation/UIRendererV3';
+
+type ViewMode = 'widget' | 'data';
 
 export default function ReplayView() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -30,6 +34,7 @@ export default function ReplayView() {
 
   // Panel visibility toggles
   const [showMetaPanel, setShowMetaPanel] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>('widget');
   const [showPrompt, setShowPrompt] = useState(false);
 
   // Load session and generations
@@ -111,6 +116,15 @@ export default function ReplayView() {
     summary: 'まとめ (Summary)'
   };
 
+  // Dummy handlers for UIRendererV3 (read-only mode)
+  const handleWidgetUpdate = useCallback((widgetId: string, data: unknown) => {
+    console.log('[ReplayView] Widget update (read-only):', widgetId, data);
+  }, []);
+
+  const handleWidgetComplete = useCallback((widgetId: string) => {
+    console.log('[ReplayView] Widget complete (read-only):', widgetId);
+  }, []);
+
   if (loading) {
     return (
       <div style={styles.container}>
@@ -166,6 +180,27 @@ export default function ReplayView() {
           </div>
         </div>
         <div style={styles.headerControls}>
+          {/* View Mode Toggle */}
+          <div style={styles.viewModeToggle}>
+            <button
+              onClick={() => setViewMode('widget')}
+              style={{
+                ...styles.viewModeButton,
+                ...(viewMode === 'widget' ? styles.viewModeButtonActive : {})
+              }}
+            >
+              Widget
+            </button>
+            <button
+              onClick={() => setViewMode('data')}
+              style={{
+                ...styles.viewModeButton,
+                ...(viewMode === 'data' ? styles.viewModeButtonActive : {})
+              }}
+            >
+              Data
+            </button>
+          </div>
           <button
             onClick={() => setShowMetaPanel(!showMetaPanel)}
             style={{
@@ -321,42 +356,69 @@ export default function ReplayView() {
                 </div>
               </div>
 
-              {/* Prompt (collapsible) */}
-              <div style={styles.widgetSection}>
-                <div style={styles.sectionHeader}>
-                  <h4 style={styles.sectionTitle}>Prompt</h4>
-                  <button
-                    onClick={() => setShowPrompt(!showPrompt)}
-                    style={styles.expandButton}
-                  >
-                    {showPrompt ? 'Hide' : 'Show'}
-                  </button>
-                </div>
-                {showPrompt && (
-                  <pre style={styles.promptPre}>
-                    {currentGeneration.prompt}
-                  </pre>
-                )}
-              </div>
-
-              {/* Generated OODM */}
-              {currentGeneration.generatedOodm && (
-                <div style={styles.widgetSection}>
-                  <h4 style={styles.sectionTitle}>Generated OODM</h4>
-                  <pre style={styles.jsonPre}>
-                    {formatJson(currentGeneration.generatedOodm)}
-                  </pre>
+              {/* Widget View Mode */}
+              {viewMode === 'widget' && currentGeneration.generatedDsl && (
+                <div style={styles.widgetRenderArea}>
+                  <div style={styles.readOnlyBanner}>
+                    Read-Only Preview - Interactions are disabled
+                  </div>
+                  <div style={styles.widgetContainer}>
+                    <UIRendererV3
+                      uiSpec={currentGeneration.generatedDsl}
+                      onWidgetUpdate={handleWidgetUpdate}
+                      onWidgetComplete={handleWidgetComplete}
+                    />
+                  </div>
                 </div>
               )}
 
-              {/* Generated DSL */}
-              {currentGeneration.generatedDsl && (
-                <div style={styles.widgetSection}>
-                  <h4 style={styles.sectionTitle}>Generated DSL (UISpec)</h4>
-                  <pre style={styles.jsonPre}>
-                    {formatJson(currentGeneration.generatedDsl)}
-                  </pre>
+              {viewMode === 'widget' && !currentGeneration.generatedDsl && (
+                <div style={styles.noWidgetMessage}>
+                  No widget data available for this stage
                 </div>
+              )}
+
+              {/* Data View Mode */}
+              {viewMode === 'data' && (
+                <>
+                  {/* Prompt (collapsible) */}
+                  <div style={styles.widgetSection}>
+                    <div style={styles.sectionHeader}>
+                      <h4 style={styles.sectionTitle}>Prompt</h4>
+                      <button
+                        onClick={() => setShowPrompt(!showPrompt)}
+                        style={styles.expandButton}
+                      >
+                        {showPrompt ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
+                    {showPrompt && (
+                      <pre style={styles.promptPre}>
+                        {currentGeneration.prompt}
+                      </pre>
+                    )}
+                  </div>
+
+                  {/* Generated OODM */}
+                  {currentGeneration.generatedOodm && (
+                    <div style={styles.widgetSection}>
+                      <h4 style={styles.sectionTitle}>Generated OODM</h4>
+                      <pre style={styles.jsonPre}>
+                        {formatJson(currentGeneration.generatedOodm)}
+                      </pre>
+                    </div>
+                  )}
+
+                  {/* Generated DSL */}
+                  {currentGeneration.generatedDsl && (
+                    <div style={styles.widgetSection}>
+                      <h4 style={styles.sectionTitle}>Generated DSL (UISpec)</h4>
+                      <pre style={styles.jsonPre}>
+                        {formatJson(currentGeneration.generatedDsl)}
+                      </pre>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -502,7 +564,28 @@ const styles: Record<string, React.CSSProperties> = {
   },
   headerControls: {
     display: 'flex',
-    gap: '8px'
+    gap: '12px',
+    alignItems: 'center'
+  },
+  viewModeToggle: {
+    display: 'flex',
+    backgroundColor: '#E5E7EB',
+    borderRadius: '6px',
+    padding: '2px'
+  },
+  viewModeButton: {
+    padding: '6px 12px',
+    border: 'none',
+    borderRadius: '4px',
+    fontSize: '13px',
+    cursor: 'pointer',
+    backgroundColor: 'transparent',
+    color: '#6B7280'
+  },
+  viewModeButtonActive: {
+    backgroundColor: '#fff',
+    color: '#111827',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
   },
   toggleButton: {
     padding: '8px 16px',
@@ -666,6 +749,29 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#111827',
     fontWeight: 500,
     fontFamily: 'monospace'
+  },
+  widgetRenderArea: {
+    padding: '0'
+  },
+  readOnlyBanner: {
+    backgroundColor: '#FEF3C7',
+    color: '#92400E',
+    padding: '8px 16px',
+    fontSize: '12px',
+    fontWeight: 500,
+    textAlign: 'center',
+    borderBottom: '1px solid #FCD34D'
+  },
+  widgetContainer: {
+    padding: '20px',
+    minHeight: '200px',
+    backgroundColor: '#FAFAFA'
+  },
+  noWidgetMessage: {
+    padding: '40px',
+    textAlign: 'center',
+    color: '#9CA3AF',
+    fontSize: '14px'
   },
   widgetSection: {
     padding: '16px 20px',

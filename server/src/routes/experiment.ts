@@ -170,7 +170,9 @@ experimentRoutes.patch('/sessions/:sessionId', async (c) => {
       generationSuccess,
       errorMessage,
       completedAt,
-      formsResponseId
+      formsResponseId,
+      concernText,  // Phase 7: クライアントから送信される追加フィールド
+      status        // Phase 7: クライアントから送信される追加フィールド
     } = body;
 
     // 更新データを構築
@@ -186,6 +188,31 @@ experimentRoutes.patch('/sessions/:sessionId', async (c) => {
     if (errorMessage !== undefined) updateData.errorMessage = errorMessage;
     if (completedAt !== undefined) updateData.completedAt = new Date(completedAt);
     if (formsResponseId !== undefined) updateData.formsResponseId = formsResponseId;
+    if (concernText !== undefined) updateData.concernText = concernText;
+    // Note: 'status' field is not in the DB schema, so we use 'completedAt' to mark completion
+    if (status === 'completed' && !completedAt) updateData.completedAt = new Date();
+
+    // 更新するデータがない場合は早期リターン（空オブジェクトでのDB更新を防止）
+    if (Object.keys(updateData).length === 0) {
+      // 更新なしでも成功として現在のセッションを返す
+      const [currentSession] = await db
+        .select()
+        .from(experimentSessions)
+        .where(eq(experimentSessions.sessionId, sessionId));
+
+      if (!currentSession) {
+        return c.json({
+          success: false,
+          error: 'Session not found'
+        }, 404);
+      }
+
+      console.log(`📝 No updates for session ${sessionId} (empty update body)`);
+      return c.json({
+        success: true,
+        session: currentSession
+      });
+    }
 
     const [updatedSession] = await db
       .update(experimentSessions)

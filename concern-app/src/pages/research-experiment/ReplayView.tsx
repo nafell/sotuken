@@ -94,6 +94,15 @@ export default function ReplayView() {
   // Get current generation
   const currentGeneration = generations[currentStep];
 
+  // Calculate aggregated metrics from generations
+  const aggregatedMetrics = {
+    totalTokens: generations.reduce((sum, g) => sum + (g.promptTokens || 0) + (g.responseTokens || 0), 0),
+    totalPromptTokens: generations.reduce((sum, g) => sum + (g.promptTokens || 0), 0),
+    totalResponseTokens: generations.reduce((sum, g) => sum + (g.responseTokens || 0), 0),
+    totalGenerateDuration: generations.reduce((sum, g) => sum + (g.generateDuration || 0), 0),
+    totalRenderDuration: generations.reduce((sum, g) => sum + (g.renderDuration || 0), 0),
+  };
+
   // Stage display names
   const stageNames: Record<string, string> = {
     diverge: '発散 (Diverge)',
@@ -188,12 +197,28 @@ export default function ReplayView() {
               <h3 style={styles.metaSectionTitle}>Metrics</h3>
               <div style={styles.metaGrid}>
                 <MetaItem
-                  label="Tokens"
-                  value={session.totalTokens?.toLocaleString() || '-'}
+                  label="Total Tokens"
+                  value={aggregatedMetrics.totalTokens.toLocaleString()}
                 />
                 <MetaItem
-                  label="Latency"
-                  value={session.totalLatencyMs ? `${session.totalLatencyMs}ms` : '-'}
+                  label="Prompt"
+                  value={aggregatedMetrics.totalPromptTokens.toLocaleString()}
+                />
+                <MetaItem
+                  label="Response"
+                  value={aggregatedMetrics.totalResponseTokens.toLocaleString()}
+                />
+                <MetaItem
+                  label="Generate Time"
+                  value={`${aggregatedMetrics.totalGenerateDuration.toLocaleString()}ms`}
+                />
+                <MetaItem
+                  label="Render Time"
+                  value={`${aggregatedMetrics.totalRenderDuration.toLocaleString()}ms`}
+                />
+                <MetaItem
+                  label="Stages"
+                  value={`${generations.length}`}
                 />
                 <MetaItem
                   label="Status"

@@ -116,8 +116,11 @@ export function useExperimentFlow({
     const handleBreakdownComplete = useCallback(async (tasks: Task[]) => {
         setState(prev => ({ ...prev, isProcessing: true }));
         try {
-            // 最終結果保存（必要に応じて）
-            // await experimentApi.updateSession(sessionId, { status: 'completed' });
+            // 最終結果保存: generationSuccess と completedAt を設定
+            await experimentApi.updateSession(sessionId, {
+                generationSuccess: true,
+                completedAt: new Date().toISOString()
+            });
 
             setState(prev => ({
                 ...prev,
@@ -133,7 +136,7 @@ export function useExperimentFlow({
             console.error('Failed to complete breakdown phase:', error);
             setState(prev => ({ ...prev, isProcessing: false }));
         }
-    }, [onComplete]);
+    }, [sessionId, onComplete]);
 
     return {
         state,

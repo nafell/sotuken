@@ -90,16 +90,8 @@ export default function CaseExecution() {
       });
 
       setSession(newSession);
-
-      // TODO: Integrate with actual UI generation
-      // For now, mark as completed after creation
-      const completedSession = await experimentApi.updateSession(newSession.sessionId, {
-        completedAt: new Date().toISOString(),
-        generationSuccess: true
-      });
-
-      setSession(completedSession);
-      setExecutionState('completed');
+      // ExperimentExecutorがマウントされ、フローを開始する
+      // 完了はExperimentExecutorのonCompleteコールバックで処理される
 
     } catch (err) {
       setExecutionError(err instanceof Error ? err.message : 'Execution failed');
@@ -124,6 +116,23 @@ export default function CaseExecution() {
     );
   }
 
+  // Running状態ではExperimentExecutorをフルスクリーンで表示
+  if (executionState === 'running' && session) {
+    return (
+      <div style={styles.executorContainer}>
+        <ExperimentExecutor
+          sessionId={session.sessionId}
+          mode={experimentType as 'user' | 'expert' | 'technical'}
+          initialContext={testCase ? {
+            concernText: testCase.concernText,
+            bottleneckType: testCase.expectedBottlenecks?.[0]
+          } : undefined}
+          onComplete={handleComplete}
+        />
+      </div>
+    );
+  }
+
   return (
     <div style={styles.container}>
       <header style={styles.header}>
@@ -131,7 +140,7 @@ export default function CaseExecution() {
           <h1 style={styles.title}>Execute: {testCase.caseId}</h1>
           <p style={styles.subtitle}>{testCase.title}</p>
         </div>
-        <Link to="/research-experiment/cases" style={styles.backButton}>← Back to Cases</Link>
+        <Link to="/research-experiment/new" style={styles.backButton}>← Back to Launcher</Link>
       </header>
 
       <div style={styles.content}>
@@ -235,21 +244,6 @@ export default function CaseExecution() {
           </section>
         )}
 
-        {/* Running State (ExperimentExecutor) */}
-        {executionState === 'running' && session && (
-          <section style={styles.section}>
-            <ExperimentExecutor
-              sessionId={session.sessionId}
-              mode={experimentType as 'user' | 'expert' | 'technical'} // Using experimentType as mode
-              initialContext={testCase ? {
-                concernText: testCase.concernText,
-                bottleneckType: testCase.expectedBottlenecks?.[0]
-              } : undefined}
-              onComplete={handleComplete}
-            />
-          </section>
-        )}
-
         {/* Completed State */}
         {executionState === 'completed' && session && (
           <section style={styles.section}>
@@ -303,6 +297,12 @@ export default function CaseExecution() {
 }
 
 const styles: Record<string, React.CSSProperties> = {
+  executorContainer: {
+    height: '100vh',
+    width: '100%',
+    overflow: 'hidden',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  },
   container: {
     maxWidth: '900px',
     margin: '0 auto',

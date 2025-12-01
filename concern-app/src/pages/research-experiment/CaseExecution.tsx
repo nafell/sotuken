@@ -41,8 +41,11 @@ export default function CaseExecution() {
   const handleComplete = async () => {
     if (!session) return;
     try {
-      await experimentApi.updateSession(session.sessionId, { status: 'completed' });
-      setSession(prev => prev ? { ...prev, status: 'completed' } : null);
+      await experimentApi.updateSession(session.sessionId, {
+        generationSuccess: true,
+        completedAt: new Date().toISOString()
+      });
+      setSession(prev => prev ? { ...prev, generationSuccess: true, completedAt: new Date().toISOString() } : null);
       setExecutionState('completed');
     } catch (err) {
       console.error('Failed to complete session:', err);

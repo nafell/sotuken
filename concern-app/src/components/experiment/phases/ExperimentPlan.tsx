@@ -94,7 +94,7 @@ export function ExperimentPlan({
         }
     }, [currentStage, currentStageIndex, sessionId, concernText, stageResults, bottleneckType]);
 
-    // ステージ変更時にリセット
+    // ステージ変更時にリセット＆自動生成開始
     useEffect(() => {
         if (existingResult?.uiSpec || existingResult?.textSummary) {
             setCurrentResponse({
@@ -108,15 +108,15 @@ export function ExperimentPlan({
         } else {
             setStatus('idle');
             setCurrentResponse(null);
-            // Technicalモードなら自動生成開始
-            if (mode === 'technical' && !autoProceedRef.current) {
+            // 全モードで自動生成開始（確認画面を廃止）
+            if (!autoProceedRef.current) {
                 autoProceedRef.current = true;
-                setTimeout(() => handleGenerate(), 500);
+                setTimeout(() => handleGenerate(), 300);
             }
         }
         setError(null);
         setRenderStartTime(0);
-    }, [currentStage, existingResult, mode, handleGenerate]);
+    }, [currentStage, existingResult, handleGenerate]);
 
     // レンダリング完了検知とメトリクス保存
     useEffect(() => {
@@ -204,13 +204,8 @@ export function ExperimentPlan({
             <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
                 {status === 'idle' && (
                     <div className="flex flex-col items-center justify-center h-full text-gray-500">
-                        <p className="mb-4">このステージのUIを生成します</p>
-                        <button
-                            onClick={handleGenerate}
-                            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-lg"
-                        >
-                            UIを生成する
-                        </button>
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                        <p>準備中...</p>
                     </div>
                 )}
 

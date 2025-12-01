@@ -439,6 +439,67 @@ experimentRoutes.get('/health', async (c) => {
 // ========================================
 
 /**
+ * GET /api/experiment/sessions/:sessionId/generations
+ * セッションの生成履歴一覧を取得
+ */
+experimentRoutes.get('/sessions/:sessionId/generations', async (c) => {
+  try {
+    const sessionId = c.req.param('sessionId');
+
+    const generations = await db
+      .select()
+      .from(experimentGenerations)
+      .where(eq(experimentGenerations.sessionId, sessionId))
+      .orderBy(experimentGenerations.createdAt);
+
+    return c.json({
+      success: true,
+      generations,
+      count: generations.length
+    });
+  } catch (error) {
+    console.error('Failed to get generations:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+
+/**
+ * GET /api/experiment/generations/:generationId
+ * 生成履歴詳細を取得
+ */
+experimentRoutes.get('/generations/:generationId', async (c) => {
+  try {
+    const generationId = c.req.param('generationId');
+
+    const [generation] = await db
+      .select()
+      .from(experimentGenerations)
+      .where(eq(experimentGenerations.id, generationId));
+
+    if (!generation) {
+      return c.json({
+        success: false,
+        error: 'Generation not found'
+      }, 404);
+    }
+
+    return c.json({
+      success: true,
+      generation
+    });
+  } catch (error) {
+    console.error('Failed to get generation:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+
+/**
  * PATCH /api/experiment/generations/:generationId
  * 生成履歴更新（レンダリング時間など）
  */

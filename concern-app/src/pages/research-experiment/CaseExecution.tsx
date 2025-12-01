@@ -14,6 +14,7 @@ import {
   type ExperimentSession
 } from '../../services/ExperimentApiService';
 import { ExperimentExecutor } from '../../components/experiment/ExperimentExecutor';
+import { ErrorBoundary } from '../../components/common/ErrorBoundary';
 
 type ExecutionState = 'config' | 'running' | 'completed' | 'error';
 
@@ -118,17 +119,56 @@ export default function CaseExecution() {
 
   // Running状態ではExperimentExecutorをフルスクリーンで表示
   if (executionState === 'running' && session) {
+    const handleExperimentError = (error: Error) => {
+      console.error('Experiment error:', error);
+      setExecutionError(`Experiment crashed: ${error.message}`);
+      // エラー発生時もセッションは保持（デバッグ用）
+    };
+
     return (
       <div style={styles.executorContainer}>
-        <ExperimentExecutor
-          sessionId={session.sessionId}
-          mode={experimentType as 'user' | 'expert' | 'technical'}
-          initialContext={testCase ? {
-            concernText: testCase.concernText,
-            bottleneckType: testCase.expectedBottlenecks?.[0]
-          } : undefined}
-          onComplete={handleComplete}
-        />
+        <ErrorBoundary
+          onError={handleExperimentError}
+          fallback={
+            <div style={styles.errorFallback}>
+              <div style={styles.errorFallbackIcon}>!</div>
+              <h2 style={styles.errorFallbackTitle}>Experiment Error</h2>
+              <p style={styles.errorFallbackMessage}>
+                An error occurred during the experiment. Your session data has been preserved.
+              </p>
+              <p style={styles.errorFallbackSession}>
+                Session ID: {session.sessionId}
+              </p>
+              <div style={styles.errorFallbackActions}>
+                <button
+                  onClick={() => navigate(`/research-experiment/data/sessions/${session.sessionId}`)}
+                  style={styles.errorFallbackViewButton}
+                >
+                  View Session Data
+                </button>
+                <button
+                  onClick={() => {
+                    setExecutionState('config');
+                    setSession(null);
+                  }}
+                  style={styles.errorFallbackRetryButton}
+                >
+                  Start New Session
+                </button>
+              </div>
+            </div>
+          }
+        >
+          <ExperimentExecutor
+            sessionId={session.sessionId}
+            mode={experimentType as 'user' | 'expert' | 'technical'}
+            initialContext={testCase ? {
+              concernText: testCase.concernText,
+              bottleneckType: testCase.expectedBottlenecks?.[0]
+            } : undefined}
+            onComplete={handleComplete}
+          />
+        </ErrorBoundary>
       </div>
     );
   }
@@ -302,6 +342,71 @@ const styles: Record<string, React.CSSProperties> = {
     width: '100%',
     overflow: 'hidden',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  },
+  errorFallback: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100vh',
+    padding: '24px',
+    backgroundColor: '#FEF2F2',
+    textAlign: 'center'
+  },
+  errorFallbackIcon: {
+    width: '64px',
+    height: '64px',
+    borderRadius: '50%',
+    backgroundColor: '#EF4444',
+    color: '#fff',
+    fontSize: '32px',
+    fontWeight: 'bold',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: '24px'
+  },
+  errorFallbackTitle: {
+    fontSize: '24px',
+    fontWeight: 600,
+    color: '#991B1B',
+    margin: '0 0 12px'
+  },
+  errorFallbackMessage: {
+    fontSize: '16px',
+    color: '#B91C1C',
+    margin: '0 0 8px',
+    maxWidth: '500px'
+  },
+  errorFallbackSession: {
+    fontSize: '14px',
+    color: '#6B7280',
+    fontFamily: 'monospace',
+    margin: '0 0 24px'
+  },
+  errorFallbackActions: {
+    display: 'flex',
+    gap: '16px'
+  },
+  errorFallbackViewButton: {
+    padding: '12px 24px',
+    backgroundColor: '#3B82F6',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '16px',
+    fontWeight: 500,
+    cursor: 'pointer'
+  },
+  errorFallbackRetryButton: {
+    padding: '12px 24px',
+    backgroundColor: '#fff',
+    color: '#374151',
+    border: '1px solid #D1D5DB',
+    borderRadius: '8px',
+    fontSize: '16px',
+    fontWeight: 500,
+    cursor: 'pointer'
   },
   container: {
     maxWidth: '900px',

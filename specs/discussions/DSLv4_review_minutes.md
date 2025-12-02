@@ -24,10 +24,12 @@ DSL v3.1（仮呼称、v4に組み込み）改修の前に、現在実装され�
 
 ## 2. 議論トピックと決定事項
 
-### トピック1: OODMの役割とLLM呼び出し段階構成
+### トピック1: ORS（旧OODM）の役割とLLM呼び出し段階構成
+
+> **用語変更（2025-12-02追記）**: 本議事録での「OODM」は、v4仕様書では「ORS」（Object-Relational Schema）に変更されています。データモデル層全体は「TDDM」（Task-Driven Data Model）と呼称します。詳細は[DSL-Spec-v4.0.md 付録A](../dsl-design/v4/DSL-Spec-v4.0.md#11-付録a-用語対応表v3v4)を参照。
 
 #### 問題点
-- 現在OODMが形骸化（`entities: []`で返される）
+- 現在OODM（v4ではORS）が形骸化（`entities: []`で返される）
 - 1回のLLM呼び出しでWidget選定からUI仕様まで一括生成
 - Widget選定が`stageWidgets`で4ステージに固定振り分けされ、動的生成の印象が薄い
 - Jelly論文では3段階のLLM呼び出し構成
@@ -39,8 +41,8 @@ DSL v3.1（仮呼称、v4に組み込み）改修の前に、現在実装され�
 | 段階 | タスク | 入力 | 出力 |
 |------|--------|------|------|
 | 第1段階 | Widget選定（4ステージ一括） | ConcernText, BottleneckType, 全Widget Definitions | 各ステージのWidget + 分析目的 + 分析対象 |
-| 第2段階 | OODM + DpG生成 | ConcernText, 選定Widget, 前ステージ結果 | OODM Instance + DependencyGraph Instance |
-| 第3段階 | UISpec生成 | OODM + DpG + 選定Widget | UISpec Instance（widgets + reactiveBindings） |
+| 第2段階 | ORS + DpG生成 | ConcernText, 選定Widget, 前ステージ結果 | ORS Instance + DependencyGraph Instance |
+| 第3段階 | UISpec生成 | ORS + DpG + 選定Widget | UISpec Instance（widgets + reactiveBindings） |
 
 **2. complexity メタデータの導入**
 
@@ -62,7 +64,7 @@ DSL v3.1（仮呼称、v4に組み込み）改修の前に、現在実装され�
 | A. ラベル・説明文 | UIの「枠」を埋めるもの | 感情ラベル、象限説明文 |
 | B. サンプルデータ | ユーザー入力の叩き台 | 初期カード、サンプル項目 |
 
-- OODMへの落とし込み方は継続検討（Attributeのメタデータ拡張の方向性）
+- ORSへの落とし込み方は継続検討（Attributeのメタデータ拡張の方向性）
 
 ---
 
@@ -79,16 +81,16 @@ DSL v3.1（仮呼称、v4に組み込み）改修の前に、現在実装され�
 
 | 概念 | 責務 | 定義場所 | 参照形式 | 性質 |
 |------|------|---------|---------|------|
-| **DependencyGraph** | データ間の依存関係 | OODM層 | `entityId.attributeId` | 要件的（What） |
+| **DependencyGraph** | データ間の依存関係 | TDDM層（ORS内） | `entityId.attributeId` | 要件的（What） |
 | **ReactiveBinding** | Widget間のUI連携 | UISpec層 | `widgetId.portId` | 実装的（How） |
 
 **2. レンダラー改修方針**
 - 現在の`DependencyGraphSpec`を`ReactiveBindingSpec`として再定義
 - ReactiveBindingEngineは`ReactiveBindingSpec`を受け取る形に変更
-- OODM層のDpGは別途データ変換ロジックとして機能
+- TDDM層（ORS内）のDpGは別途データ変換ロジックとして機能
 
 **3. 判断根拠**
-- OODM層は要件の側面が強く、UISpec層は実装の側面が強い
+- TDDM層（ORS）は要件の側面が強く、UISpec層は実装の側面が強い
 - 分離することで責務が明確になる
 - 精度・コストのトレードオフは将来的に計測で判断（現時点ではスペック重視）
 
@@ -107,16 +109,16 @@ DSL v3.1（仮呼称、v4に組み込み）改修の前に、現在実装され�
 
 | 層 | 型系統 | 用途 | 理由 |
 |---|--------|------|------|
-| **OODM層** | 抽象型（SVAL/ARRY/PNTR/DICT） | データモデルの構造定義 | LLMが生成しやすい、参照関係を明示できる |
+| **TDDM層（ORS）** | 抽象型（SVAL/ARRY/PNTR/DICT） | データモデルの構造定義 | LLMが生成しやすい、参照関係を明示できる |
 | **UISpec層** | 具体型（string/object[]等） | Widget Portの入出力型 | レンダラーが直接扱える |
 
 **2. PNTRの活用**
 - Widget間のデータ参照にPNTRを活用
-- 例: `card_sorting.inputCards`が`brainstorm_cards.cards`を参照する場合、OODMでPNTRとして表現
+- 例: `card_sorting.inputCards`が`brainstorm_cards.cards`を参照する場合、ORSでPNTRとして表現
 - 論文としての妥当性向上にも寄与
 
 **3. 変換層の担当**
-- LLMがOODM（抽象型）とUISpec（具体型）の両方を生成
+- LLMがORS（抽象型）とUISpec（具体型）の両方を生成
 - システムによる変換層を挟まない（point of failure回避）
 
 ---
@@ -135,7 +137,7 @@ DSL v3.1（仮呼称、v4に組み込み）改修の前に、現在実装され�
 |--------|------|------|
 | 1. Captureフェーズ診断 | 判断・分析 | 汎用タスク |
 | 2. Widget選定 | 判断・選択 | 汎用タスク |
-| 3. OODM生成 | 構造的出力 | 構造化タスク |
+| 3. ORS生成 | 構造的出力 | 構造化タスク |
 | 4. UISpec生成 | 構造的出力 | 構造化タスク |
 | 5. まとめ | 文章生成 | 汎用タスク |
 
@@ -198,7 +200,7 @@ Capture
 Plan（ステージ順次実行）
   ├── diverge
   │     ├── stage_summary Widget（前ステージの要約）
-  │     ├── 【LLMタスク3】OODM + DpG生成
+  │     ├── 【LLMタスク3】ORS + DpG生成
   │     ├── 【LLMタスク4】UISpec生成
   │     └── ユーザー操作
   ├── organize（同様）
@@ -233,10 +235,10 @@ Breakdown
 
 | 観点 | Jelly | 本システム（v4） | 判断 |
 |------|-------|-----------------|------|
-| LLM呼び出し段階 | 3段階 | 3段階（Widget選定→OODM/DpG→UISpec） | 準拠 |
-| データモデル | ORS | OODM（活用強化） | 準拠 |
-| DpGの位置 | データモデル層 | OODM層に移動（ReactiveBindingと分離） | 準拠 |
-| 抽象型 | SVAL/ARRY/PNTR/DICT | OODM層で使用 | 準拠 |
+| LLM呼び出し段階 | 3段階 | 3段階（Widget選定→ORS/DpG→UISpec） | 準拠 |
+| データモデル | ORS | ORS（活用強化） | 準拠 |
+| DpGの位置 | データモデル層 | TDDM層に移動（ReactiveBindingと分離） | 準拠 |
+| 抽象型 | SVAL/ARRY/PNTR/DICT | TDDM層（ORS）で使用 | 準拠 |
 | UI粒度 | 最小単位（input/button等） | Widget（複合UI） | **オリジナル** |
 | W2W Reactivity | なし | ReactiveBinding（UISpec層） | **オリジナル** |
 | complexity | なし | Widget選定・Reactivity制御 | **オリジナル** |
@@ -258,7 +260,7 @@ Breakdown
    - 実装タスクの分解
 
 3. **継続検討事項**
-   - generatedValueのOODMへの落とし込み詳細設計
+   - generatedValueのORSへの落とし込み詳細設計
    - 各Widgetのcomplexity値設定
    - Widget操作言語化プロンプトの詳細設計
 
@@ -269,3 +271,4 @@ Breakdown
 | Date | Changes |
 |------|---------|
 | 2025-12-02 | 初版作成。6トピックの議論完了 |
+| 2025-12-02 | OODM→ORS/TDDM用語変更（v4仕様書に合わせて更新） |

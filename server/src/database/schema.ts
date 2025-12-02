@@ -182,7 +182,7 @@ export const experimentSessions = pgTable('experiment_sessions', {
 }));
 
 // ========================================
-// Phase 7: 生成履歴管理テーブル (1-to-N)
+// Phase 8: 生成履歴管理テーブル (1-to-N) - DSL v4対応
 // ========================================
 
 export const experimentGenerations = pgTable('experiment_generations', {
@@ -190,17 +190,26 @@ export const experimentGenerations = pgTable('experiment_generations', {
   sessionId: uuid('session_id').notNull().references(() => experimentSessions.sessionId),
   stage: text('stage').notNull(), // 'diverge' | 'organize' | 'converge' | 'summary'
   modelId: text('model_id').notNull(),
-  prompt: text('prompt').notNull(),
+  prompt: text('prompt'),
 
-  // 生成結果
-  generatedOodm: jsonb('generated_oodm'),
-  generatedDsl: jsonb('generated_dsl'),
+  // V4 3段階LLM生成結果
+  generatedWidgetSelection: jsonb('generated_widget_selection'), // Stage 1: Widget選定結果
+  generatedOrs: jsonb('generated_ors'),                          // Stage 2: ORS
+  generatedUiSpec: jsonb('generated_ui_spec'),                   // Stage 3: UISpec v4
 
-  // メトリクス
-  promptTokens: integer('prompt_tokens'),
-  responseTokens: integer('response_tokens'),
-  generateDuration: integer('generate_duration'), // ms
-  renderDuration: integer('render_duration'),     // ms (Client側で計測・更新)
+  // V4 各段階メトリクス
+  widgetSelectionTokens: integer('widget_selection_tokens'),
+  widgetSelectionDuration: integer('widget_selection_duration'), // ms
+  orsTokens: integer('ors_tokens'),
+  orsDuration: integer('ors_duration'),                          // ms
+  uiSpecTokens: integer('ui_spec_tokens'),
+  uiSpecDuration: integer('ui_spec_duration'),                   // ms
+
+  // 合計メトリクス
+  totalPromptTokens: integer('total_prompt_tokens'),
+  totalResponseTokens: integer('total_response_tokens'),
+  totalGenerateDuration: integer('total_generate_duration'),     // ms
+  renderDuration: integer('render_duration'),                    // ms (Client側で計測・更新)
 
   createdAt: timestamp('created_at', { withTimezone: true }).default(sql`now()`)
 }, (table) => ({

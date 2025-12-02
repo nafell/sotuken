@@ -46,7 +46,8 @@ const widgetSelectionCache = new Map<string, {
 
 function getV4Services() {
   if (!v4Services) {
-    const llmOrchestrator = createLLMOrchestratorWithDefaultPrompts({ debug: false });
+    // debug: true でV4パイプラインの詳細ログを出力
+    const llmOrchestrator = createLLMOrchestratorWithDefaultPrompts({ debug: true });
     const widgetSelectionService = createWidgetSelectionService({ llmOrchestrator });
     const orsGeneratorService = createORSGeneratorService({ llmOrchestrator });
     const uiSpecGeneratorV4 = createUISpecGeneratorV4({ llmOrchestrator });
@@ -343,37 +344,10 @@ uiRoutes.post('/generate-v3', async (c) => {
       );
     }
 
-    // Phase 7: 生成履歴をDBに保存 (1-to-N)
+    // Phase 8: 生成履歴をDBに保存（V3→V4スキーマ移行に伴いV3 APIはDB保存をスキップ）
+    // V3 APIは非推奨。V4 APIを使用してください。
     let generationId: string | undefined;
-    try {
-      // sessionIdがUUID形式か簡易チェック
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.sessionId);
-
-      if (isUuid) {
-        const [inserted] = await db.insert(experimentGenerations).values({
-          sessionId: body.sessionId,
-          stage: stage,
-          modelId: gemini.getModelName(),
-          prompt: result.prompt || '',
-          generatedOodm: result.uiSpec?.oodm,
-          generatedDsl: result.uiSpec,
-          promptTokens: result.metrics?.promptTokens,
-          responseTokens: result.metrics?.responseTokens,
-          generateDuration: result.metrics?.processingTimeMs,
-          // renderDuration: null (Client側で更新)
-        }).returning({ id: experimentGenerations.id });
-
-        if (inserted) {
-          generationId = inserted.id;
-          console.log(`💾 Generation saved to DB: ${generationId}`);
-        }
-      } else {
-        console.warn('⚠️ Session ID is not UUID, skipping DB save:', body.sessionId);
-      }
-    } catch (dbError) {
-      console.error('❌ Failed to save generation to DB:', dbError);
-      // DB保存失敗してもクライアントには成功を返す（ログだけ残す）
-    }
+    console.log('⚠️ V3 API is deprecated. DB save skipped. Use V4 API (/ui/generate-v4) instead.');
 
     console.log(`✅ UISpec v3 generated successfully (mode: ${result.mode})`);
 
@@ -571,7 +545,7 @@ uiRoutes.post('/generate-v4', async (c) => {
     // セッションサマリーをログ
     logMetricsSummary(body.sessionId);
 
-    // Phase 7: 生成履歴をDBに保存 (1-to-N)
+    // Phase 8: 生成履歴をDBに保存（V4スキーマ）
     let generationId: string | undefined;
     try {
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.sessionId);
@@ -582,12 +556,21 @@ uiRoutes.post('/generate-v4', async (c) => {
           sessionId: body.sessionId,
           stage: stage,
           modelId: gemini.getModelName(),
-          prompt: '', // V4はプロンプト複数なので空
-          generatedOodm: ors, // ORSを保存
-          generatedDsl: uiSpec,
-          promptTokens: (orsLLMResult.metrics?.inputTokens || 0) + (uispecLLMResult.metrics?.inputTokens || 0),
-          responseTokens: (orsLLMResult.metrics?.outputTokens || 0) + (uispecLLMResult.metrics?.outputTokens || 0),
-          generateDuration: totalLatency,
+          // V4 3段階生成結果
+          generatedWidgetSelection: widgetSelectionResult.result.data,
+          generatedOrs: ors,
+          generatedUiSpec: uiSpec,
+          // V4 各段階メトリクス
+          widgetSelectionTokens: widgetSelectionResult.result.metrics?.inputTokens,
+          widgetSelectionDuration: widgetSelectionMetrics.latencyMs,
+          orsTokens: (orsLLMResult.metrics?.inputTokens || 0) + (orsLLMResult.metrics?.outputTokens || 0),
+          orsDuration: orsMetrics.latencyMs,
+          uiSpecTokens: (uispecLLMResult.metrics?.inputTokens || 0) + (uispecLLMResult.metrics?.outputTokens || 0),
+          uiSpecDuration: uispecMetrics.latencyMs,
+          // 合計メトリクス
+          totalPromptTokens: (orsLLMResult.metrics?.inputTokens || 0) + (uispecLLMResult.metrics?.inputTokens || 0),
+          totalResponseTokens: (orsLLMResult.metrics?.outputTokens || 0) + (uispecLLMResult.metrics?.outputTokens || 0),
+          totalGenerateDuration: totalLatency,
         }).returning({ id: experimentGenerations.id });
 
         if (inserted) {

@@ -48,7 +48,7 @@ function getV4Services() {
   if (!v4Services) {
     // debug: true でV4パイプラインの詳細ログを出力
     const llmOrchestrator = createLLMOrchestratorWithDefaultPrompts({ debug: true });
-    const widgetSelectionService = createWidgetSelectionService({ llmOrchestrator });
+    const widgetSelectionService = createWidgetSelectionService({ llmOrchestrator, debug: true });
     const orsGeneratorService = createORSGeneratorService({ llmOrchestrator });
     const uiSpecGeneratorV4 = createUISpecGeneratorV4({ llmOrchestrator });
 
@@ -759,7 +759,8 @@ uiRoutes.post('/generate-v4-widgets', async (c) => {
           modelId: gemini.getModelName(),
           prompt: promptData,
           generatedWidgetSelection: widgetSelectionResult.result.data,
-          widgetSelectionTokens: widgetSelectionResult.result.metrics?.inputTokens,
+          widgetSelectionTokens: (widgetSelectionResult.result.metrics?.inputTokens || 0) +
+                                 (widgetSelectionResult.result.metrics?.outputTokens || 0),
           widgetSelectionDuration: latencyMs,
           totalGenerateDuration: latencyMs,
         }).returning({ id: experimentGenerations.id });
@@ -783,6 +784,8 @@ uiRoutes.post('/generate-v4-widgets', async (c) => {
         model: 'gemini-2.5-flash-lite',
         generatedAt: new Date().toISOString(),
         processingTimeMs: latencyMs,
+        promptTokens: widgetSelectionResult.result.metrics?.inputTokens || 0,
+        responseTokens: widgetSelectionResult.result.metrics?.outputTokens || 0,
         cached: widgetSelectionResult.bottleneckType === bottleneckType && latencyMs < 100,
       },
     });

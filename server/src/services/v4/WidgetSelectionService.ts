@@ -95,7 +95,17 @@ export class WidgetSelectionService {
       widgetDefinitions: this.formatWidgetDefinitionsForPrompt(widgetDefinitions),
     });
 
+    // デバッグログ: LLM呼び出し結果
+    if (this.debug) {
+      console.log(`[WidgetSelectionService] LLM result.success: ${result.success}`);
+      console.log(`[WidgetSelectionService] LLM result.data:`, JSON.stringify(result.data, null, 2)?.substring(0, 1000));
+      console.log(`[WidgetSelectionService] LLM result.rawOutput:`, result.rawOutput?.substring(0, 500));
+    }
+
     if (!result.success || !result.data) {
+      if (this.debug) {
+        console.log(`[WidgetSelectionService] LLM call failed, error:`, result.error);
+      }
       return result;
     }
 
@@ -156,7 +166,23 @@ export class WidgetSelectionService {
     sessionId?: string
   ): WidgetSelectionResult {
     // 型ガードでチェック
-    if (isWidgetSelectionResult(result)) {
+    const isValid = isWidgetSelectionResult(result);
+
+    if (this.debug) {
+      console.log(`[WidgetSelectionService] isWidgetSelectionResult: ${isValid}`);
+      if (!isValid && typeof result === 'object' && result !== null) {
+        const obj = result as Record<string, unknown>;
+        console.log(`[WidgetSelectionService] Validation details:`, {
+          hasVersion: 'version' in obj,
+          version: obj.version,
+          hasStages: 'stages' in obj,
+          hasRationale: typeof obj.rationale === 'string',
+          hasMetadata: typeof obj.metadata === 'object',
+        });
+      }
+    }
+
+    if (isValid) {
       // メタデータを補完
       return {
         ...result,
@@ -172,10 +198,16 @@ export class WidgetSelectionService {
     // 結果がオブジェクトの場合、部分的に変換を試みる
     if (typeof result === 'object' && result !== null) {
       const obj = result as Record<string, unknown>;
+      if (this.debug) {
+        console.log(`[WidgetSelectionService] Attempting partial conversion...`);
+      }
       return this.buildResultFromPartial(obj, bottleneckType, sessionId);
     }
 
     // 変換失敗時はデフォルト結果を返す
+    if (this.debug) {
+      console.log(`[WidgetSelectionService] Returning empty fallback result`);
+    }
     return createEmptyWidgetSelectionResult(bottleneckType, 'unknown');
   }
 
@@ -234,8 +266,11 @@ export class WidgetSelectionService {
           const widget = w as Record<string, unknown>;
           const widgetId = widget.widgetId as string;
 
-          // Widget IDが有効か確認
-          if (typeof widgetId === 'string' && getWidgetDefinitionV4(widgetId)) {
+          if (typeof widgetId === 'string') {
+            // Widget IDが有効か確認（未知でも警告のみで続行）
+            if (!getWidgetDefinitionV4(widgetId)) {
+              console.warn(`[WidgetSelectionService] Unknown widget ID: ${widgetId}, including anyway`);
+            }
             widgets.push({
               widgetId: widgetId as WidgetComponentType,
               purpose: typeof widget.purpose === 'string' ? widget.purpose : '',

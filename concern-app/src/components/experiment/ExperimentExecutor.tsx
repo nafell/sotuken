@@ -39,23 +39,22 @@ export function ExperimentExecutor({
     const [widgetSelectionResult, setWidgetSelectionResult] = useState<WidgetSelectionResult | null>(null);
 
     // PlanPreviewフェーズに入ったらWidget選定APIを呼び出す
+    // 新しいWidget選定専用API（/generate-v4-widgets）を使用
     useEffect(() => {
         if (state.currentPhase === 'plan-preview' && !widgetSelectionResult && !planPreviewLoading) {
             const fetchWidgetSelection = async () => {
                 setPlanPreviewLoading(true);
                 try {
-                    console.log('🔍 Fetching widget selection...');
-                    // V4 APIを呼び出してWidget選定結果を取得（最初のステージを呼び出すことでWidget選定が行われる）
-                    const response = await apiService.generateUIV4(
+                    console.log('🔍 Fetching widget selection (Widget選定専用API)...');
+                    // Widget選定専用APIを呼び出す（ORS/UISpec生成は行わない）
+                    const response = await apiService.generateWidgetSelection(
                         state.concernText,
-                        'diverge',
                         sessionId,
-                        undefined,
                         { bottleneckType: state.bottleneckType || 'thought' }
                     );
 
                     if (response.success && response.widgetSelectionResult) {
-                        console.log('✅ Widget selection result received');
+                        console.log('✅ Widget selection result received (専用API)');
                         setWidgetSelectionResult(response.widgetSelectionResult);
                     } else {
                         console.error('❌ Failed to get widget selection result:', response.error);

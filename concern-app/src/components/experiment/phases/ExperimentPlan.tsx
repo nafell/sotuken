@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { apiService, type UISpecV4GenerationResponse } from '../../../services/api/ApiService';
+import { apiService, type StageExecutionResponse } from '../../../services/api/ApiService';
 import { UIRendererV4 } from '../../../services/ui-generation/UIRendererV4';
 import { PLAN_STAGE_CONFIGS } from '../types';
 import type { PlanStage, StageResult, WidgetResultData } from '../types';
@@ -39,7 +39,7 @@ export function ExperimentPlan({
 }: ExperimentPlanProps) {
     const [status, setStatus] = useState<StageStatus>('idle');
     const [error, setError] = useState<string | null>(null);
-    const [currentResponse, setCurrentResponse] = useState<UISpecV4GenerationResponse | null>(null);
+    const [currentResponse, setCurrentResponse] = useState<StageExecutionResponse | null>(null);
     const [currentORS, setCurrentORS] = useState<ORS | null>(null);
     const [renderStartTime, setRenderStartTime] = useState<number>(0);
 
@@ -66,12 +66,11 @@ export function ExperimentPlan({
                 }
             });
 
-            // V4 API呼び出し
-            const response = await apiService.generateUIV4(
+            // ステージ実行専用API呼び出し（ORS + UISpec生成のみ、Widget選定はキャッシュ済み）
+            const response = await apiService.generateStageUI(
                 concernText,
                 currentStage,
                 sessionId,
-                undefined,
                 {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     previousStageResults: Object.keys(previousResults).length > 0 ? previousResults as Record<string, any> : undefined,

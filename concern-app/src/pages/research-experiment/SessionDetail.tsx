@@ -267,13 +267,20 @@ export default function SessionDetail() {
                 // V4フィールドを優先、なければlegacyを使用
                 const tokens = (gen.totalPromptTokens || gen.promptTokens || 0) + (gen.totalResponseTokens || gen.responseTokens || 0);
                 const genDuration = gen.totalGenerateDuration || gen.generateDuration || 0;
+                // Widget選定フェーズかステージ実行フェーズかを判定
+                const isWidgetSelection = gen.stage === 'widget_selection';
+                const stageLabel = isWidgetSelection ? '🔍 Widget Selection' : gen.stage;
                 return (
-                  <div key={gen.id} style={styles.stageRow}>
-                    <span style={styles.stageName}>{idx + 1}. {gen.stage}</span>
+                  <div key={gen.id} style={{
+                    ...styles.stageRow,
+                    backgroundColor: isWidgetSelection ? '#f5f3ff' : undefined,
+                    borderLeft: isWidgetSelection ? '3px solid #7c3aed' : undefined,
+                  }}>
+                    <span style={styles.stageName}>{idx + 1}. {stageLabel}</span>
                     <span style={styles.stageMetric}>{tokens} tokens</span>
                     <span style={styles.stageMetric}>{genDuration}ms total</span>
                     {/* V4: 各段階の内訳 */}
-                    {gen.widgetSelectionDuration && (
+                    {gen.widgetSelectionDuration && !isWidgetSelection && (
                       <span style={styles.stageMetric}>WS:{gen.widgetSelectionDuration}ms</span>
                     )}
                     {gen.orsDuration && (
@@ -282,7 +289,9 @@ export default function SessionDetail() {
                     {gen.uiSpecDuration && (
                       <span style={styles.stageMetric}>UI:{gen.uiSpecDuration}ms</span>
                     )}
-                    <span style={styles.stageMetric}>{gen.renderDuration || 0}ms render</span>
+                    {!isWidgetSelection && (
+                      <span style={styles.stageMetric}>{gen.renderDuration || 0}ms render</span>
+                    )}
                   </div>
                 );
               })}
@@ -318,6 +327,12 @@ export default function SessionDetail() {
               const promptTokens = gen.totalPromptTokens || gen.promptTokens || 0;
               const responseTokens = gen.totalResponseTokens || gen.responseTokens || 0;
               const genDuration = gen.totalGenerateDuration || gen.generateDuration || 0;
+              // Widget選定フェーズかステージ実行フェーズかを判定
+              const isWidgetSelection = gen.stage === 'widget_selection';
+              const stageLabel = isWidgetSelection ? '🔍 Widget Selection' : gen.stage;
+              const stageBadgeStyle = isWidgetSelection
+                ? { ...styles.generationStage, backgroundColor: '#7c3aed', color: 'white' }
+                : styles.generationStage;
               return (
                 <div key={gen.id} style={styles.generationCard}>
                   <div
@@ -325,7 +340,7 @@ export default function SessionDetail() {
                     onClick={() => setExpandedGeneration(expandedGeneration === gen.id ? null : gen.id)}
                   >
                     <div style={styles.generationHeaderLeft}>
-                      <span style={styles.generationStage}>{gen.stage}</span>
+                      <span style={stageBadgeStyle}>{stageLabel}</span>
                       <span style={styles.generationModel}>{gen.modelId}</span>
                     </div>
                     <div style={styles.generationHeaderRight}>

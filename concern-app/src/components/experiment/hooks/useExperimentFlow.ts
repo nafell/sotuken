@@ -1,13 +1,15 @@
 import { useState, useCallback, useEffect } from 'react';
 import { experimentApi } from '../../../services/ExperimentApiService';
 import type { Task } from '../types';
+import type { WidgetSelectionResult } from '../../../types/v4/widget-selection.types';
 
-export type FlowPhase = 'capture' | 'plan' | 'breakdown' | 'complete';
+export type FlowPhase = 'capture' | 'plan-preview' | 'plan' | 'breakdown' | 'complete';
 
 export interface ExperimentFlowState {
     currentPhase: FlowPhase;
     concernText: string;
     bottleneckType: string | null;
+    widgetSelectionResult: WidgetSelectionResult | null;
     planStageResults: Record<string, unknown>;
     breakdownTasks: Task[];
     isProcessing: boolean;
@@ -34,24 +36,25 @@ export function useExperimentFlow({
         currentPhase: 'capture',
         concernText: initialContext?.concernText || '',
         bottleneckType: initialContext?.bottleneckType || null,
+        widgetSelectionResult: null,
         planStageResults: {},
         breakdownTasks: [],
         isProcessing: false,
         error: null
     });
 
-    // 初期化: Expert/TechnicalモードでコンテキストがあればPlanフェーズから開始
+    // 初期化: Expert/TechnicalモードでコンテキストがあればPlanPreviewフェーズから開始
     useEffect(() => {
         if (initialContext?.concernText && state.currentPhase === 'capture') {
             console.log('🚀 Skipping Capture phase due to initial context');
             setState(prev => ({
                 ...prev,
-                currentPhase: 'plan'
+                currentPhase: 'plan-preview'
             }));
         }
     }, [initialContext, state.currentPhase]);
 
-    // Captureフェーズ完了処理
+    // Captureフェーズ完了処理 → PlanPreviewフェーズへ
     const handleCaptureComplete = useCallback(async (text: string, bottleneck: string) => {
         setState(prev => ({ ...prev, isProcessing: true, error: null }));
         try {
@@ -66,7 +69,7 @@ export function useExperimentFlow({
                 ...prev,
                 concernText: text,
                 bottleneckType: bottleneck,
-                currentPhase: 'plan',
+                currentPhase: 'plan-preview', // Changed: 直接PlanではなくPlanPreviewへ
                 isProcessing: false
             }));
         } catch (error) {
@@ -78,6 +81,25 @@ export function useExperimentFlow({
             }));
         }
     }, [sessionId]);
+
+    // PlanPreview: Widget選定結果をセットしてPlanフェーズへ進む
+    const handlePlanPreviewConfirm = useCallback((widgetSelectionResult: WidgetSelectionResult) => {
+        console.log('✅ Plan Preview confirmed, proceeding to Plan phase');
+        setState(prev => ({
+            ...prev,
+            widgetSelectionResult,
+            currentPhase: 'plan'
+        }));
+    }, []);
+
+    // PlanPreview: キャンセルしてCaptureフェーズへ戻る
+    const handlePlanPreviewCancel = useCallback(() => {
+        console.log('⬅️ Plan Preview cancelled, returning to Capture phase');
+        setState(prev => ({
+            ...prev,
+            currentPhase: 'capture'
+        }));
+    }, []);
 
     // Planフェーズ: 各ステージ完了時の処理
     const handlePlanStageComplete = useCallback(async (
@@ -155,6 +177,8 @@ export function useExperimentFlow({
         state,
         actions: {
             handleCaptureComplete,
+            handlePlanPreviewConfirm,
+            handlePlanPreviewCancel,
             handlePlanStageComplete,
             handlePlanComplete,
             handleBreakdownComplete

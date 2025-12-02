@@ -1,9 +1,12 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useExperimentFlow } from './hooks/useExperimentFlow';
 import { ExperimentCapture } from './phases/ExperimentCapture';
 import { ExperimentPlan } from './phases/ExperimentPlan';
 import { ExperimentBreakdown } from './phases/ExperimentBreakdown';
+import { PlanPreview } from '../v4/PlanPreview';
+import { apiService } from '../../services/api/ApiService';
 import type { PlanStage } from './types';
+import { createEmptyWidgetSelectionResult, type WidgetSelectionResult } from '../../types/v4/widget-selection.types';
 
 interface ExperimentExecutorProps {
     sessionId: string;
@@ -31,6 +34,57 @@ export function ExperimentExecutor({
 
     const [currentPlanStage, setCurrentPlanStage] = useState<PlanStage>('diverge');
 
+    // PlanPreviewフェーズ用の状態
+    const [planPreviewLoading, setPlanPreviewLoading] = useState(false);
+    const [widgetSelectionResult, setWidgetSelectionResult] = useState<WidgetSelectionResult | null>(null);
+
+    // PlanPreviewフェーズに入ったらWidget選定APIを呼び出す
+    useEffect(() => {
+        if (state.currentPhase === 'plan-preview' && !widgetSelectionResult && !planPreviewLoading) {
+            const fetchWidgetSelection = async () => {
+                setPlanPreviewLoading(true);
+                try {
+                    console.log('🔍 Fetching widget selection...');
+                    // V4 APIを呼び出してWidget選定結果を取得（最初のステージを呼び出すことでWidget選定が行われる）
+                    const response = await apiService.generateUIV4(
+                        state.concernText,
+                        'diverge',
+                        sessionId,
+                        undefined,
+                        { bottleneckType: state.bottleneckType || 'thought' }
+                    );
+
+                    if (response.success && response.widgetSelectionResult) {
+                        console.log('✅ Widget selection result received');
+                        setWidgetSelectionResult(response.widgetSelectionResult);
+                    } else {
+                        console.error('❌ Failed to get widget selection result:', response.error);
+                        // エラーでもplanフェーズへ進む（Widgetは表示されないがフローは止めない）
+                        const emptyResult = createEmptyWidgetSelectionResult(
+                            state.bottleneckType || 'thought',
+                            'error'
+                        );
+                        emptyResult.rationale = 'エラーが発生しました';
+                        actions.handlePlanPreviewConfirm(emptyResult);
+                    }
+                } catch (error) {
+                    console.error('❌ Widget selection API error:', error);
+                    // エラーでもplanフェーズへ進む
+                    const emptyResult = createEmptyWidgetSelectionResult(
+                        state.bottleneckType || 'thought',
+                        'error'
+                    );
+                    emptyResult.rationale = 'エラーが発生しました';
+                    actions.handlePlanPreviewConfirm(emptyResult);
+                } finally {
+                    setPlanPreviewLoading(false);
+                }
+            };
+
+            fetchWidgetSelection();
+        }
+    }, [state.currentPhase, state.concernText, state.bottleneckType, sessionId, widgetSelectionResult, planPreviewLoading, actions]);
+
     // Planフェーズのステージ遷移
     const handleNextPlanStage = useCallback(() => {
         const currentIndex = PLAN_STAGES.indexOf(currentPlanStage);
@@ -48,6 +102,13 @@ export function ExperimentExecutor({
         }
     }, [currentPlanStage]);
 
+    // PlanPreviewの確認ボタンハンドラ
+    const handlePlanPreviewConfirm = useCallback(() => {
+        if (widgetSelectionResult) {
+            actions.handlePlanPreviewConfirm(widgetSelectionResult);
+        }
+    }, [widgetSelectionResult, actions]);
+
     // 現在のフェーズに応じたコンポーネント表示
     const renderPhase = () => {
         switch (state.currentPhase) {
@@ -58,6 +119,27 @@ export function ExperimentExecutor({
                         initialText={state.concernText}
                         onComplete={actions.handleCaptureComplete}
                     />
+                );
+
+            case 'plan-preview':
+                return (
+                    <div className="flex flex-col h-full overflow-y-auto">
+                        {planPreviewLoading || !widgetSelectionResult ? (
+                            <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                                <p>プランを作成中...</p>
+                            </div>
+                        ) : (
+                            <PlanPreview
+                                selectionResult={widgetSelectionResult}
+                                concernText={state.concernText}
+                                onConfirm={handlePlanPreviewConfirm}
+                                onCancel={actions.handlePlanPreviewCancel}
+                                isLoading={false}
+                                showDetails={true}
+                            />
+                        )}
+                    </div>
                 );
 
             case 'plan':
@@ -125,6 +207,8 @@ export function ExperimentExecutor({
                 </div>
                 <div className="flex gap-2 text-sm">
                     <span className={state.currentPhase === 'capture' ? 'font-bold text-blue-400' : 'text-gray-400'}>Capture</span>
+                    <span className="text-gray-600">&gt;</span>
+                    <span className={state.currentPhase === 'plan-preview' ? 'font-bold text-blue-400' : 'text-gray-400'}>Preview</span>
                     <span className="text-gray-600">&gt;</span>
                     <span className={state.currentPhase === 'plan' ? 'font-bold text-blue-400' : 'text-gray-400'}>Plan</span>
                     <span className="text-gray-600">&gt;</span>

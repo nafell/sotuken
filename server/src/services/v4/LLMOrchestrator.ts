@@ -20,6 +20,15 @@ import {
 } from '../../types/v4/llm-task.types';
 import { GeminiService, createGeminiService } from '../GeminiService';
 
+// V4プロンプトテンプレートをインポート
+import {
+  CAPTURE_DIAGNOSIS_PROMPT,
+  WIDGET_SELECTION_PROMPT,
+  ORS_GENERATION_PROMPT,
+  UISPEC_GENERATION_PROMPT,
+  SUMMARY_GENERATION_PROMPT,
+} from '../../prompts/v4';
+
 // =============================================================================
 // LLM Service Interface
 // =============================================================================
@@ -371,116 +380,18 @@ export function createLLMOrchestrator(config?: LLMOrchestratorConfig): LLMOrches
 
 /**
  * デフォルトプロンプトテンプレート付きでLLMOrchestratorを作成
+ *
+ * prompts/v4/ の詳細なプロンプトテンプレートを使用
  */
 export function createLLMOrchestratorWithDefaultPrompts(config?: Omit<LLMOrchestratorConfig, 'promptManager'>): LLMOrchestrator {
   const promptManager = new InMemoryPromptTemplateManager();
 
-  // デフォルトプロンプトテンプレートを登録
-  // TODO: 実際のプロンプトテンプレートはPhase 2 TASK-2.6で作成
-  promptManager.registerTemplate('capture-diagnosis', `
-あなたはCBTベースの思考整理アプリの診断AIです。
-
-## ユーザーの悩み
-{{concernText}}
-
-## タスク
-ユーザーの悩みを分析し、以下のボトルネック種別のいずれかを判定してください：
-- emotion: 感情の整理が必要
-- thought: 思考の整理が必要
-- action: 行動の計画が必要
-- decision: 意思決定の支援が必要
-
-## 出力形式
-JSON形式で以下を出力してください：
-{
-  "bottleneckType": "emotion" | "thought" | "action" | "decision",
-  "confidence": 0.0-1.0,
-  "rationale": "判定理由"
-}
-`);
-
-  promptManager.registerTemplate('widget-selection', `
-あなたはCBTベースの思考整理アプリのWidget選定AIです。
-
-## ユーザーの悩み
-{{concernText}}
-
-## 診断されたボトルネック
-{{bottleneckType}}
-
-## 利用可能なWidget
-{{widgetDefinitions}}
-
-## タスク
-4つのステージ（diverge, organize, converge, summary）それぞれに最適なWidgetを選定してください。
-各Widgetの timing, versatility, complexity, bottleneck を考慮してください。
-
-## 出力形式
-JSON形式で WidgetSelectionResult を出力してください。
-`);
-
-  promptManager.registerTemplate('ors-generation', `
-あなたはCBTベースの思考整理アプリのORS生成AIです。
-
-## ユーザーの悩み
-{{concernText}}
-
-## 選定されたWidget
-{{selectedWidgets}}
-
-## 前ステージの結果
-{{previousStageResult}}
-
-## タスク
-選定されたWidgetで使用するORSを生成してください。
-- Entity定義（id, type, attributes）
-- 属性定義（構造型: SVAL/ARRY/PNTR/DICT、具体型、制約）
-- DependencyGraph（データ間依存関係）
-
-## 出力形式
-JSON形式で ORS を出力してください。
-`);
-
-  promptManager.registerTemplate('uispec-generation', `
-あなたはCBTベースの思考整理アプリのUISpec生成AIです。
-
-## ORS
-{{ors}}
-
-## 選定されたWidget
-{{stageSelection}}
-
-## ステージ
-{{stage}}
-
-## タスク
-ORSとWidget選定結果に基づいてUISpecを生成してください。
-- WidgetSpec（id, component, position, config, dataBindings）
-- ReactiveBindingSpec（Widget間のリアクティブ連携）
-- レイアウト設定
-
-## 出力形式
-JSON形式で UISpec を出力してください。
-`);
-
-  promptManager.registerTemplate('summary-generation', `
-あなたはCBTベースの思考整理アプリのサマリー生成AIです。
-
-## 全ステージの結果
-{{stageResults}}
-
-## ユーザーの元の悩み
-{{concernText}}
-
-## タスク
-全ステージでの思考整理の結果をまとめ、以下を生成してください：
-- 主要な気づき・学び
-- 具体的なアクションプラン
-- 今後の展望
-
-## 出力形式
-ユーザーフレンドリーな日本語テキストで出力してください。
-`);
+  // V4プロンプトテンプレートを登録（専用ファイルから読み込み）
+  promptManager.registerTemplate('capture-diagnosis', CAPTURE_DIAGNOSIS_PROMPT);
+  promptManager.registerTemplate('widget-selection', WIDGET_SELECTION_PROMPT);
+  promptManager.registerTemplate('ors-generation', ORS_GENERATION_PROMPT);
+  promptManager.registerTemplate('uispec-generation', UISPEC_GENERATION_PROMPT);
+  promptManager.registerTemplate('summary-generation', SUMMARY_GENERATION_PROMPT);
 
   return new LLMOrchestrator({
     ...config,

@@ -284,6 +284,19 @@ export const DEFAULT_LLM_TASK_CONFIGS: LLMTaskConfigMap = {
     taskType: 'widget_selection',
     model: DEFAULT_MODEL_CONFIGS.general,
     promptTemplateId: 'widget-selection',
+    // outputSchema を定義することで generateJSON が使用される
+    outputSchema: {
+      type: 'object',
+      properties: {
+        version: { type: 'string' },
+        stages: { type: 'object' },
+        rationale: { type: 'string' },
+        flowDescription: { type: 'string' },
+        totalEstimatedDuration: { type: 'number' },
+        metadata: { type: 'object' },
+      },
+      required: ['version', 'stages'],
+    },
     maxRetries: 2,
     timeout: 45000,
     description: '4ステージ分のWidget選定を一括実行',

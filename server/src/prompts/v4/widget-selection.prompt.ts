@@ -46,6 +46,7 @@ export const WIDGET_SELECTION_PROMPT = `
 
 \`\`\`json
 {
+  "version": "4.0",
   "stages": {
     "diverge": {
       "widgets": [

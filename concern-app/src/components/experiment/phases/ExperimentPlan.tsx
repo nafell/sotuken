@@ -43,8 +43,8 @@ export function ExperimentPlan({
     const [currentORS, setCurrentORS] = useState<ORS | null>(null);
     const [renderStartTime, setRenderStartTime] = useState<number>(0);
 
-    // Technicalモードの自動進行用
-    const autoProceedRef = useRef(false);
+    // 生成済みステージを追跡（2重生成防止）
+    const generatedStagesRef = useRef<Set<PlanStage>>(new Set());
 
     const currentStageIndex = STAGE_ORDER.indexOf(currentStage);
     const existingResult = stageResults[currentStage];
@@ -100,6 +100,7 @@ export function ExperimentPlan({
     // ステージ変更時にリセット＆自動生成開始
     useEffect(() => {
         if (existingResult?.uiSpec || existingResult?.textSummary) {
+            // 既存結果がある場合は復元
             setCurrentResponse({
                 success: true,
                 uiSpec: existingResult.uiSpec,
@@ -109,23 +110,17 @@ export function ExperimentPlan({
             });
             setCurrentORS(existingResult.ors as unknown as ORS || null);
             setStatus('ready');
-        } else {
+        } else if (!generatedStagesRef.current.has(currentStage)) {
+            // このステージがまだ生成されていない場合のみ生成
             setStatus('idle');
             setCurrentResponse(null);
             setCurrentORS(null);
-            // 全モードで自動生成開始（確認画面を廃止）
-            if (!autoProceedRef.current) {
-                autoProceedRef.current = true;
-                setTimeout(() => handleGenerate(), 300);
-            }
+            generatedStagesRef.current.add(currentStage);
+            setTimeout(() => handleGenerate(), 300);
         }
         setError(null);
         setRenderStartTime(0);
-
-        // クリーンアップ: ステージ変更時にフラグをリセット
-        return () => {
-            autoProceedRef.current = false;
-        };
+        // クリーンアップは不要（フラグをリセットしない）
     }, [currentStage, existingResult, handleGenerate]);
 
     // レンダリング完了検知とメトリクス保存
@@ -156,7 +151,6 @@ export function ExperimentPlan({
             // Technicalモードなら自動で次へ (少し待ってから)
             if (mode === 'technical') {
                 setTimeout(() => {
-                    autoProceedRef.current = false; // 次のステージ用にリセット
                     onNextStage();
                 }, 2000);
             }

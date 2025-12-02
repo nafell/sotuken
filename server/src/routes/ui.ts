@@ -552,10 +552,41 @@ uiRoutes.post('/generate-v4', async (c) => {
 
       if (isUuid) {
         const gemini = getGeminiService();
+
+        // V4: 3段階の実際のプロンプトをJSON保存（デバッグ・評価用）
+        const promptData = JSON.stringify({
+          widgetSelection: {
+            prompt: widgetSelectionResult.result.prompt || null,
+            inputParams: {
+              concernText: body.concernText,
+              bottleneckType: body.options?.bottleneckType || 'thought',
+            },
+          },
+          ors: {
+            prompt: orsLLMResult.prompt || null,
+            inputParams: {
+              concernText: body.concernText,
+              stage: stage,
+              stageSelection: stageSelection,
+            },
+          },
+          uiSpec: {
+            prompt: uispecLLMResult.prompt || null,
+            inputParams: {
+              ors: ors,
+              stageSelection: stageSelection,
+              stage: stage,
+              enableReactivity: body.options?.enableReactivity !== false,
+            },
+          },
+        });
+
         const [inserted] = await db.insert(experimentGenerations).values({
           sessionId: body.sessionId,
           stage: stage,
           modelId: gemini.getModelName(),
+          // V4: 実際のプロンプトと入力パラメータ
+          prompt: promptData,
           // V4 3段階生成結果
           generatedWidgetSelection: widgetSelectionResult.result.data,
           generatedOrs: ors,

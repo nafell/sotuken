@@ -57,13 +57,19 @@ export default function SessionDetail() {
     return JSON.stringify(obj, null, 2);
   };
 
-  // Calculate aggregated metrics from generations
+  // Calculate aggregated metrics from generations (V4対応)
   const aggregatedMetrics = {
-    totalTokens: generations.reduce((sum, g) => sum + (g.promptTokens || 0) + (g.responseTokens || 0), 0),
-    totalPromptTokens: generations.reduce((sum, g) => sum + (g.promptTokens || 0), 0),
-    totalResponseTokens: generations.reduce((sum, g) => sum + (g.responseTokens || 0), 0),
-    totalGenerateDuration: generations.reduce((sum, g) => sum + (g.generateDuration || 0), 0),
+    // V4: totalPromptTokens/totalResponseTokens を優先、なければlegacy フィールドを使用
+    totalTokens: generations.reduce((sum, g) =>
+      sum + (g.totalPromptTokens || g.promptTokens || 0) + (g.totalResponseTokens || g.responseTokens || 0), 0),
+    totalPromptTokens: generations.reduce((sum, g) => sum + (g.totalPromptTokens || g.promptTokens || 0), 0),
+    totalResponseTokens: generations.reduce((sum, g) => sum + (g.totalResponseTokens || g.responseTokens || 0), 0),
+    totalGenerateDuration: generations.reduce((sum, g) => sum + (g.totalGenerateDuration || g.generateDuration || 0), 0),
     totalRenderDuration: generations.reduce((sum, g) => sum + (g.renderDuration || 0), 0),
+    // V4 各段階メトリクス
+    totalWidgetSelectionDuration: generations.reduce((sum, g) => sum + (g.widgetSelectionDuration || 0), 0),
+    totalOrsDuration: generations.reduce((sum, g) => sum + (g.orsDuration || 0), 0),
+    totalUiSpecDuration: generations.reduce((sum, g) => sum + (g.uiSpecDuration || 0), 0),
   };
 
   if (loading) {
@@ -255,16 +261,31 @@ export default function SessionDetail() {
           </div>
 
           <div style={styles.card}>
-            <h3 style={styles.cardTitle}>Per-Stage Breakdown</h3>
+            <h3 style={styles.cardTitle}>Per-Stage Breakdown (V4)</h3>
             <div style={styles.stageBreakdown}>
-              {generations.map((gen, idx) => (
-                <div key={gen.id} style={styles.stageRow}>
-                  <span style={styles.stageName}>{idx + 1}. {gen.stage}</span>
-                  <span style={styles.stageMetric}>{(gen.promptTokens || 0) + (gen.responseTokens || 0)} tokens</span>
-                  <span style={styles.stageMetric}>{gen.generateDuration || 0}ms gen</span>
-                  <span style={styles.stageMetric}>{gen.renderDuration || 0}ms render</span>
-                </div>
-              ))}
+              {generations.map((gen, idx) => {
+                // V4フィールドを優先、なければlegacyを使用
+                const tokens = (gen.totalPromptTokens || gen.promptTokens || 0) + (gen.totalResponseTokens || gen.responseTokens || 0);
+                const genDuration = gen.totalGenerateDuration || gen.generateDuration || 0;
+                return (
+                  <div key={gen.id} style={styles.stageRow}>
+                    <span style={styles.stageName}>{idx + 1}. {gen.stage}</span>
+                    <span style={styles.stageMetric}>{tokens} tokens</span>
+                    <span style={styles.stageMetric}>{genDuration}ms total</span>
+                    {/* V4: 各段階の内訳 */}
+                    {gen.widgetSelectionDuration && (
+                      <span style={styles.stageMetric}>WS:{gen.widgetSelectionDuration}ms</span>
+                    )}
+                    {gen.orsDuration && (
+                      <span style={styles.stageMetric}>ORS:{gen.orsDuration}ms</span>
+                    )}
+                    {gen.uiSpecDuration && (
+                      <span style={styles.stageMetric}>UI:{gen.uiSpecDuration}ms</span>
+                    )}
+                    <span style={styles.stageMetric}>{gen.renderDuration || 0}ms render</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -292,71 +313,129 @@ export default function SessionDetail() {
       {activeTab === 'generations' && (
         <div style={styles.content}>
           {generations.length > 0 ? (
-            generations.map((gen) => (
-              <div key={gen.id} style={styles.generationCard}>
-                <div
-                  style={styles.generationHeader}
-                  onClick={() => setExpandedGeneration(expandedGeneration === gen.id ? null : gen.id)}
-                >
-                  <div style={styles.generationHeaderLeft}>
-                    <span style={styles.generationStage}>{gen.stage}</span>
-                    <span style={styles.generationModel}>{gen.modelId}</span>
+            generations.map((gen) => {
+              // V4フィールドを優先
+              const promptTokens = gen.totalPromptTokens || gen.promptTokens || 0;
+              const responseTokens = gen.totalResponseTokens || gen.responseTokens || 0;
+              const genDuration = gen.totalGenerateDuration || gen.generateDuration || 0;
+              return (
+                <div key={gen.id} style={styles.generationCard}>
+                  <div
+                    style={styles.generationHeader}
+                    onClick={() => setExpandedGeneration(expandedGeneration === gen.id ? null : gen.id)}
+                  >
+                    <div style={styles.generationHeaderLeft}>
+                      <span style={styles.generationStage}>{gen.stage}</span>
+                      <span style={styles.generationModel}>{gen.modelId}</span>
+                    </div>
+                    <div style={styles.generationHeaderRight}>
+                      <span style={styles.generationMetric}>
+                        {promptTokens} + {responseTokens} tokens
+                      </span>
+                      <span style={styles.generationMetric}>
+                        {genDuration ? `${genDuration}ms` : '-'}
+                      </span>
+                      <span style={styles.generationTime}>{formatDate(gen.createdAt)}</span>
+                      <span style={styles.expandIcon}>{expandedGeneration === gen.id ? '▼' : '▶'}</span>
+                    </div>
                   </div>
-                  <div style={styles.generationHeaderRight}>
-                    <span style={styles.generationMetric}>
-                      {gen.promptTokens || 0} + {gen.responseTokens || 0} tokens
-                    </span>
-                    <span style={styles.generationMetric}>
-                      {gen.generateDuration ? `${gen.generateDuration}ms` : '-'}
-                    </span>
-                    <span style={styles.generationTime}>{formatDate(gen.createdAt)}</span>
-                    <span style={styles.expandIcon}>{expandedGeneration === gen.id ? '▼' : '▶'}</span>
-                  </div>
+
+                  {expandedGeneration === gen.id && (
+                    <div style={styles.generationBody}>
+                      {/* Prompt (JSON形式の場合は整形表示) */}
+                      {gen.prompt && (
+                        <div style={styles.generationSection}>
+                          <h4 style={styles.generationSectionTitle}>Prompt</h4>
+                          <pre style={styles.promptPre}>
+                            {typeof gen.prompt === 'string' && gen.prompt.startsWith('{')
+                              ? formatJson(JSON.parse(gen.prompt))
+                              : gen.prompt || 'Not saved'}
+                          </pre>
+                        </div>
+                      )}
+
+                      {/* V4: Widget Selection Result */}
+                      {gen.generatedWidgetSelection && (
+                        <div style={styles.generationSection}>
+                          <h4 style={styles.generationSectionTitle}>Widget Selection (Stage 1)</h4>
+                          <pre style={styles.jsonPre}>{formatJson(gen.generatedWidgetSelection)}</pre>
+                        </div>
+                      )}
+
+                      {/* V4: ORS */}
+                      {gen.generatedOrs && (
+                        <div style={styles.generationSection}>
+                          <h4 style={styles.generationSectionTitle}>ORS (Stage 2)</h4>
+                          <pre style={styles.jsonPre}>{formatJson(gen.generatedOrs)}</pre>
+                        </div>
+                      )}
+
+                      {/* V4: UISpec */}
+                      {gen.generatedUiSpec && (
+                        <div style={styles.generationSection}>
+                          <h4 style={styles.generationSectionTitle}>UISpec (Stage 3)</h4>
+                          <pre style={styles.jsonPre}>{formatJson(gen.generatedUiSpec)}</pre>
+                        </div>
+                      )}
+
+                      {/* Legacy: OODM (backward compatibility) */}
+                      {gen.generatedOodm && !gen.generatedOrs && (
+                        <div style={styles.generationSection}>
+                          <h4 style={styles.generationSectionTitle}>Generated OODM (Legacy)</h4>
+                          <pre style={styles.jsonPre}>{formatJson(gen.generatedOodm)}</pre>
+                        </div>
+                      )}
+
+                      {/* Legacy: DSL (backward compatibility) */}
+                      {gen.generatedDsl && !gen.generatedUiSpec && (
+                        <div style={styles.generationSection}>
+                          <h4 style={styles.generationSectionTitle}>Generated DSL (Legacy)</h4>
+                          <pre style={styles.jsonPre}>{formatJson(gen.generatedDsl)}</pre>
+                        </div>
+                      )}
+
+                      <div style={styles.generationMetrics}>
+                        {/* V4 各段階メトリクス */}
+                        {gen.widgetSelectionDuration && (
+                          <div style={styles.generationMetricItem}>
+                            <span style={styles.generationMetricLabel}>Widget Selection:</span>
+                            <span style={styles.generationMetricValue}>{gen.widgetSelectionDuration}ms</span>
+                          </div>
+                        )}
+                        {gen.orsDuration && (
+                          <div style={styles.generationMetricItem}>
+                            <span style={styles.generationMetricLabel}>ORS Gen:</span>
+                            <span style={styles.generationMetricValue}>{gen.orsDuration}ms</span>
+                          </div>
+                        )}
+                        {gen.uiSpecDuration && (
+                          <div style={styles.generationMetricItem}>
+                            <span style={styles.generationMetricLabel}>UISpec Gen:</span>
+                            <span style={styles.generationMetricValue}>{gen.uiSpecDuration}ms</span>
+                          </div>
+                        )}
+                        <div style={styles.generationMetricItem}>
+                          <span style={styles.generationMetricLabel}>Total Prompt Tokens:</span>
+                          <span style={styles.generationMetricValue}>{promptTokens || '-'}</span>
+                        </div>
+                        <div style={styles.generationMetricItem}>
+                          <span style={styles.generationMetricLabel}>Total Response Tokens:</span>
+                          <span style={styles.generationMetricValue}>{responseTokens || '-'}</span>
+                        </div>
+                        <div style={styles.generationMetricItem}>
+                          <span style={styles.generationMetricLabel}>Total Generate Duration:</span>
+                          <span style={styles.generationMetricValue}>{genDuration ? `${genDuration}ms` : '-'}</span>
+                        </div>
+                        <div style={styles.generationMetricItem}>
+                          <span style={styles.generationMetricLabel}>Render Duration:</span>
+                          <span style={styles.generationMetricValue}>{gen.renderDuration ? `${gen.renderDuration}ms` : '-'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-
-                {expandedGeneration === gen.id && (
-                  <div style={styles.generationBody}>
-                    <div style={styles.generationSection}>
-                      <h4 style={styles.generationSectionTitle}>Prompt</h4>
-                      <pre style={styles.promptPre}>{gen.prompt}</pre>
-                    </div>
-
-                    {gen.generatedOodm && (
-                      <div style={styles.generationSection}>
-                        <h4 style={styles.generationSectionTitle}>Generated OODM</h4>
-                        <pre style={styles.jsonPre}>{formatJson(gen.generatedOodm)}</pre>
-                      </div>
-                    )}
-
-                    {gen.generatedDsl && (
-                      <div style={styles.generationSection}>
-                        <h4 style={styles.generationSectionTitle}>Generated DSL</h4>
-                        <pre style={styles.jsonPre}>{formatJson(gen.generatedDsl)}</pre>
-                      </div>
-                    )}
-
-                    <div style={styles.generationMetrics}>
-                      <div style={styles.generationMetricItem}>
-                        <span style={styles.generationMetricLabel}>Prompt Tokens:</span>
-                        <span style={styles.generationMetricValue}>{gen.promptTokens || '-'}</span>
-                      </div>
-                      <div style={styles.generationMetricItem}>
-                        <span style={styles.generationMetricLabel}>Response Tokens:</span>
-                        <span style={styles.generationMetricValue}>{gen.responseTokens || '-'}</span>
-                      </div>
-                      <div style={styles.generationMetricItem}>
-                        <span style={styles.generationMetricLabel}>Generate Duration:</span>
-                        <span style={styles.generationMetricValue}>{gen.generateDuration ? `${gen.generateDuration}ms` : '-'}</span>
-                      </div>
-                      <div style={styles.generationMetricItem}>
-                        <span style={styles.generationMetricLabel}>Render Duration:</span>
-                        <span style={styles.generationMetricValue}>{gen.renderDuration ? `${gen.renderDuration}ms` : '-'}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))
+              );
+            })
           ) : (
             <div style={styles.empty}>No generations recorded for this session.</div>
           )}

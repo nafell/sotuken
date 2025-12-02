@@ -82,14 +82,30 @@ export interface ExperimentGeneration {
   sessionId: string;
   stage: string;
   modelId: string;
-  prompt: string;
+  prompt?: string; // optional（V4では未保存の場合あり）
+  // V4 3段階生成結果
+  generatedWidgetSelection?: any;
+  generatedOrs?: any;
+  generatedUiSpec?: any;
+  // V4メトリクス（各段階）
+  widgetSelectionTokens?: number;
+  widgetSelectionDuration?: number;
+  orsTokens?: number;
+  orsDuration?: number;
+  uiSpecTokens?: number;
+  uiSpecDuration?: number;
+  // 合計メトリクス
+  totalPromptTokens?: number;
+  totalResponseTokens?: number;
+  totalGenerateDuration?: number;
+  renderDuration?: number;
+  createdAt: string;
+  // Legacy V3 fields (for backward compatibility)
   generatedOodm?: any;
   generatedDsl?: any;
   promptTokens?: number;
   responseTokens?: number;
   generateDuration?: number;
-  renderDuration?: number;
-  createdAt: string;
 }
 
 export interface ExperimentSettings {

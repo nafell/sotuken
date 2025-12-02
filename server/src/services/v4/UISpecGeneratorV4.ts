@@ -172,8 +172,22 @@ export class UISpecGeneratorV4 {
     sessionId: string,
     enableReactivity: boolean
   ): UISpec {
+    if (this.debug) {
+      console.log('[UISpecGeneratorV4] Raw LLM result type:', typeof result);
+      console.log('[UISpecGeneratorV4] Raw LLM result:', JSON.stringify(result, null, 2).slice(0, 2000));
+      console.log('[UISpecGeneratorV4] stageSelection.widgets count:', stageSelection.widgets?.length ?? 0);
+    }
+
     // 型ガードでチェック
-    if (isUISpec(result)) {
+    const isValid = isUISpec(result);
+    if (this.debug) {
+      console.log('[UISpecGeneratorV4] isUISpec check:', isValid);
+    }
+
+    if (isValid) {
+      if (this.debug) {
+        console.log('[UISpecGeneratorV4] Valid UISpec, widgets count:', (result as UISpec).widgets?.length ?? 0);
+      }
       // メタデータを補完
       return {
         ...result,
@@ -189,10 +203,16 @@ export class UISpecGeneratorV4 {
     // 結果がオブジェクトの場合、部分的に変換を試みる
     if (typeof result === 'object' && result !== null) {
       const obj = result as Record<string, unknown>;
+      if (this.debug) {
+        console.log('[UISpecGeneratorV4] Building from partial, obj.widgets:', Array.isArray(obj.widgets) ? obj.widgets.length : 'not array');
+      }
       return this.buildUISpecFromPartial(obj, ors, stageSelection, stage, sessionId, enableReactivity);
     }
 
     // 変換失敗時はデフォルトUISpecを返す
+    if (this.debug) {
+      console.log('[UISpecGeneratorV4] Using default UISpec (fallback)');
+    }
     return this.createDefaultUISpec(ors, stageSelection, stage, sessionId, enableReactivity);
   }
 
@@ -212,15 +232,32 @@ export class UISpecGeneratorV4 {
 
     // widgets が存在する場合
     if (Array.isArray(obj.widgets)) {
+      if (this.debug) {
+        console.log(`[UISpecGeneratorV4] Processing ${obj.widgets.length} widgets from LLM output`);
+      }
       for (let i = 0; i < obj.widgets.length; i++) {
         const w = obj.widgets[i];
         if (typeof w === 'object' && w !== null) {
-          const widgetSpec = this.normalizeWidgetSpec(w as Record<string, unknown>, i, ors);
+          const widgetObj = w as Record<string, unknown>;
+          if (this.debug) {
+            console.log(`[UISpecGeneratorV4] Widget[${i}] raw:`, JSON.stringify(widgetObj, null, 2).slice(0, 500));
+            console.log(`[UISpecGeneratorV4] Widget[${i}] component:`, widgetObj.component, 'type:', typeof widgetObj.component);
+          }
+          const widgetSpec = this.normalizeWidgetSpec(widgetObj, i, ors);
           if (widgetSpec) {
             widgets.push(widgetSpec);
+            if (this.debug) {
+              console.log(`[UISpecGeneratorV4] Widget[${i}] normalized successfully: ${widgetSpec.component}`);
+            }
+          } else if (this.debug) {
+            console.log(`[UISpecGeneratorV4] Widget[${i}] normalization returned null (missing component?)`);
           }
         }
       }
+    }
+
+    if (this.debug) {
+      console.log(`[UISpecGeneratorV4] Extracted ${widgets.length} widgets from LLM output`);
     }
 
     // reactiveBindings が存在する場合
@@ -241,11 +278,17 @@ export class UISpecGeneratorV4 {
     // layout
     const layout = this.normalizeScreenLayout(obj.layout);
 
+    // widgets が空の場合はデフォルトを使用
+    const finalWidgets = widgets.length > 0 ? widgets : this.createDefaultWidgets(ors, stageSelection);
+    if (this.debug) {
+      console.log(`[UISpecGeneratorV4] Final widgets count: ${finalWidgets.length} (used default: ${widgets.length === 0})`);
+    }
+
     return {
       version: '4.0',
       sessionId,
       stage,
-      widgets: widgets.length > 0 ? widgets : this.createDefaultWidgets(ors, stageSelection),
+      widgets: finalWidgets,
       reactiveBindings: createReactiveBindingSpec(enableReactivity ? bindings : []),
       layout,
       metadata: {

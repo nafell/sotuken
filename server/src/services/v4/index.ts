@@ -62,3 +62,15 @@ export {
   type ValidationError,
   type ValidationSeverity,
 } from './ValidationService';
+
+// =============================================================================
+// Widget Summarization
+// =============================================================================
+export {
+  WidgetSummarizationService,
+  createWidgetSummarizationService,
+  type WidgetState,
+  type WidgetSummary,
+  type BatchSummarizationInput,
+  type BatchSummarizationResult,
+} from './WidgetSummarizationService';

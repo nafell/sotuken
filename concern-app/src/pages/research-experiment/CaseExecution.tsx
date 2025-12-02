@@ -80,14 +80,15 @@ export default function CaseExecution() {
           setTestCase({
             caseId: 'custom',
             title: 'User Experiment',
-            description: 'Free-form concern input by user',
             concernText: '', // ユーザが入力する
             contextFactors: {
-              mood: 'neutral',
-              timeAvailable: 15,
-              preferredStyle: 'guided'
+              category: 'general',
+              urgency: 'medium',
+              emotionalState: 'neutral',
+              timeAvailable: 15
             },
             expectedBottlenecks: [],
+            expectedFlow: {},
             evaluationCriteria: ['User satisfaction', 'Task completion'],
             complexity: 'medium',
             hasReactivity: true

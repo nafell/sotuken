@@ -278,6 +278,7 @@ export class LLMOrchestrator {
       return {
         success: false,
         rawOutput: undefined,
+        prompt, // 使用されたプロンプトを記録
         error: {
           type: 'api_error',
           message: response.error ?? 'Unknown error',
@@ -290,6 +291,7 @@ export class LLMOrchestrator {
       success: true,
       data: response.data as T,
       rawOutput: typeof response.data === 'string' ? response.data : JSON.stringify(response.data),
+      prompt, // 使用されたプロンプトを記録
       metrics,
     };
   }

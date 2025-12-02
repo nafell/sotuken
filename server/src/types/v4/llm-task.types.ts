@@ -252,6 +252,8 @@ export interface LLMCallResult<T = unknown> {
   data?: T;
   /** 生のLLM出力 */
   rawOutput?: string;
+  /** 使用されたプロンプト（デバッグ・記録用） */
+  prompt?: string;
   /** エラー情報（失敗時） */
   error?: {
     type: 'timeout' | 'parse_error' | 'validation_error' | 'api_error' | 'unknown';

@@ -99,12 +99,13 @@ export default function ReplayView() {
   // Get current generation
   const currentGeneration = generations[currentStep];
 
-  // Calculate aggregated metrics from generations
+  // Calculate aggregated metrics from generations (V4対応)
   const aggregatedMetrics = {
-    totalTokens: generations.reduce((sum, g) => sum + (g.promptTokens || 0) + (g.responseTokens || 0), 0),
-    totalPromptTokens: generations.reduce((sum, g) => sum + (g.promptTokens || 0), 0),
-    totalResponseTokens: generations.reduce((sum, g) => sum + (g.responseTokens || 0), 0),
-    totalGenerateDuration: generations.reduce((sum, g) => sum + (g.generateDuration || 0), 0),
+    totalTokens: generations.reduce((sum, g) =>
+      sum + (g.totalPromptTokens || g.promptTokens || 0) + (g.totalResponseTokens || g.responseTokens || 0), 0),
+    totalPromptTokens: generations.reduce((sum, g) => sum + (g.totalPromptTokens || g.promptTokens || 0), 0),
+    totalResponseTokens: generations.reduce((sum, g) => sum + (g.totalResponseTokens || g.responseTokens || 0), 0),
+    totalGenerateDuration: generations.reduce((sum, g) => sum + (g.totalGenerateDuration || g.generateDuration || 0), 0),
     totalRenderDuration: generations.reduce((sum, g) => sum + (g.renderDuration || 0), 0),
   };
 
@@ -332,23 +333,42 @@ export default function ReplayView() {
                 </div>
               </div>
 
-              {/* Generation Metrics */}
+              {/* Generation Metrics (V4対応) */}
               <div style={styles.metricsBar}>
                 <div style={styles.metricItem}>
                   <span style={styles.metricLabel}>Model:</span>
                   <span style={styles.metricValue}>{currentGeneration.modelId}</span>
                 </div>
                 <div style={styles.metricItem}>
-                  <span style={styles.metricLabel}>Prompt Tokens:</span>
-                  <span style={styles.metricValue}>{currentGeneration.promptTokens || '-'}</span>
+                  <span style={styles.metricLabel}>Prompt:</span>
+                  <span style={styles.metricValue}>{currentGeneration.totalPromptTokens || currentGeneration.promptTokens || '-'}</span>
                 </div>
                 <div style={styles.metricItem}>
-                  <span style={styles.metricLabel}>Response Tokens:</span>
-                  <span style={styles.metricValue}>{currentGeneration.responseTokens || '-'}</span>
+                  <span style={styles.metricLabel}>Response:</span>
+                  <span style={styles.metricValue}>{currentGeneration.totalResponseTokens || currentGeneration.responseTokens || '-'}</span>
                 </div>
+                {/* V4: 各段階の時間 */}
+                {currentGeneration.widgetSelectionDuration && (
+                  <div style={styles.metricItem}>
+                    <span style={styles.metricLabel}>WS:</span>
+                    <span style={styles.metricValue}>{currentGeneration.widgetSelectionDuration}ms</span>
+                  </div>
+                )}
+                {currentGeneration.orsDuration && (
+                  <div style={styles.metricItem}>
+                    <span style={styles.metricLabel}>ORS:</span>
+                    <span style={styles.metricValue}>{currentGeneration.orsDuration}ms</span>
+                  </div>
+                )}
+                {currentGeneration.uiSpecDuration && (
+                  <div style={styles.metricItem}>
+                    <span style={styles.metricLabel}>UI:</span>
+                    <span style={styles.metricValue}>{currentGeneration.uiSpecDuration}ms</span>
+                  </div>
+                )}
                 <div style={styles.metricItem}>
-                  <span style={styles.metricLabel}>Generate:</span>
-                  <span style={styles.metricValue}>{currentGeneration.generateDuration ? `${currentGeneration.generateDuration}ms` : '-'}</span>
+                  <span style={styles.metricLabel}>Total:</span>
+                  <span style={styles.metricValue}>{currentGeneration.totalGenerateDuration || currentGeneration.generateDuration ? `${currentGeneration.totalGenerateDuration || currentGeneration.generateDuration}ms` : '-'}</span>
                 </div>
                 <div style={styles.metricItem}>
                   <span style={styles.metricLabel}>Render:</span>
@@ -356,15 +376,15 @@ export default function ReplayView() {
                 </div>
               </div>
 
-              {/* Widget View Mode */}
-              {viewMode === 'widget' && currentGeneration.generatedDsl && (
+              {/* Widget View Mode - V4: generatedUiSpec を優先, fallback to generatedDsl */}
+              {viewMode === 'widget' && (currentGeneration.generatedUiSpec || currentGeneration.generatedDsl) && (
                 <div style={styles.widgetRenderArea}>
                   <div style={styles.readOnlyBanner}>
                     Read-Only Preview - Interactions are disabled
                   </div>
                   <div style={styles.widgetContainer}>
                     <UIRendererV3
-                      uiSpec={currentGeneration.generatedDsl}
+                      uiSpec={currentGeneration.generatedUiSpec || currentGeneration.generatedDsl}
                       onWidgetUpdate={handleWidgetUpdate}
                       onWidgetComplete={handleWidgetComplete}
                     />
@@ -372,47 +392,81 @@ export default function ReplayView() {
                 </div>
               )}
 
-              {viewMode === 'widget' && !currentGeneration.generatedDsl && (
+              {viewMode === 'widget' && !currentGeneration.generatedUiSpec && !currentGeneration.generatedDsl && (
                 <div style={styles.noWidgetMessage}>
                   No widget data available for this stage
                 </div>
               )}
 
-              {/* Data View Mode */}
+              {/* Data View Mode (V4対応) */}
               {viewMode === 'data' && (
                 <>
                   {/* Prompt (collapsible) */}
-                  <div style={styles.widgetSection}>
-                    <div style={styles.sectionHeader}>
-                      <h4 style={styles.sectionTitle}>Prompt</h4>
-                      <button
-                        onClick={() => setShowPrompt(!showPrompt)}
-                        style={styles.expandButton}
-                      >
-                        {showPrompt ? 'Hide' : 'Show'}
-                      </button>
-                    </div>
-                    {showPrompt && (
-                      <pre style={styles.promptPre}>
-                        {currentGeneration.prompt}
-                      </pre>
-                    )}
-                  </div>
-
-                  {/* Generated OODM */}
-                  {currentGeneration.generatedOodm && (
+                  {currentGeneration.prompt && (
                     <div style={styles.widgetSection}>
-                      <h4 style={styles.sectionTitle}>Generated OODM</h4>
+                      <div style={styles.sectionHeader}>
+                        <h4 style={styles.sectionTitle}>Prompt</h4>
+                        <button
+                          onClick={() => setShowPrompt(!showPrompt)}
+                          style={styles.expandButton}
+                        >
+                          {showPrompt ? 'Hide' : 'Show'}
+                        </button>
+                      </div>
+                      {showPrompt && (
+                        <pre style={styles.promptPre}>
+                          {typeof currentGeneration.prompt === 'string' && currentGeneration.prompt.startsWith('{')
+                            ? formatJson(JSON.parse(currentGeneration.prompt))
+                            : currentGeneration.prompt}
+                        </pre>
+                      )}
+                    </div>
+                  )}
+
+                  {/* V4: Widget Selection Result */}
+                  {currentGeneration.generatedWidgetSelection && (
+                    <div style={styles.widgetSection}>
+                      <h4 style={styles.sectionTitle}>Widget Selection (Stage 1)</h4>
+                      <pre style={styles.jsonPre}>
+                        {formatJson(currentGeneration.generatedWidgetSelection)}
+                      </pre>
+                    </div>
+                  )}
+
+                  {/* V4: ORS */}
+                  {currentGeneration.generatedOrs && (
+                    <div style={styles.widgetSection}>
+                      <h4 style={styles.sectionTitle}>ORS (Stage 2)</h4>
+                      <pre style={styles.jsonPre}>
+                        {formatJson(currentGeneration.generatedOrs)}
+                      </pre>
+                    </div>
+                  )}
+
+                  {/* V4: UISpec */}
+                  {currentGeneration.generatedUiSpec && (
+                    <div style={styles.widgetSection}>
+                      <h4 style={styles.sectionTitle}>UISpec (Stage 3)</h4>
+                      <pre style={styles.jsonPre}>
+                        {formatJson(currentGeneration.generatedUiSpec)}
+                      </pre>
+                    </div>
+                  )}
+
+                  {/* Legacy: Generated OODM (backward compatibility) */}
+                  {currentGeneration.generatedOodm && !currentGeneration.generatedOrs && (
+                    <div style={styles.widgetSection}>
+                      <h4 style={styles.sectionTitle}>Generated OODM (Legacy)</h4>
                       <pre style={styles.jsonPre}>
                         {formatJson(currentGeneration.generatedOodm)}
                       </pre>
                     </div>
                   )}
 
-                  {/* Generated DSL */}
-                  {currentGeneration.generatedDsl && (
+                  {/* Legacy: Generated DSL (backward compatibility) */}
+                  {currentGeneration.generatedDsl && !currentGeneration.generatedUiSpec && (
                     <div style={styles.widgetSection}>
-                      <h4 style={styles.sectionTitle}>Generated DSL (UISpec)</h4>
+                      <h4 style={styles.sectionTitle}>Generated DSL (Legacy)</h4>
                       <pre style={styles.jsonPre}>
                         {formatJson(currentGeneration.generatedDsl)}
                       </pre>

@@ -228,3 +228,40 @@ export {
   type V3UISpecPartial,
   migrateV3WidgetSpec,
 } from './ui-spec.types';
+
+// =============================================================================
+// LLM Task - 3段階LLM呼び出し設定
+// =============================================================================
+export {
+  // タスク種別
+  type LLMTaskType,
+  type LLMTaskCategory,
+  LLM_TASK_CATEGORIES,
+  // モデル設定
+  type LLMProvider,
+  type ModelConfig,
+  DEFAULT_MODEL_CONFIGS,
+  // JSON Schema
+  type JSONSchema,
+  // タスク設定
+  type LLMTaskConfig,
+  type LLMTaskConfigMap,
+  // 実験パターン
+  type ExperimentPattern,
+  EXPERIMENT_PATTERNS,
+  // 呼び出し結果
+  type LLMCallMetrics,
+  type LLMCallResult,
+  // デフォルト設定
+  DEFAULT_LLM_TASK_CONFIGS,
+  // ユーティリティ
+  getTaskCategory,
+  getDefaultModelConfig,
+  createTaskConfigsFromPattern,
+  // 型ガード
+  isLLMTaskType,
+  isLLMProvider,
+  isModelConfig,
+  isLLMTaskConfig,
+  isLLMCallResult,
+} from './llm-task.types';

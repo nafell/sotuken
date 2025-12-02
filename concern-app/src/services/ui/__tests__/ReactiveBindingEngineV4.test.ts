@@ -10,9 +10,8 @@ import { describe, expect, test, beforeEach, vi } from 'vitest';
 import {
   ReactiveBindingEngineV4,
   createReactiveBindingEngineV4,
-  type PropagationEventV4,
 } from '../ReactiveBindingEngineV4';
-import type { ReactiveBindingSpec, ReactiveBinding } from '../../../types/v4/reactive-binding.types';
+import type { ReactiveBindingSpec } from '../../../types/v4/reactive-binding.types';
 
 describe('ReactiveBindingEngineV4', () => {
   let engine: ReactiveBindingEngineV4;

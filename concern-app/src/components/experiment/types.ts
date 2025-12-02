@@ -11,6 +11,7 @@ export interface StageResult {
     stage: PlanStage;
     mode: 'widget' | 'text';
     uiSpec?: Record<string, unknown>;
+    ors?: Record<string, unknown>; // V4で追加: ORS（Object Representation Schema）
     textSummary?: string;
     widgetResults: WidgetResultData[];
     generationId?: string;

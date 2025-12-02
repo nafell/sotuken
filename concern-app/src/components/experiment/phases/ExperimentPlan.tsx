@@ -1,8 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { apiService, type UISpecV3GenerationResponse } from '../../../services/api/ApiService';
-import UIRendererV3 from '../../../services/ui-generation/UIRendererV3';
+import { apiService, type UISpecV4GenerationResponse } from '../../../services/api/ApiService';
+import { UIRendererV4 } from '../../../services/ui-generation/UIRendererV4';
 import { PLAN_STAGE_CONFIGS } from '../types';
 import type { PlanStage, StageResult, WidgetResultData } from '../types';
+import type { ORS } from '../../../types/v4/ors.types';
 
 interface ExperimentPlanProps {
     sessionId: string;
@@ -38,7 +39,8 @@ export function ExperimentPlan({
 }: ExperimentPlanProps) {
     const [status, setStatus] = useState<StageStatus>('idle');
     const [error, setError] = useState<string | null>(null);
-    const [currentResponse, setCurrentResponse] = useState<UISpecV3GenerationResponse | null>(null);
+    const [currentResponse, setCurrentResponse] = useState<UISpecV4GenerationResponse | null>(null);
+    const [currentORS, setCurrentORS] = useState<ORS | null>(null);
     const [renderStartTime, setRenderStartTime] = useState<number>(0);
 
     // Technicalモードの自動進行用
@@ -64,16 +66,17 @@ export function ExperimentPlan({
                 }
             });
 
-            const response = await apiService.generateUIV3(
+            // V4 API呼び出し
+            const response = await apiService.generateUIV4(
                 concernText,
                 currentStage,
                 sessionId,
                 undefined,
                 {
-                    restrictToImplementedWidgets: true,
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     previousStageResults: Object.keys(previousResults).length > 0 ? previousResults as Record<string, any> : undefined,
                     bottleneckType,
+                    enableReactivity: true,
                 }
             );
 
@@ -86,6 +89,7 @@ export function ExperimentPlan({
             // レンダリング開始時刻を記録してState更新 -> Re-render -> useEffect発火
             setRenderStartTime(performance.now());
             setCurrentResponse(response);
+            setCurrentORS(response.ors);
             setStatus('ready');
 
         } catch (err) {
@@ -100,14 +104,16 @@ export function ExperimentPlan({
             setCurrentResponse({
                 success: true,
                 uiSpec: existingResult.uiSpec,
-                textSummary: existingResult.textSummary,
-                mode: existingResult.mode,
+                ors: existingResult.ors,
+                mode: 'widget',
                 generationId: existingResult.generationId,
             });
+            setCurrentORS(existingResult.ors as unknown as ORS || null);
             setStatus('ready');
         } else {
             setStatus('idle');
             setCurrentResponse(null);
+            setCurrentORS(null);
             // 全モードで自動生成開始（確認画面を廃止）
             if (!autoProceedRef.current) {
                 autoProceedRef.current = true;
@@ -135,9 +141,9 @@ export function ExperimentPlan({
                 currentStage,
                 {
                     stage: currentStage,
-                    mode: currentResponse.mode || 'widget',
+                    mode: 'widget',
                     uiSpec: currentResponse.uiSpec,
-                    textSummary: currentResponse.textSummary,
+                    ors: currentResponse.ors, // V4で追加
                     widgetResults: [],
                     generationId: currentResponse.generationId, // サーバーから返却されたID
                     renderDuration: duration
@@ -162,11 +168,11 @@ export function ExperimentPlan({
 
     // Widget更新ハンドラ
     const handleWidgetUpdate = useCallback(
-        (widgetId: string, data: Record<string, unknown>) => {
+        (widgetId: string, data: unknown) => {
             const widgetResult: WidgetResultData = {
                 widgetId,
                 component: currentResponse?.uiSpec?.widgets?.find((w: { id: string; component: string }) => w.id === widgetId)?.component || 'unknown',
-                data,
+                data: data as Record<string, unknown>,
                 timestamp: new Date().toISOString(),
             };
             onWidgetUpdate(currentStage, widgetResult);
@@ -234,20 +240,15 @@ export function ExperimentPlan({
                     </div>
                 )}
 
-                {status === 'ready' && currentResponse && (
+                {status === 'ready' && currentResponse && currentORS && (
                     <div className="max-w-4xl mx-auto">
-                        {currentResponse.mode === 'text' ? (
-                            <div className="bg-white p-6 rounded-xl shadow-sm prose max-w-none">
-                                <div dangerouslySetInnerHTML={{ __html: currentResponse.textSummary?.replace(/\n/g, '<br/>') || '' }} />
-                            </div>
-                        ) : (
-                            <UIRendererV3
-                                uiSpec={currentResponse.uiSpec}
-                                onWidgetUpdate={handleWidgetUpdate}
-                                onWidgetAction={() => { }}
-                                contextSummary={concernText ? `Your Concern: ${concernText}` : undefined}
-                            />
-                        )}
+                        <UIRendererV4
+                            uiSpec={currentResponse.uiSpec}
+                            ors={currentORS}
+                            onWidgetUpdate={handleWidgetUpdate}
+                            onWidgetComplete={() => { }}
+                            contextSummary={concernText ? `Your Concern: ${concernText}` : undefined}
+                        />
                     </div>
                 )}
             </div>

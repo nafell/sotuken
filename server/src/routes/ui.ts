@@ -9,6 +9,15 @@ import {
 } from '../services/UISpecGeneratorV3';
 import { logMetricsSummary } from '../utils/metricsLogger';
 
+// V4 imports
+import {
+  createLLMOrchestratorWithDefaultPrompts,
+  createWidgetSelectionService,
+  createORSGeneratorService,
+  createUISpecGeneratorV4,
+} from '../services/v4';
+import type { StageType as StageTypeV4 } from '../types/v4/ors.types';
+
 const uiRoutes = new Hono();
 
 // GeminiService インスタンス（遅延初期化）
@@ -19,6 +28,37 @@ function getGeminiService() {
     geminiService = createGeminiService();
   }
   return geminiService;
+}
+
+// V4 サービスインスタンス（遅延初期化）
+let v4Services: {
+  llmOrchestrator: ReturnType<typeof createLLMOrchestratorWithDefaultPrompts>;
+  widgetSelectionService: ReturnType<typeof createWidgetSelectionService>;
+  orsGeneratorService: ReturnType<typeof createORSGeneratorService>;
+  uiSpecGeneratorV4: ReturnType<typeof createUISpecGeneratorV4>;
+} | null = null;
+
+// V4のWidget選定結果キャッシュ（セッション単位）
+const widgetSelectionCache = new Map<string, {
+  result: Awaited<ReturnType<ReturnType<typeof createWidgetSelectionService>['selectWidgets']>>;
+  bottleneckType: string;
+}>();
+
+function getV4Services() {
+  if (!v4Services) {
+    const llmOrchestrator = createLLMOrchestratorWithDefaultPrompts({ debug: false });
+    const widgetSelectionService = createWidgetSelectionService({ llmOrchestrator });
+    const orsGeneratorService = createORSGeneratorService({ llmOrchestrator });
+    const uiSpecGeneratorV4 = createUISpecGeneratorV4({ llmOrchestrator });
+
+    v4Services = {
+      llmOrchestrator,
+      widgetSelectionService,
+      orsGeneratorService,
+      uiSpecGeneratorV4,
+    };
+  }
+  return v4Services;
 }
 
 /**
@@ -355,6 +395,238 @@ uiRoutes.post('/generate-v3', async (c) => {
     });
   } catch (error) {
     console.error('❌ UISpec v3 generation error:', error);
+
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        },
+      },
+      500
+    );
+  }
+});
+
+/**
+ * UISpec v4生成API (DSL v4 Phase 8)
+ * POST /v1/ui/generate-v4
+ *
+ * 3段階LLM呼び出しによるUISpec生成
+ * Stage 1: Widget選定（セッションごとにキャッシュ）
+ * Stage 2: ORS生成
+ * Stage 3: UISpec生成
+ */
+uiRoutes.post('/generate-v4', async (c) => {
+  try {
+    const body = await c.req.json();
+
+    // バリデーション
+    if (!body.sessionId) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_REQUEST',
+            message: 'sessionId is required',
+          },
+        },
+        400
+      );
+    }
+
+    if (!body.concernText) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_REQUEST',
+            message: 'concernText is required',
+          },
+        },
+        400
+      );
+    }
+
+    // ステージのバリデーション
+    const validStages: StageTypeV4[] = ['diverge', 'organize', 'converge', 'summary'];
+    const stage: StageTypeV4 = body.stage || 'diverge';
+    if (!validStages.includes(stage)) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_REQUEST',
+            message: `Invalid stage. Must be one of: ${validStages.join(', ')}`,
+          },
+        },
+        400
+      );
+    }
+
+    console.log(`🎨 UISpec v4 generation request for session: ${body.sessionId}`);
+    console.log(`📝 Concern: "${body.concernText.slice(0, 50)}..."`);
+    console.log(`🎯 Stage: ${stage}`);
+
+    const startTime = Date.now();
+    const services = getV4Services();
+    const bottleneckType = body.options?.bottleneckType || 'thought';
+
+    // Stage 1: Widget選定（キャッシュがあれば再利用）
+    let widgetSelectionResult = widgetSelectionCache.get(body.sessionId);
+    let widgetSelectionMetrics: { latencyMs: number; cached: boolean } | undefined;
+
+    if (!widgetSelectionResult || widgetSelectionResult.bottleneckType !== bottleneckType) {
+      console.log(`🔍 [Stage 1] Widget selection for bottleneck: ${bottleneckType}`);
+      const selectionStart = Date.now();
+
+      const selectionLLMResult = await services.widgetSelectionService.selectWidgets({
+        concernText: body.concernText,
+        bottleneckType,
+        sessionId: body.sessionId,
+      });
+
+      if (!selectionLLMResult.success || !selectionLLMResult.data) {
+        // フォールバック使用
+        console.log(`⚠️ Widget selection failed, using fallback`);
+        const fallbackResult = services.widgetSelectionService.fallbackSelection({
+          concernText: body.concernText,
+          bottleneckType,
+          sessionId: body.sessionId,
+        });
+        widgetSelectionResult = {
+          result: { success: true, data: fallbackResult, metrics: { taskType: 'widget_selection', modelId: 'fallback', latencyMs: 0, retryCount: 0, success: true, timestamp: Date.now() } },
+          bottleneckType,
+        };
+      } else {
+        widgetSelectionResult = { result: selectionLLMResult, bottleneckType };
+      }
+
+      // キャッシュに保存
+      widgetSelectionCache.set(body.sessionId, widgetSelectionResult);
+      widgetSelectionMetrics = { latencyMs: Date.now() - selectionStart, cached: false };
+    } else {
+      console.log(`📦 [Stage 1] Using cached widget selection`);
+      widgetSelectionMetrics = { latencyMs: 0, cached: true };
+    }
+
+    const stageSelection = widgetSelectionResult.result.data!.stages[stage];
+
+    // Stage 2: ORS生成
+    console.log(`📊 [Stage 2] ORS generation for stage: ${stage}`);
+    const orsStart = Date.now();
+
+    const orsLLMResult = await services.orsGeneratorService.generateORS({
+      concernText: body.concernText,
+      stage,
+      stageSelection,
+      sessionId: body.sessionId,
+    });
+
+    let ors = orsLLMResult.data;
+    if (!orsLLMResult.success || !ors) {
+      console.log(`⚠️ ORS generation failed, using fallback`);
+      ors = services.orsGeneratorService.fallbackORS({
+        concernText: body.concernText,
+        stage,
+        stageSelection,
+        sessionId: body.sessionId,
+      });
+    }
+
+    const orsMetrics = { latencyMs: Date.now() - orsStart };
+
+    // Stage 3: UISpec生成
+    console.log(`🎨 [Stage 3] UISpec generation`);
+    const uispecStart = Date.now();
+
+    const uispecLLMResult = await services.uiSpecGeneratorV4.generateUISpec({
+      ors,
+      stageSelection,
+      stage,
+      sessionId: body.sessionId,
+      enableReactivity: body.options?.enableReactivity !== false,
+    });
+
+    let uiSpec = uispecLLMResult.data;
+    if (!uispecLLMResult.success || !uiSpec) {
+      console.log(`⚠️ UISpec generation failed, using fallback`);
+      uiSpec = services.uiSpecGeneratorV4.fallbackUISpec({
+        ors,
+        stageSelection,
+        stage,
+        sessionId: body.sessionId,
+        enableReactivity: body.options?.enableReactivity !== false,
+      });
+    }
+
+    const uispecMetrics = { latencyMs: Date.now() - uispecStart };
+    const totalLatency = Date.now() - startTime;
+
+    // メトリクス集計
+    const totalTokens = (orsLLMResult.metrics?.inputTokens || 0) + (orsLLMResult.metrics?.outputTokens || 0) +
+      (uispecLLMResult.metrics?.inputTokens || 0) + (uispecLLMResult.metrics?.outputTokens || 0);
+
+    // セッションサマリーをログ
+    logMetricsSummary(body.sessionId);
+
+    // Phase 7: 生成履歴をDBに保存 (1-to-N)
+    let generationId: string | undefined;
+    try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.sessionId);
+
+      if (isUuid) {
+        const gemini = getGeminiService();
+        const [inserted] = await db.insert(experimentGenerations).values({
+          sessionId: body.sessionId,
+          stage: stage,
+          modelId: gemini.getModelName(),
+          prompt: '', // V4はプロンプト複数なので空
+          generatedOodm: ors, // ORSを保存
+          generatedDsl: uiSpec,
+          promptTokens: (orsLLMResult.metrics?.inputTokens || 0) + (uispecLLMResult.metrics?.inputTokens || 0),
+          responseTokens: (orsLLMResult.metrics?.outputTokens || 0) + (uispecLLMResult.metrics?.outputTokens || 0),
+          generateDuration: totalLatency,
+        }).returning({ id: experimentGenerations.id });
+
+        if (inserted) {
+          generationId = inserted.id;
+          console.log(`💾 V4 Generation saved to DB: ${generationId}`);
+        }
+      } else {
+        console.warn('⚠️ Session ID is not UUID, skipping DB save:', body.sessionId);
+      }
+    } catch (dbError) {
+      console.error('❌ Failed to save V4 generation to DB:', dbError);
+    }
+
+    console.log(`✅ UISpec v4 generated successfully`);
+    console.log(`📊 Metrics: widgetSelection=${widgetSelectionMetrics.latencyMs}ms (cached=${widgetSelectionMetrics.cached}), ors=${orsMetrics.latencyMs}ms, uispec=${uispecMetrics.latencyMs}ms, total=${totalLatency}ms`);
+
+    return c.json({
+      success: true,
+      uiSpec,
+      ors,
+      widgetSelectionResult: widgetSelectionResult.result.data,
+      mode: 'widget',
+      generationId,
+      generation: {
+        model: 'gemini-2.5-flash-lite',
+        generatedAt: new Date().toISOString(),
+        processingTimeMs: totalLatency,
+        promptTokens: (orsLLMResult.metrics?.inputTokens || 0) + (uispecLLMResult.metrics?.inputTokens || 0),
+        responseTokens: (orsLLMResult.metrics?.outputTokens || 0) + (uispecLLMResult.metrics?.outputTokens || 0),
+        totalTokens,
+        stages: {
+          widgetSelection: widgetSelectionMetrics,
+          orsGeneration: orsMetrics,
+          uispecGeneration: uispecMetrics,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('❌ UISpec v4 generation error:', error);
 
     return c.json(
       {

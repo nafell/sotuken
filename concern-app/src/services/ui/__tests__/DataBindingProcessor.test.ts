@@ -21,12 +21,13 @@ describe('DataBindingProcessor', () => {
       metadata: {
         sessionId: 'test-session',
         stage: 'diverge',
-        createdAt: Date.now(),
+        generatedAt: Date.now(),
+        llmModel: 'test',
       },
       entities: [
         {
           id: 'concern',
-          type: 'primary',
+          type: 'concern',
           attributes: [
             {
               name: 'text',
@@ -44,7 +45,7 @@ describe('DataBindingProcessor', () => {
         },
         {
           id: 'emotion',
-          type: 'secondary',
+          type: 'widget_data',
           attributes: [
             {
               name: 'selected',
@@ -57,7 +58,7 @@ describe('DataBindingProcessor', () => {
         },
         {
           id: 'reference',
-          type: 'secondary',
+          type: 'widget_data',
           attributes: [
             {
               name: 'pointer',
@@ -213,12 +214,13 @@ describe('DataBindingProcessor', () => {
         metadata: {
           sessionId: 'test',
           stage: 'diverge',
-          createdAt: Date.now(),
+          generatedAt: Date.now(),
+          llmModel: 'test',
         },
         entities: [
           {
             id: 'a',
-            type: 'primary',
+            type: 'widget_data',
             attributes: [
               {
                 name: 'ref',
@@ -229,7 +231,7 @@ describe('DataBindingProcessor', () => {
           },
           {
             id: 'b',
-            type: 'primary',
+            type: 'widget_data',
             attributes: [
               {
                 name: 'ref',
@@ -286,12 +288,13 @@ describe('DataBindingProcessor', () => {
         metadata: {
           sessionId: 'test-session',
           stage: 'organize',
-          createdAt: Date.now(),
+          generatedAt: Date.now(),
+          llmModel: 'test',
         },
         entities: [
           {
             id: 'concern',
-            type: 'primary',
+            type: 'concern',
             attributes: [
               {
                 name: 'text',

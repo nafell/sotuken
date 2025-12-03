@@ -79,6 +79,7 @@ export interface UISpecV3GenerationResponse {
   uiSpec?: any;
   textSummary?: string;
   mode?: 'widget' | 'text';
+  generationId?: string;
   generation?: {
     model: string;
     generatedAt: string;
@@ -94,6 +95,96 @@ export interface UISpecV3GenerationResponse {
     retryCount?: number;
   };
   metrics?: any;
+}
+
+/**
+ * UISpec v4生成オプション (DSL v4 Phase 8)
+ */
+export interface UISpecV4GenerationOptions {
+  /** 前ステージの結果（コンテキスト用） */
+  previousStageResults?: Record<string, any>;
+  /** ボトルネック情報 */
+  bottleneckType?: string;
+  /** Reactivity有効化（デフォルト: true） */
+  enableReactivity?: boolean;
+}
+
+/**
+ * UISpec v4生成レスポンス (DSL v4 Phase 8)
+ */
+export interface UISpecV4GenerationResponse {
+  success: boolean;
+  uiSpec?: any;
+  ors?: any;
+  widgetSelectionResult?: any;
+  stageSelection?: any;
+  mode?: 'widget';
+  generationId?: string;
+  generation?: {
+    model: string;
+    generatedAt: string;
+    processingTimeMs: number;
+    promptTokens: number;
+    responseTokens: number;
+    totalTokens: number;
+    cached?: boolean;
+    stages?: {
+      widgetSelection?: { latencyMs: number; cached: boolean };
+      orsGeneration?: { latencyMs: number };
+      uispecGeneration?: { latencyMs: number };
+    };
+  };
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+
+/**
+ * Widget選定レスポンス (DSL v4 Phase 8)
+ */
+export interface WidgetSelectionResponse {
+  success: boolean;
+  widgetSelectionResult?: any;
+  generationId?: string;
+  generation?: {
+    model: string;
+    generatedAt: string;
+    processingTimeMs: number;
+    cached: boolean;
+  };
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+
+/**
+ * ステージ実行レスポンス (DSL v4 Phase 8)
+ */
+export interface StageExecutionResponse {
+  success: boolean;
+  uiSpec?: any;
+  ors?: any;
+  stageSelection?: any;
+  mode?: 'widget';
+  generationId?: string;
+  generation?: {
+    model: string;
+    generatedAt: string;
+    processingTimeMs: number;
+    promptTokens: number;
+    responseTokens: number;
+    totalTokens: number;
+    stages?: {
+      orsGeneration: { latencyMs: number };
+      uispecGeneration: { latencyMs: number };
+    };
+  };
+  error?: {
+    code: string;
+    message: string;
+  };
 }
 
 export class ApiService {
@@ -255,6 +346,195 @@ export class ApiService {
       return result;
     } catch (error) {
       console.error('❌ UISpec v3生成ネットワークエラー:', error);
+      return {
+        success: false,
+        error: {
+          code: 'NETWORK_ERROR',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        },
+      };
+    }
+  }
+
+  /**
+   * UISpec v4生成API (DSL v4 Phase 8)
+   * 3段階LLM呼び出しによるUISpec生成
+   */
+  async generateUIV4(
+    concernText: string,
+    stage: 'diverge' | 'organize' | 'converge' | 'summary' = 'diverge',
+    sessionId?: string,
+    factors?: FactorsDict,
+    options?: UISpecV4GenerationOptions
+  ): Promise<UISpecV4GenerationResponse> {
+    console.log('🎨 UISpec v4生成リクエスト送信開始');
+    console.log('📄 concernText:', concernText);
+    console.log('🎯 stage:', stage);
+    if (options?.bottleneckType) {
+      console.log('🔍 bottleneckType:', options.bottleneckType);
+    }
+
+    const requestBody = {
+      sessionId: sessionId || this.generateSessionId(),
+      concernText,
+      stage,
+      factors,
+      options,
+    };
+
+    try {
+      const response = await fetch(`${this.baseUrl}/ui/generate-v4`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-ID': this.anonymousUserId,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const result: UISpecV4GenerationResponse = await response.json();
+
+      if (!response.ok || !result.success) {
+        console.error('❌ UISpec v4生成エラー:', result.error);
+        return result;
+      }
+
+      console.log(`✅ UISpec v4生成成功:`, result);
+      console.log('📊 メトリクス:', {
+        mode: result.mode,
+        model: result.generation?.model,
+        processingTimeMs: result.generation?.processingTimeMs,
+        promptTokens: result.generation?.promptTokens,
+        responseTokens: result.generation?.responseTokens,
+        totalTokens: result.generation?.totalTokens,
+        stages: result.generation?.stages,
+      });
+
+      return result;
+    } catch (error) {
+      console.error('❌ UISpec v4生成ネットワークエラー:', error);
+      return {
+        success: false,
+        error: {
+          code: 'NETWORK_ERROR',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        },
+      };
+    }
+  }
+
+  /**
+   * Widget選定API (DSL v4 Phase 8)
+   * Plan Preview用 - Widget選定のみ実行
+   */
+  async generateWidgetSelection(
+    concernText: string,
+    sessionId?: string,
+    options?: UISpecV4GenerationOptions
+  ): Promise<WidgetSelectionResponse> {
+    console.log('🔍 Widget Selection リクエスト送信開始');
+    console.log('📄 concernText:', concernText);
+    if (options?.bottleneckType) {
+      console.log('🔍 bottleneckType:', options.bottleneckType);
+    }
+
+    const requestBody = {
+      sessionId: sessionId || this.generateSessionId(),
+      concernText,
+      options,
+    };
+
+    try {
+      const response = await fetch(`${this.baseUrl}/ui/generate-v4-widgets`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-ID': this.anonymousUserId,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const result: WidgetSelectionResponse = await response.json();
+
+      if (!response.ok || !result.success) {
+        console.error('❌ Widget Selection エラー:', result.error);
+        return result;
+      }
+
+      console.log(`✅ Widget Selection 成功:`, result);
+      console.log('📊 メトリクス:', {
+        model: result.generation?.model,
+        processingTimeMs: result.generation?.processingTimeMs,
+        cached: result.generation?.cached,
+      });
+
+      return result;
+    } catch (error) {
+      console.error('❌ Widget Selection ネットワークエラー:', error);
+      return {
+        success: false,
+        error: {
+          code: 'NETWORK_ERROR',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        },
+      };
+    }
+  }
+
+  /**
+   * ステージ実行API (DSL v4 Phase 8)
+   * Plan実行用 - ORS + UISpec生成のみ
+   */
+  async generateStageUI(
+    concernText: string,
+    stage: 'diverge' | 'organize' | 'converge' | 'summary',
+    sessionId?: string,
+    options?: UISpecV4GenerationOptions
+  ): Promise<StageExecutionResponse> {
+    console.log('🎨 Stage Execution リクエスト送信開始');
+    console.log('📄 concernText:', concernText);
+    console.log('🎯 stage:', stage);
+    if (options?.bottleneckType) {
+      console.log('🔍 bottleneckType:', options.bottleneckType);
+    }
+
+    const requestBody = {
+      sessionId: sessionId || this.generateSessionId(),
+      concernText,
+      stage,
+      options,
+    };
+
+    try {
+      const response = await fetch(`${this.baseUrl}/ui/generate-v4-stage`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-ID': this.anonymousUserId,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const result: StageExecutionResponse = await response.json();
+
+      if (!response.ok || !result.success) {
+        console.error('❌ Stage Execution エラー:', result.error);
+        return result;
+      }
+
+      console.log(`✅ Stage ${stage} Execution 成功:`, result);
+      console.log('📊 メトリクス:', {
+        model: result.generation?.model,
+        processingTimeMs: result.generation?.processingTimeMs,
+        promptTokens: result.generation?.promptTokens,
+        responseTokens: result.generation?.responseTokens,
+        totalTokens: result.generation?.totalTokens,
+        stages: result.generation?.stages,
+      });
+
+      return result;
+    } catch (error) {
+      console.error('❌ Stage Execution ネットワークエラー:', error);
       return {
         success: false,
         error: {

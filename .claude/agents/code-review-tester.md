@@ -1,7 +1,7 @@
 ---
 name: code-review-tester
 description: Use this agent when: (1) The user has just completed writing a logical chunk of code (e.g., a new function, component, API endpoint, or feature) and needs it reviewed, (2) The user explicitly requests code review or testing, (3) The user mentions wanting to check if their implementation works correctly, (4) The user asks to create or run tests for recent changes. Examples:\n\n<example>\nContext: User just implemented a new API endpoint for concern submission\nuser: "I've added a new POST /api/concerns endpoint. Can you check if it looks good?"\nassistant: "I'll use the code-review-tester agent to review your new endpoint implementation and create tests for it."\n<Task tool invocation to launch code-review-tester agent>\n</example>\n\n<example>\nContext: User completed a React component for displaying context factors\nuser: "Just finished the ContextFactorDisplay component"\nassistant: "Let me review that component and create appropriate tests for it using the code-review-tester agent."\n<Task tool invocation to launch code-review-tester agent>\n</example>\n\n<example>\nContext: User made changes to the database schema\nuser: "Updated the Events table schema to add a new field"\nassistant: "I'll launch the code-review-tester agent to review your schema changes and verify they work correctly with migrations."\n<Task tool invocation to launch code-review-tester agent>\n</example>
-model: sonnet
+model: opus
 color: purple
 ---
 

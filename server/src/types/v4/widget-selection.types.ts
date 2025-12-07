@@ -18,28 +18,35 @@ import type { DICT, SVAL, StageType } from './ors.types';
 /**
  * Widgetコンポーネント種別
  *
- * v4で利用可能な13種のWidget
- * （stage_summaryはv4で追加）
+ * v3実装済みの12種のWidget
+ * v4未実装のWidgetはコメントアウト
  */
 export type WidgetComponentType =
-  // Divergeステージ
+  // Divergeステージ（v3実装済み）
   | 'emotion_palette'
   | 'brainstorm_cards'
-  | 'concern_map'
-  | 'free_writing'
-  // Organizeステージ
+  | 'mind_map'
+  | 'question_card_chain'
+  // | 'concern_map'          // v4未実装
+  // | 'free_writing'         // v4未実装
+  // Organizeステージ（v3実装済み）
   | 'card_sorting'
   | 'matrix_placement'
-  | 'timeline_view'
-  // Convergeステージ
+  | 'dependency_mapping'
+  | 'swot_analysis'
+  | 'timeline_slider'
+  // | 'timeline_view'        // v4未実装
+  // Convergeステージ（v3実装済み）
   | 'priority_slider_grid'
-  | 'decision_balance'
-  | 'action_cards'
-  // Summaryステージ
-  | 'summary_view'
-  | 'export_options'
-  // 共通（v4追加）
-  | 'stage_summary';
+  | 'tradeoff_balance'
+  // | 'decision_balance'     // v4未実装
+  // | 'action_cards'         // v4未実装
+  // Summaryステージ（v3実装済み）
+  | 'structured_summary';
+  // | 'summary_view'         // v4未実装
+  // | 'export_options'       // v4未実装
+  // 共通（v4追加、未実装）
+  // | 'stage_summary'        // v4未実装
 
 // =============================================================================
 // Selected Widget
@@ -341,22 +348,27 @@ export function getTotalWidgetCount(result: WidgetSelectionResult): number {
 
 /**
  * WidgetComponentTypeの型ガード
+ *
+ * v3実装済みWidgetのみを有効な型として判定
  */
 export function isWidgetComponentType(value: unknown): value is WidgetComponentType {
   const validTypes: WidgetComponentType[] = [
+    // Diverge（v3実装済み）
     'emotion_palette',
     'brainstorm_cards',
-    'concern_map',
-    'free_writing',
+    'mind_map',
+    'question_card_chain',
+    // Organize（v3実装済み）
     'card_sorting',
     'matrix_placement',
-    'timeline_view',
+    'dependency_mapping',
+    'swot_analysis',
+    'timeline_slider',
+    // Converge（v3実装済み）
     'priority_slider_grid',
-    'decision_balance',
-    'action_cards',
-    'summary_view',
-    'export_options',
-    'stage_summary',
+    'tradeoff_balance',
+    // Summary（v3実装済み）
+    'structured_summary',
   ];
   return typeof value === 'string' && validTypes.includes(value as WidgetComponentType);
 }

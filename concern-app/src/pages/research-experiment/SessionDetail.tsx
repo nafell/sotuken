@@ -197,6 +197,51 @@ export default function SessionDetail() {
             <p style={styles.concernText}>{session.concernText}</p>
           </div>
 
+          {/* Experiment Errors Section */}
+          {session.contextFactors?.experimentErrors && session.contextFactors.experimentErrors.length > 0 && (
+            <div style={styles.card}>
+              <h3 style={{ ...styles.cardTitle, color: '#DC2626' }}>
+                Experiment Errors ({session.contextFactors.experimentErrors.length})
+              </h3>
+              <div style={{
+                backgroundColor: '#FEF2F2',
+                border: '1px solid #FECACA',
+                borderRadius: '8px',
+                padding: '12px'
+              }}>
+                <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                  {session.contextFactors.experimentErrors.map((err: {
+                    type: string;
+                    message: string;
+                    stage?: string;
+                    timestamp: number;
+                    recoverable: boolean;
+                    details?: Record<string, unknown>;
+                  }, i: number) => (
+                    <li key={i} style={{
+                      marginBottom: '12px',
+                      color: err.recoverable ? '#B45309' : '#B91C1C',
+                      padding: '8px',
+                      backgroundColor: err.recoverable ? '#FEF3C7' : '#FEE2E2',
+                      borderRadius: '4px'
+                    }}>
+                      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                        [{err.type}] {err.message}
+                        {err.recoverable && <span style={{ marginLeft: '8px', fontSize: '11px', color: '#059669' }}>(Recoverable)</span>}
+                      </div>
+                      {err.stage && <div style={{ fontSize: '12px' }}>Stage: {err.stage}</div>}
+                      {err.details && (
+                        <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '4px' }}>
+                          Details: {JSON.stringify(err.details)}
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
           <div style={styles.card}>
             <h3 style={styles.cardTitle}>Context Factors</h3>
             <pre style={styles.jsonPre}>{formatJson(session.contextFactors)}</pre>

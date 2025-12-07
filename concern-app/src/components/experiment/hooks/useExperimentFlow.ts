@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { experimentApi } from '../../../services/ExperimentApiService';
-import type { Task } from '../types';
+import type { Task, ExperimentError } from '../types';
 import type { WidgetSelectionResult } from '../../../types/v4/widget-selection.types';
 
 export type FlowPhase = 'capture' | 'plan-preview' | 'plan' | 'breakdown' | 'complete';
@@ -12,6 +12,7 @@ export interface ExperimentFlowState {
     widgetSelectionResult: WidgetSelectionResult | null;
     planStageResults: Record<string, unknown>;
     breakdownTasks: Task[];
+    experimentErrors: ExperimentError[]; // 全ステージのエラーを集約
     isProcessing: boolean;
     error: string | null;
 }
@@ -39,9 +40,13 @@ export function useExperimentFlow({
         widgetSelectionResult: null,
         planStageResults: {},
         breakdownTasks: [],
+        experimentErrors: [],
         isProcessing: false,
         error: null
     });
+
+    // エラーをセッションに保存済みかどうか追跡
+    const errorsSavedRef = useRef(false);
 
     // 初期化: Expert/TechnicalモードでコンテキストがあればPlanPreviewフェーズから開始
     useEffect(() => {
@@ -110,6 +115,9 @@ export function useExperimentFlow({
     ) => {
         console.log(`✅ Plan stage complete: ${stage}`, { generationId, renderDuration });
 
+        // ステージのエラーをresultから抽出して集約
+        const stageErrors = (result.errors as ExperimentError[] | undefined) || [];
+
         // レンダリング時間の保存 (generationIdがある場合)
         if (generationId && renderDuration !== undefined) {
             try {
@@ -125,7 +133,8 @@ export function useExperimentFlow({
             planStageResults: {
                 ...prev.planStageResults,
                 [stage]: result
-            }
+            },
+            experimentErrors: [...prev.experimentErrors, ...stageErrors]
         }));
     }, []);
 
@@ -149,12 +158,33 @@ export function useExperimentFlow({
                 console.warn('Failed to aggregate generation metrics:', e);
             }
 
+            // 実験エラーがある場合はcontextFactorsに保存
+            // まず既存のcontextFactorsを取得
+            let contextFactorsUpdate: Record<string, unknown> | undefined;
+            if (state.experimentErrors.length > 0 && !errorsSavedRef.current) {
+                try {
+                    const session = await experimentApi.getSession(sessionId);
+                    const existingContextFactors = session.contextFactors || {};
+                    contextFactorsUpdate = {
+                        ...existingContextFactors,
+                        experimentErrors: state.experimentErrors
+                    };
+                    console.log(`Saving ${state.experimentErrors.length} experiment errors to session`);
+                } catch (e) {
+                    console.warn('Failed to get existing session context:', e);
+                    // 既存データ取得失敗時は新規で保存
+                    contextFactorsUpdate = { experimentErrors: state.experimentErrors };
+                }
+                errorsSavedRef.current = true;
+            }
+
             // 最終結果保存: generationSuccess, completedAt, メトリクスを設定
             await experimentApi.updateSession(sessionId, {
                 generationSuccess: true,
                 completedAt: new Date().toISOString(),
                 totalTokens: totalTokens || undefined,
-                totalLatencyMs: totalLatencyMs || undefined
+                totalLatencyMs: totalLatencyMs || undefined,
+                ...(contextFactorsUpdate ? { contextFactors: contextFactorsUpdate } : {})
             });
 
             setState(prev => ({
@@ -171,7 +201,7 @@ export function useExperimentFlow({
             console.error('Failed to complete breakdown phase:', error);
             setState(prev => ({ ...prev, isProcessing: false }));
         }
-    }, [sessionId, onComplete]);
+    }, [sessionId, onComplete, state.experimentErrors]);
 
     return {
         state,

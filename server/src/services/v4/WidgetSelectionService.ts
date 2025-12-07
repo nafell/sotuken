@@ -331,30 +331,31 @@ export class WidgetSelectionService {
     }
 
     // ボトルネック種別に応じたデフォルトWidget
+    // 注意: v3実装済みWidgetのみを使用
     const defaultWidgets: Record<string, Record<StageType, WidgetComponentType[]>> = {
       emotion: {
         diverge: ['emotion_palette', 'brainstorm_cards'],
         organize: ['card_sorting'],
         converge: ['priority_slider_grid'],
-        summary: ['summary_view'],
+        summary: ['structured_summary'],  // summary_view → structured_summary
       },
       thought: {
-        diverge: ['brainstorm_cards', 'concern_map'],
+        diverge: ['brainstorm_cards', 'mind_map'],  // concern_map → mind_map
         organize: ['matrix_placement'],
         converge: ['priority_slider_grid'],
-        summary: ['summary_view'],
+        summary: ['structured_summary'],
       },
       action: {
         diverge: ['brainstorm_cards'],
-        organize: ['timeline_view'],
-        converge: ['action_cards'],
-        summary: ['summary_view'],
+        organize: ['timeline_slider'],  // timeline_view → timeline_slider
+        converge: ['priority_slider_grid'],  // action_cards → priority_slider_grid
+        summary: ['structured_summary'],
       },
       decision: {
         diverge: ['brainstorm_cards'],
         organize: ['matrix_placement'],
-        converge: ['decision_balance'],
-        summary: ['summary_view'],
+        converge: ['tradeoff_balance'],  // decision_balance → tradeoff_balance
+        summary: ['structured_summary'],
       },
     };
 

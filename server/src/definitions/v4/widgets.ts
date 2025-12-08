@@ -51,6 +51,21 @@ export const EmotionPaletteDefinitionV4: WidgetDefinitionV4 = {
   summarizationPrompt: `選択された感情を「{emotion}({intensity}%)」形式でリスト化してください。
 強度が高い順に並べてください。
 {{state}}`,
+  generationHints: {
+    labels: {
+      field: 'emotions',
+      instruction:
+        'ユーザーの悩みの状況で抱きがちな感情を8個生成してください。各感情には適切な色（暖色＝ポジティブ、寒色＝ネガティブなど）を設定してください。',
+      count: 8,
+      schema: {
+        id: 'string (emotion_1, emotion_2, ...)',
+        label: 'string (日本語、2-4文字、例: 不安、焦り、期待)',
+        color: 'string (hex color, e.g., #FF6B6B)',
+        category: 'string (positive|negative|neutral)',
+        description: 'string (日本語、感情の説明、5-15文字)',
+      },
+    },
+  },
 };
 
 /**
@@ -810,6 +825,19 @@ export const SwotAnalysisDefinitionV4: WidgetDefinitionV4 = {
 【機会】: {items}
 【脅威】: {items}
 {{state}}`,
+  generationHints: {
+    samples: {
+      field: 'sampleItems',
+      instruction:
+        '悩みに関連するSWOT要素を各象限1つずつ（計4つ）生成してください。ユーザーの具体的な状況に合わせた内容にしてください。',
+      count: { min: 4, max: 4 },
+      schema: {
+        id: 'string (sample_s, sample_w, sample_o, sample_t)',
+        text: 'string (日本語、15-30文字)',
+        quadrant: 'string (strengths|weaknesses|opportunities|threats)',
+      },
+    },
+  },
 };
 
 /**
@@ -867,6 +895,20 @@ export const TradeoffBalanceDefinitionV4: WidgetDefinitionV4 = {
 【バランス】: {direction}（{balance}）
 【推奨】: {recommendation}
 {{state}}`,
+  generationHints: {
+    samples: {
+      field: 'items',
+      instruction:
+        '悩みに関連する比較対象を生成してください。左右それぞれ1-2個ずつ、計2-4個を生成します。ユーザーの具体的な状況に応じた選択肢を示してください。',
+      count: { min: 2, max: 4 },
+      schema: {
+        id: 'string (item_1, item_2, ...)',
+        text: 'string (日本語、10-20文字)',
+        side: 'string (left|right)',
+        weight: 'number (optional, 30-70程度の初期値)',
+      },
+    },
+  },
 };
 
 /**

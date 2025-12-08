@@ -782,10 +782,10 @@ generatedValueは、LLMが動的に生成するWidget内のコンテンツを定
 | A. ラベル・説明文 | UIの「枠」を埋めるもの | 感情ラベル、象限説明文 |
 | B. サンプルデータ | ユーザー入力の叩き台 | 初期カード、サンプル項目 |
 
-### 9.3 GenerationSpec（案）
+### 9.3 GeneratedValueSpec（案）
 
 ```typescript
-interface GenerationSpec {
+interface GeneratedValueSpec {
   type: 'label' | 'sample';
   instruction: string;              // LLMへの生成指示
   count?: number;                   // 生成数（サンプルの場合）

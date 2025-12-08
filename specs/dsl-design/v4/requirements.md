@@ -479,7 +479,7 @@ interface ValidationErrorLog {
 **課題**: generatedValue（LLM生成値）をORSのAttributeにどう組み込むか
 
 **検討方向**:
-- Attributeのメタデータ拡張として`generation`フィールドを追加
+- Attributeのメタデータ拡張として`generated`フィールドを追加
 - A（ラベル・説明文）とB（サンプルデータ）で異なる扱いが必要か
 
 ### 5.2 各Widgetのcomplexity値設定

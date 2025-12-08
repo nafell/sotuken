@@ -110,6 +110,9 @@ export interface ExperimentGeneration {
   generateDuration?: number;
 }
 
+/** LLMプロバイダー */
+export type LLMProvider = 'gemini' | 'azure';
+
 export interface ExperimentSettings {
   version: string;
   widgetCountConditions: Array<{
@@ -120,6 +123,7 @@ export interface ExperimentSettings {
   }>;
   modelConditions: Array<{
     id: string;
+    provider?: LLMProvider;
     modelId: string;
     description: string;
   }>;
@@ -130,6 +134,7 @@ export interface ExperimentSettings {
   }>;
   defaults: {
     widgetCount: number;
+    provider?: LLMProvider;
     modelId: string;
     experimentType: string;
   };

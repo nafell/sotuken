@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { db } from '../database/index';
 import { experimentGenerations } from '../database/schema';
 import { createGeminiService } from '../services/GeminiService';
+import { createAzureOpenAIService } from '../services/AzureOpenAIService';
 import {
   createUISpecGeneratorV3,
   type UISpecV3GenerationRequest,
@@ -16,9 +17,11 @@ import {
   createORSGeneratorService,
   createUISpecGeneratorV4,
   getMockWidgetSelectionService,
+  LLMOrchestrator,
 } from '../services/v4';
 import type { StageType as StageTypeV4, PlanORS } from '../types/v4/ors.types';
 import type { PlanUISpec } from '../types/v4/ui-spec.types';
+import type { LLMProvider, ModelConfig } from '../types/v4/llm-task.types';
 
 const uiRoutes = new Hono();
 
@@ -32,13 +35,15 @@ function getGeminiService() {
   return geminiService;
 }
 
-// V4 サービスインスタンス（遅延初期化）
-let v4Services: {
+// V4 サービスインスタンス（プロバイダー別キャッシュ）
+type V4ServicesType = {
   llmOrchestrator: ReturnType<typeof createLLMOrchestratorWithDefaultPrompts>;
   widgetSelectionService: ReturnType<typeof createWidgetSelectionService>;
   orsGeneratorService: ReturnType<typeof createORSGeneratorService>;
   uiSpecGeneratorV4: ReturnType<typeof createUISpecGeneratorV4>;
-} | null = null;
+};
+
+const v4ServicesCache = new Map<string, V4ServicesType>();
 
 // V4のWidget選定結果キャッシュ（セッション単位）
 const widgetSelectionCache = new Map<string, {
@@ -46,22 +51,59 @@ const widgetSelectionCache = new Map<string, {
   bottleneckType: string;
 }>();
 
-function getV4Services() {
-  if (!v4Services) {
+/**
+ * プロバイダーとモデルに応じたV4サービスを取得
+ * @param provider LLMプロバイダー（gemini または azure）
+ * @param modelId 使用するモデルID
+ */
+function getV4Services(provider: LLMProvider = 'gemini', modelId?: string): V4ServicesType {
+  const cacheKey = `${provider}:${modelId || 'default'}`;
+
+  if (!v4ServicesCache.has(cacheKey)) {
+    console.log(`🔧 Creating V4 services for provider: ${provider}, model: ${modelId || 'default'}`);
+
+    // タスク設定をカスタマイズ（指定プロバイダー/モデルを使用）
+    const taskConfigOverrides = modelId ? {
+      defaultModel: {
+        provider,
+        modelId,
+        temperature: 0.3,
+      } as ModelConfig,
+    } : undefined;
+
     // debug: true でV4パイプラインの詳細ログを出力
     const llmOrchestrator = createLLMOrchestratorWithDefaultPrompts({ debug: true });
+
+    // プロバイダーとモデルを指定してタスク設定を更新
+    if (taskConfigOverrides?.defaultModel) {
+      const taskTypes = ['capture_diagnosis', 'widget_selection', 'ors_generation', 'uispec_generation', 'summary_generation', 'plan_ors_generation', 'plan_uispec_generation'] as const;
+      for (const taskType of taskTypes) {
+        llmOrchestrator.updateTaskConfig(taskType, {
+          model: taskConfigOverrides.defaultModel,
+        });
+      }
+    }
+
     const widgetSelectionService = createWidgetSelectionService({ llmOrchestrator, debug: true });
     const orsGeneratorService = createORSGeneratorService({ llmOrchestrator });
     const uiSpecGeneratorV4 = createUISpecGeneratorV4({ llmOrchestrator });
 
-    v4Services = {
+    const services: V4ServicesType = {
       llmOrchestrator,
       widgetSelectionService,
       orsGeneratorService,
       uiSpecGeneratorV4,
     };
+
+    v4ServicesCache.set(cacheKey, services);
   }
-  return v4Services;
+
+  return v4ServicesCache.get(cacheKey)!;
+}
+
+// 後方互換性のためのデフォルトV4サービス取得（provider指定なし）
+function getDefaultV4Services(): V4ServicesType {
+  return getV4Services('gemini');
 }
 
 /**
@@ -697,10 +739,13 @@ uiRoutes.post('/generate-v4-widgets', async (c) => {
 
     const useMockWidgetSelection = body.options?.useMockWidgetSelection === true;
     const caseId = body.options?.caseId;
+    const provider: LLMProvider = body.options?.provider || 'gemini';
+    const modelId: string | undefined = body.options?.modelId;
 
     console.log(`🔍 Widget Selection request for session: ${body.sessionId}`);
     console.log(`📝 Concern: "${body.concernText.slice(0, 50)}..."`);
     console.log(`🧪 Mock mode: ${useMockWidgetSelection}, caseId: ${caseId || 'N/A'}`);
+    console.log(`🤖 Provider: ${provider}, Model: ${modelId || 'default'}`);
 
     const startTime = Date.now();
     const bottleneckType = body.options?.bottleneckType || 'thought';
@@ -792,7 +837,7 @@ uiRoutes.post('/generate-v4-widgets', async (c) => {
     }
 
     // 通常モード: LLMによるWidget選定
-    const services = getV4Services();
+    const services = getV4Services(provider, modelId);
 
     // キャッシュをチェック
     let widgetSelectionResult = widgetSelectionCache.get(body.sessionId);
@@ -835,7 +880,7 @@ uiRoutes.post('/generate-v4-widgets', async (c) => {
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.sessionId);
 
       if (isUuid) {
-        const gemini = getGeminiService();
+        const usedModelId = modelId || (provider === 'gemini' ? 'gemini-2.5-flash-lite' : 'gpt-51-global');
 
         const promptData = JSON.stringify({
           widgetSelection: {
@@ -843,6 +888,8 @@ uiRoutes.post('/generate-v4-widgets', async (c) => {
             inputParams: {
               concernText: body.concernText,
               bottleneckType,
+              provider,
+              modelId: usedModelId,
             },
           },
         });
@@ -850,7 +897,7 @@ uiRoutes.post('/generate-v4-widgets', async (c) => {
         const [inserted] = await db.insert(experimentGenerations).values({
           sessionId: body.sessionId,
           stage: 'widget_selection', // 特殊ステージ名
-          modelId: gemini.getModelName(),
+          modelId: usedModelId,
           prompt: promptData,
           generatedWidgetSelection: widgetSelectionResult.result.data,
           widgetSelectionTokens: (widgetSelectionResult.result.metrics?.inputTokens || 0) +
@@ -868,6 +915,7 @@ uiRoutes.post('/generate-v4-widgets', async (c) => {
       console.error('❌ Failed to save Widget Selection to DB:', dbError);
     }
 
+    const usedModelId = modelId || (provider === 'gemini' ? 'gemini-2.5-flash-lite' : 'gpt-51-global');
     console.log(`✅ Widget Selection completed in ${latencyMs}ms`);
 
     return c.json({
@@ -875,7 +923,8 @@ uiRoutes.post('/generate-v4-widgets', async (c) => {
       widgetSelectionResult: widgetSelectionResult.result.data,
       generationId,
       generation: {
-        model: 'gemini-2.5-flash-lite',
+        model: usedModelId,
+        provider,
         generatedAt: new Date().toISOString(),
         processingTimeMs: latencyMs,
         promptTokens: widgetSelectionResult.result.metrics?.inputTokens || 0,
@@ -1181,11 +1230,15 @@ uiRoutes.post('/generate-v4-plan', async (c) => {
       );
     }
 
+    const provider: LLMProvider = body.options?.provider || 'gemini';
+    const modelId: string | undefined = body.options?.modelId;
+
     console.log(`🎨 Plan Unified Generation request for session: ${body.sessionId}`);
     console.log(`📝 Concern: "${body.concernText.slice(0, 50)}..."`);
+    console.log(`🤖 Provider: ${provider}, Model: ${modelId || 'default'}`);
 
     const startTime = Date.now();
-    const services = getV4Services();
+    const services = getV4Services(provider, modelId);
     const bottleneckType = body.options?.bottleneckType || 'thought';
     const enableReactivity = body.options?.enableReactivity !== false;
 
@@ -1282,7 +1335,7 @@ uiRoutes.post('/generate-v4-plan', async (c) => {
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.sessionId);
 
       if (isUuid) {
-        const gemini = getGeminiService();
+        const usedModelId = modelId || (provider === 'gemini' ? 'gemini-2.5-flash-lite' : 'gpt-51-global');
 
         const promptData = JSON.stringify({
           planOrs: {
@@ -1291,6 +1344,8 @@ uiRoutes.post('/generate-v4-plan', async (c) => {
               concernText: body.concernText,
               bottleneckType,
               widgetSelection,
+              provider,
+              modelId: usedModelId,
             },
           },
           planUiSpec: {
@@ -1307,7 +1362,7 @@ uiRoutes.post('/generate-v4-plan', async (c) => {
         const [inserted] = await db.insert(experimentGenerations).values({
           sessionId: body.sessionId,
           stage: 'plan', // DSL v5 Plan統合ステージ
-          modelId: gemini.getModelName(),
+          modelId: usedModelId,
           prompt: promptData,
           generatedOrs: planOrs,
           generatedUiSpec: planUiSpec,
@@ -1329,6 +1384,7 @@ uiRoutes.post('/generate-v4-plan', async (c) => {
       console.error('❌ Failed to save Plan Generation to DB:', dbError);
     }
 
+    const usedModelId = modelId || (provider === 'gemini' ? 'gemini-2.5-flash-lite' : 'gpt-51-global');
     console.log(`✅ Plan Unified Generation completed`);
     console.log(`📊 Metrics: ors=${orsMetrics.latencyMs}ms, uispec=${uispecMetrics.latencyMs}ms, total=${totalLatency}ms`);
 
@@ -1340,7 +1396,8 @@ uiRoutes.post('/generate-v4-plan', async (c) => {
       mode: 'plan',
       generationId,
       generation: {
-        model: 'gemini-2.5-flash-lite',
+        model: usedModelId,
+        provider,
         generatedAt: new Date().toISOString(),
         processingTimeMs: totalLatency,
         promptTokens: (planOrsResult.metrics?.inputTokens || 0) + (planUiSpecResult.metrics?.inputTokens || 0),

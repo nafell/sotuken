@@ -19,6 +19,7 @@ import {
   DEFAULT_LLM_TASK_CONFIGS,
 } from '../../types/v4/llm-task.types';
 import { GeminiService, createGeminiService } from '../GeminiService';
+import { AzureOpenAIService, createAzureOpenAIService } from '../AzureOpenAIService';
 
 // V4プロンプトテンプレートをインポート
 import {
@@ -314,6 +315,9 @@ export class LLMOrchestrator {
     switch (model.provider) {
       case 'gemini':
         service = createGeminiService(model.modelId);
+        break;
+      case 'azure':
+        service = createAzureOpenAIService(model.modelId);
         break;
       case 'openai':
         // TODO: OpenAI サービスの実装

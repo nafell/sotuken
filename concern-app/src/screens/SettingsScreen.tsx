@@ -12,6 +12,7 @@
 import React, { useState, useEffect } from 'react';
 import { experimentService } from '../services/ClientExperimentService';
 import { db } from '../services/database/localDB';
+import type { LLMProvider } from '../services/ExperimentApiService';
 
 interface UserStats {
   totalTasksCreated: number;
@@ -27,6 +28,7 @@ export const SettingsScreen: React.FC = () => {
   const [assignedAt, setAssignedAt] = useState<Date | null>(null);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentProvider, setCurrentProvider] = useState<LLMProvider>('gemini');
 
   useEffect(() => {
     loadConditionAndStats();
@@ -195,6 +197,31 @@ export const SettingsScreen: React.FC = () => {
             </p>
             <p style={{ fontSize: '12px', color: '#7F1D1D', margin: 0 }}>
               以下の機能は開発時のテスト用です。本番環境では使用しないでください。
+            </p>
+          </div>
+
+          {/* LLMプロバイダー切り替え */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
+              LLM Provider
+            </label>
+            <select
+              value={currentProvider}
+              onChange={(e) => setCurrentProvider(e.target.value as LLMProvider)}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: '1px solid #D1D5DB',
+                width: '100%',
+                fontSize: '14px',
+                backgroundColor: 'white'
+              }}
+            >
+              <option value="gemini">Google AI Studio (Gemini)</option>
+              <option value="azure">Azure OpenAI</option>
+            </select>
+            <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+              現在選択中: {currentProvider === 'gemini' ? 'Gemini 2.5' : 'Azure GPT-5.1'}
             </p>
           </div>
 

@@ -26,6 +26,7 @@
     "drizzle-kit": "^0.31.4",
     "drizzle-orm": "^0.44.5",
     "hono": "^4.9.7",
+    "openai": "^6.10.0",
     "postgres": "^3.4.5",
     "zod": "^4.1.12"
   }

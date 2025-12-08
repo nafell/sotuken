@@ -1,11 +1,10 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useExperimentFlow } from './hooks/useExperimentFlow';
 import { ExperimentCapture } from './phases/ExperimentCapture';
-import { ExperimentPlan } from './phases/ExperimentPlan';
+import { ExperimentPlanUnified, type PlanUnifiedResult } from './phases/ExperimentPlanUnified';
 import { ExperimentBreakdown } from './phases/ExperimentBreakdown';
 import { PlanPreview } from '../v4/PlanPreview';
 import { apiService } from '../../services/api/ApiService';
-import type { PlanStage } from './types';
 import { createEmptyWidgetSelectionResult, type WidgetSelectionResult, type SkippedStages } from '../../types/v4/widget-selection.types';
 
 interface ExperimentExecutorProps {
@@ -22,8 +21,6 @@ interface ExperimentExecutorProps {
     caseId?: string;
 }
 
-const PLAN_STAGES: PlanStage[] = ['diverge', 'organize', 'converge', 'summary'];
-
 export function ExperimentExecutor({
     sessionId,
     mode,
@@ -37,8 +34,6 @@ export function ExperimentExecutor({
         initialContext,
         onComplete
     });
-
-    const [currentPlanStage, setCurrentPlanStage] = useState<PlanStage>('diverge');
 
     // PlanPreviewフェーズ用の状態
     const [planPreviewLoading, setPlanPreviewLoading] = useState(false);
@@ -95,22 +90,20 @@ export function ExperimentExecutor({
         }
     }, [state.currentPhase, state.concernText, state.bottleneckType, sessionId, widgetSelectionResult, planPreviewLoading, actions, useMockWidgetSelection, caseId]);
 
-    // Planフェーズのステージ遷移
-    const handleNextPlanStage = useCallback(() => {
-        const currentIndex = PLAN_STAGES.indexOf(currentPlanStage);
-        if (currentIndex < PLAN_STAGES.length - 1) {
-            setCurrentPlanStage(PLAN_STAGES[currentIndex + 1]);
-        } else {
-            actions.handlePlanComplete();
-        }
-    }, [currentPlanStage, actions]);
-
-    const handlePrevPlanStage = useCallback(() => {
-        const currentIndex = PLAN_STAGES.indexOf(currentPlanStage);
-        if (currentIndex > 0) {
-            setCurrentPlanStage(PLAN_STAGES[currentIndex - 1]);
-        }
-    }, [currentPlanStage]);
+    // Plan統合フェーズの結果ハンドラ
+    const handlePlanUnifiedResult = useCallback((
+        result: PlanUnifiedResult,
+        generationId?: string,
+        renderDuration?: number
+    ) => {
+        // フックのhandlePlanStageCompleteを使用してPlan統合結果を保存
+        actions.handlePlanStageComplete('plan', {
+            planUiSpec: result.planUiSpec,
+            planOrs: result.planOrs,
+            widgetResults: result.widgetResults,
+            errors: result.errors,
+        }, generationId, renderDuration);
+    }, [actions]);
 
     // PlanPreviewの確認ボタンハンドラ
     const handlePlanPreviewConfirm = useCallback((skippedStages: SkippedStages) => {
@@ -154,23 +147,17 @@ export function ExperimentExecutor({
 
             case 'plan':
                 return (
-                    <ExperimentPlan
+                    <ExperimentPlanUnified
                         sessionId={sessionId}
-                        mode={mode}
                         concernText={state.concernText}
-                        currentStage={currentPlanStage}
-                        stageResults={state.planStageResults}
                         bottleneckType={state.bottleneckType || undefined}
-                        skippedStages={state.skippedStages}
-                        onStageResult={actions.handlePlanStageComplete}
-                        onWidgetUpdate={(stage, result) => {
-                            // Widget更新は現状ログのみか、必要ならState更新
-                            console.log('Widget update:', stage, result);
+                        onPlanResult={handlePlanUnifiedResult}
+                        onWidgetUpdate={(widgetId, result) => {
+                            console.log('Widget update:', widgetId, result);
                         }}
-                        onNextStage={handleNextPlanStage}
-                        onPrevStage={handlePrevPlanStage}
-                        canGoNext={true} // 基本的にいつでも次へ行ける（生成済みなら）
-                        canGoPrev={PLAN_STAGES.indexOf(currentPlanStage) > 0}
+                        onComplete={actions.handlePlanComplete}
+                        onBack={actions.handlePlanPreviewCancel}
+                        mode={mode}
                     />
                 );
 

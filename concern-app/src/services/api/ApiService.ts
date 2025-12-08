@@ -195,6 +195,51 @@ export interface StageExecutionResponse {
   };
 }
 
+/**
+ * Plan統合生成オプション (DSL v5)
+ */
+export interface PlanGenerationOptions {
+  /** ボトルネック情報 */
+  bottleneckType?: string;
+  /** Reactivity有効化（デフォルト: true） */
+  enableReactivity?: boolean;
+  /** モックWidget選定を使用（テストケースのexpectedFlowを使用） */
+  useMockWidgetSelection?: boolean;
+  /** テストケースID（モックモード時必須） */
+  caseId?: string;
+}
+
+/**
+ * Plan統合生成レスポンス (DSL v5)
+ */
+export interface PlanGenerationResponse {
+  success: boolean;
+  /** PlanUISpec（3セクション含む） */
+  planUiSpec?: any;
+  /** PlanORS（3セクション分のデータ構造） */
+  planOrs?: any;
+  /** Widget選定結果 */
+  widgetSelectionResult?: any;
+  mode?: 'plan';
+  generationId?: string;
+  generation?: {
+    model: string;
+    generatedAt: string;
+    processingTimeMs: number;
+    promptTokens: number;
+    responseTokens: number;
+    totalTokens: number;
+    stages?: {
+      planOrsGeneration: { latencyMs: number };
+      planUiSpecGeneration: { latencyMs: number };
+    };
+  };
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+
 export class ApiService {
   private static instance: ApiService | null = null;
   private baseUrl: string;
@@ -546,6 +591,72 @@ export class ApiService {
       return result;
     } catch (error) {
       console.error('❌ Stage Execution ネットワークエラー:', error);
+      return {
+        success: false,
+        error: {
+          code: 'NETWORK_ERROR',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        },
+      };
+    }
+  }
+
+  /**
+   * Plan統合生成API (DSL v5)
+   * Planフェーズ全体（diverge/organize/converge）を1ページとして生成
+   * 3セクション分のORS + UISpecを一括生成
+   */
+  async generatePlanUI(
+    concernText: string,
+    sessionId?: string,
+    options?: PlanGenerationOptions
+  ): Promise<PlanGenerationResponse> {
+    console.log('🎨 Plan Unified Generation リクエスト送信開始');
+    console.log('📄 concernText:', concernText);
+    if (options?.bottleneckType) {
+      console.log('🔍 bottleneckType:', options.bottleneckType);
+    }
+    if (options?.enableReactivity !== undefined) {
+      console.log('⚡ enableReactivity:', options.enableReactivity);
+    }
+
+    const requestBody = {
+      sessionId: sessionId || this.generateSessionId(),
+      concernText,
+      options,
+    };
+
+    try {
+      const response = await fetch(`${this.baseUrl}/ui/generate-v4-plan`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-ID': this.anonymousUserId,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const result: PlanGenerationResponse = await response.json();
+
+      if (!response.ok || !result.success) {
+        console.error('❌ Plan Unified Generation エラー:', result.error);
+        return result;
+      }
+
+      console.log(`✅ Plan Unified Generation 成功:`, result);
+      console.log('📊 メトリクス:', {
+        mode: result.mode,
+        model: result.generation?.model,
+        processingTimeMs: result.generation?.processingTimeMs,
+        promptTokens: result.generation?.promptTokens,
+        responseTokens: result.generation?.responseTokens,
+        totalTokens: result.generation?.totalTokens,
+        stages: result.generation?.stages,
+      });
+
+      return result;
+    } catch (error) {
+      console.error('❌ Plan Unified Generation ネットワークエラー:', error);
       return {
         success: false,
         error: {

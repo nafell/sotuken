@@ -18,6 +18,7 @@ export default function ExpertModeConfig() {
     const [selectedCaseId, setSelectedCaseId] = useState('');
     const [widgetCount, setWidgetCount] = useState(12);
     const [modelId, setModelId] = useState('gemini-2.5-flash-lite');
+    const [useMockWidgetSelection, setUseMockWidgetSelection] = useState(false);
 
     useEffect(() => {
         async function loadData() {
@@ -44,7 +45,7 @@ export default function ExpertModeConfig() {
         if (!selectedCaseId || !evaluatorId) return;
 
         navigate(
-            `/research-experiment/execute/${selectedCaseId}?mode=expert&model=${modelId}&widgets=${widgetCount}&evaluator=${evaluatorId}`
+            `/research-experiment/execute/${selectedCaseId}?mode=expert&model=${modelId}&widgets=${widgetCount}&evaluator=${evaluatorId}&useMock=${useMockWidgetSelection}`
         );
     };
 
@@ -102,6 +103,20 @@ export default function ExpertModeConfig() {
                                 ))}
                             </select>
                         </div>
+                    </div>
+                    <div style={styles.formGroup}>
+                        <label style={styles.checkboxLabel}>
+                            <input
+                                type="checkbox"
+                                checked={useMockWidgetSelection}
+                                onChange={e => setUseMockWidgetSelection(e.target.checked)}
+                                style={styles.checkbox}
+                            />
+                            モックWidget選定を使用
+                        </label>
+                        <p style={styles.hint}>
+                            有効にすると、LLM呼び出しをスキップしてテストケースのexpectedFlowを使用します。
+                        </p>
                     </div>
                 </div>
 
@@ -168,5 +183,8 @@ const styles: Record<string, React.CSSProperties> = {
     previewText: { fontSize: '14px', color: '#111827', marginBottom: '8px', whiteSpace: 'pre-wrap' },
     previewMeta: { fontSize: '12px', color: '#4B5563', fontStyle: 'italic' },
     actions: { textAlign: 'right' },
-    startButton: { padding: '12px 24px', backgroundColor: '#7C3AED', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 600 }
+    startButton: { padding: '12px 24px', backgroundColor: '#7C3AED', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 600 },
+    checkbox: { marginRight: '8px' },
+    checkboxLabel: { display: 'flex', alignItems: 'center', fontSize: '14px', fontWeight: 500, color: '#374151', cursor: 'pointer' },
+    hint: { fontSize: '12px', color: '#6B7280', margin: '4px 0 0 24px' }
 };

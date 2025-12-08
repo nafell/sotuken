@@ -17,6 +17,7 @@ export default function TechnicalModeConfig() {
     const [selectedCaseIds, setSelectedCaseIds] = useState<Set<string>>(new Set());
     const [widgetCount, setWidgetCount] = useState(12);
     const [modelId, setModelId] = useState('gemini-2.5-flash-lite');
+    const [useMockWidgetSelection, setUseMockWidgetSelection] = useState(false);
 
     useEffect(() => {
         async function loadData() {
@@ -68,7 +69,7 @@ export default function TechnicalModeConfig() {
 
         // Pass configuration via state or URL params
         // In a real implementation, we might create a "BatchSession" here
-        navigate(`/research-experiment/execute/${firstCaseId}?mode=technical&model=${modelId}&widgets=${widgetCount}`);
+        navigate(`/research-experiment/execute/${firstCaseId}?mode=technical&model=${modelId}&widgets=${widgetCount}&useMock=${useMockWidgetSelection}`);
     };
 
     if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading...</div>;
@@ -107,6 +108,21 @@ export default function TechnicalModeConfig() {
                                 <option key={c.id} value={c.widgetCount}>{c.widgetCount} Widgets - {c.description}</option>
                             ))}
                         </select>
+                    </div>
+                    <div style={styles.formGroup}>
+                        <label style={styles.checkboxLabel}>
+                            <input
+                                type="checkbox"
+                                checked={useMockWidgetSelection}
+                                onChange={e => setUseMockWidgetSelection(e.target.checked)}
+                                style={styles.checkbox}
+                            />
+                            モックWidget選定を使用
+                        </label>
+                        <p style={styles.hint}>
+                            有効にすると、LLM呼び出しをスキップしてテストケースのexpectedFlowを使用します。
+                            再現性の高いテストに有効です。
+                        </p>
                     </div>
                 </div>
 
@@ -178,5 +194,7 @@ const styles: Record<string, React.CSSProperties> = {
     caseTitle: { fontSize: '14px', fontWeight: 500 },
     textButton: { background: 'none', border: 'none', color: '#3B82F6', cursor: 'pointer', fontSize: '14px' },
     actions: { textAlign: 'right' },
-    startButton: { padding: '12px 24px', backgroundColor: '#0284C7', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 600 }
+    startButton: { padding: '12px 24px', backgroundColor: '#0284C7', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 600 },
+    checkboxLabel: { display: 'flex', alignItems: 'center', fontSize: '14px', fontWeight: 500, color: '#374151', cursor: 'pointer' },
+    hint: { fontSize: '12px', color: '#6B7280', margin: '4px 0 0 24px' }
 };

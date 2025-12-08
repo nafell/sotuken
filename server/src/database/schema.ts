@@ -150,6 +150,7 @@ export const experimentSessions = pgTable('experiment_sessions', {
   // 実験条件
   widgetCount: integer('widget_count').notNull(),
   modelId: text('model_id').notNull(),
+  useMockWidgetSelection: boolean('use_mock_widget_selection').default(false),
 
   // 入力データ
   concernText: text('concern_text').notNull(),

@@ -107,6 +107,10 @@ export interface UISpecV4GenerationOptions {
   bottleneckType?: string;
   /** Reactivity有効化（デフォルト: true） */
   enableReactivity?: boolean;
+  /** モックWidget選定を使用（テストケースのexpectedFlowを使用） */
+  useMockWidgetSelection?: boolean;
+  /** テストケースID（モックモード時必須） */
+  caseId?: string;
 }
 
 /**
@@ -152,6 +156,10 @@ export interface WidgetSelectionResponse {
     generatedAt: string;
     processingTimeMs: number;
     cached: boolean;
+    /** モックモードで生成された場合true */
+    isMock?: boolean;
+    promptTokens?: number;
+    responseTokens?: number;
   };
   error?: {
     code: string;
@@ -436,6 +444,9 @@ export class ApiService {
     console.log('📄 concernText:', concernText);
     if (options?.bottleneckType) {
       console.log('🔍 bottleneckType:', options.bottleneckType);
+    }
+    if (options?.useMockWidgetSelection) {
+      console.log('🎭 Mock mode enabled, caseId:', options.caseId);
     }
 
     const requestBody = {

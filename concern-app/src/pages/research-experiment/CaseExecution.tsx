@@ -59,6 +59,7 @@ export default function CaseExecution() {
   const urlModel = searchParams.get('model');
   const urlWidgets = searchParams.get('widgets');
   const urlEvaluator = searchParams.get('evaluator');
+  const useMockWidgetSelection = searchParams.get('useMock') === 'true';
 
   // userモード判定: caseId === 'custom' または mode=user
   const isUserMode = caseId === 'custom' || urlMode === 'user';
@@ -130,7 +131,8 @@ export default function CaseExecution() {
         widgetCount,
         modelId,
         concernText: isUserMode ? '(pending user input)' : testCase.concernText,
-        contextFactors: testCase.contextFactors
+        contextFactors: testCase.contextFactors,
+        useMockWidgetSelection: useMockWidgetSelection
       });
 
       setSession(newSession);
@@ -210,6 +212,8 @@ export default function CaseExecution() {
               bottleneckType: testCase.expectedBottlenecks?.[0]
             } : undefined)}
             onComplete={handleComplete}
+            useMockWidgetSelection={useMockWidgetSelection}
+            caseId={testCase?.caseId}
           />
         </ErrorBoundary>
       </div>

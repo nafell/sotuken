@@ -79,13 +79,13 @@ export interface ModelConfig {
 export const DEFAULT_MODEL_CONFIGS: Record<LLMTaskCategory, ModelConfig> = {
   general: {
     provider: 'gemini',
-    modelId: 'gemini-2.5-flash',
+    modelId: 'gemini-2.5-flash-lite',
     temperature: 0.7,
     maxTokens: 4096,
   },
   structured: {
     provider: 'gemini',
-    modelId: 'gemini-2.5-flash',
+    modelId: 'gemini-2.5-flash-lite',
     temperature: 0.3,
     maxTokens: 8192,
   },
@@ -188,12 +188,12 @@ export const EXPERIMENT_PATTERNS: ExperimentPattern[] = [
     description: '全タスクで同一モデルを使用',
     generalTaskModel: {
       provider: 'gemini',
-      modelId: 'gemini-2.5-flash',
+      modelId: 'gemini-2.5-flash-lite',
       temperature: 0.7,
     },
     structuredTaskModel: {
       provider: 'gemini',
-      modelId: 'gemini-2.5-flash',
+      modelId: 'gemini-2.5-flash-lite',
       temperature: 0.3,
     },
   },

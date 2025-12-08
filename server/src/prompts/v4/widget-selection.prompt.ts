@@ -80,7 +80,7 @@ export const WIDGET_SELECTION_PROMPT = `
   "totalEstimatedDuration": 1200,
   "metadata": {
     "generatedAt": ${Date.now()},
-    "llmModel": "gemini-2.5-flash",
+    "llmModel": "gemini-2.5-flash-lite",
     "bottleneckType": "{{bottleneckType}}"
   }
 }

@@ -202,7 +202,7 @@ generationHints.samplesが定義されている場合:
   },
   "metadata": {
     "generatedAt": ${Date.now()},
-    "llmModel": "gemini-2.5-flash"
+    "llmModel": "gemini-2.5-flash-lite"
   }
 }
 \`\`\`

@@ -1,45 +1,51 @@
 {
   "caseId": "case_02",
-  "title": "感情的ブロック（Reactivity活用）",
-  "complexity": "medium",
+  "title": "Passthrough W2WR（最も単純）",
+  "complexity": "simple",
   "hasReactivity": true,
 
-  "concernText": "新規事業を提案したいが、失敗したら評価が下がるのが怖い。でも今のままだとキャリアが停滞する",
+  "concernText": "転職活動中。候補企業をリストアップしたが、分類して整理したい",
 
   "contextFactors": {
     "category": "キャリア",
     "urgency": "medium",
-    "emotionalState": "anxious",
-    "timeAvailable": 45
+    "emotionalState": "focused",
+    "timeAvailable": 30
   },
 
   "expectedBottlenecks": [
-    "emotional_block",
-    "fear_of_decision"
+    "unorganized_info"
   ],
 
   "expectedFlow": {
     "diverge": {
-      "widgets": ["emotion_palette"],
-      "purpose": "不安の種類・強度を可視化"
+      "widgets": ["brainstorm_cards"],
+      "purpose": "候補企業をカードとして書き出す"
     },
     "organize": {
-      "widgets": ["timeline_slider"],
-      "purpose": "3ヶ月後/1年後/3年後での最悪・最高シナリオ入力"
+      "widgets": ["card_sorting"],
+      "purpose": "企業を業界・条件別に分類"
     },
     "converge": {
-      "widgets": ["tradeoff_balance"],
-      "purpose": "リスク要因の重み付け → 天秤のバランス表示",
-      "reactivity": {
-        "description": "リスク要因スライダー → 天秤がリアルタイムで傾く",
-        "sourceWidget": "risk_sliders",
-        "targetWidget": "balance_display"
-      }
+      "widgets": ["priority_slider_grid"],
+      "purpose": "分類結果をもとに優先度を設定"
     }
   },
 
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "card_sorting.cards",
+        "relationship": { "type": "passthrough" },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
   "evaluationCriteria": [
-    "感情ブロックへの対処の適切性",
-    "Reactivityが不安の定量化に寄与しているか"
+    "source/target portの正確性",
+    "passthrough relationshipの適切な選択",
+    "updateMode: realtimeの設定"
   ]
 }

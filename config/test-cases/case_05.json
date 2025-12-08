@@ -1,45 +1,55 @@
 {
   "caseId": "case_05",
-  "title": "優先順位がつけられない（Reactivity活用）",
+  "title": "Converge WidgetへのW2WR",
   "complexity": "medium",
   "hasReactivity": true,
 
-  "concernText": "プロジェクトが5個同時進行。どれも重要だがリソースが足りない。何を優先すべきか",
+  "concernText": "引越し先を検討中。候補地の長所短所を分類してから、最終的にトレードオフを比較したい",
 
   "contextFactors": {
-    "category": "仕事",
-    "urgency": "high",
-    "emotionalState": "stressed",
-    "timeAvailable": 30
+    "category": "生活",
+    "urgency": "medium",
+    "emotionalState": "analytical",
+    "timeAvailable": 45
   },
 
   "expectedBottlenecks": [
     "cannot_prioritize",
-    "multiple_issues"
+    "fear_of_decision"
   ],
 
   "expectedFlow": {
     "diverge": {
       "widgets": ["brainstorm_cards"],
-      "purpose": "各プロジェクトの重要性を列挙"
+      "purpose": "候補地のメリット・デメリットを書き出す"
     },
     "organize": {
-      "widgets": ["dependency_mapping"],
-      "purpose": "プロジェクト間の依存関係を可視化"
+      "widgets": ["card_sorting"],
+      "purpose": "メリット/デメリットにカテゴリ分け"
     },
     "converge": {
-      "widgets": ["priority_slider_grid"],
-      "purpose": "複数軸スライダー → 優先順位ランキング自動更新",
-      "reactivity": {
-        "description": "緊急度/重要度/工数/影響範囲スライダー → ランキング・リソース配分提案",
-        "sourceWidget": "multi_axis_sliders",
-        "targetWidget": "priority_ranking"
-      }
+      "widgets": ["tradeoff_balance"],
+      "purpose": "分類結果を天秤で比較"
     }
   },
 
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "card_sorting.categories",
+        "target": "tradeoff_balance.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "Object.entries(source).flatMap(([cat, items]) => items.map(i => ({text: i.text, side: cat === 'メリット' ? 'left' : 'right'})))"
+        },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
   "evaluationCriteria": [
-    "多軸評価の適切性",
-    "Reactivityが意思決定を助けているか"
+    "organize → converge ステージ間連携",
+    "カテゴリ→side変換の論理性",
+    "tradeoff_balanceのitems形式への適合"
   ]
 }

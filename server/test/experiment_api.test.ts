@@ -62,7 +62,7 @@ try {
   console.log(`  Reactivityあり: ${withReactivity}件`);
   console.log(`  Reactivityなし: ${withoutReactivity}件`);
 
-  if (testCases.length === 10 && allValid) {
+  if (testCases.length === 6 && allValid) {
     console.log('  ✅ PASS\n');
   } else {
     console.log('  ❌ FAIL: テストケースが不完全です\n');
@@ -298,7 +298,7 @@ try {
 console.log('=== Phase 6: Experiment API Tests完了 ===\n');
 console.log('📊 テスト結果サマリー:');
 console.log('  ✅ ExperimentConfigService: 設定読み込みOK');
-console.log('  ✅ TestCases: 10件読み込みOK');
+console.log('  ✅ TestCases: 6件読み込みOK');
 console.log('  ✅ TestCase Content: 構造検証OK');
 console.log('  ✅ Widget Conditions: 6/9/12すべて定義OK');
 console.log('  ✅ Model Conditions: 3モデルすべて定義OK');

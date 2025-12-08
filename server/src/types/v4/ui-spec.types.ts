@@ -523,3 +523,217 @@ export function isGeneratedContentContainer(value: unknown): value is GeneratedC
     v.isGenerated === true
   );
 }
+
+// =============================================================================
+// PlanUISpec Types (v5.0)
+// =============================================================================
+
+/**
+ * セクションタイプ
+ * Planフェーズの3セクション
+ *
+ * @since DSL v5.0
+ */
+export type SectionType = 'diverge' | 'organize' | 'converge';
+
+/**
+ * セクションヘッダー
+ *
+ * @since DSL v5.0
+ */
+export interface SectionHeader {
+  /** セクションタイトル（例: "発散", "整理", "収束"） */
+  title: string;
+  /** セクション説明文 */
+  description: string;
+}
+
+/**
+ * セクション仕様
+ *
+ * PlanUISpec内の各セクション（diverge/organize/converge）の仕様
+ *
+ * @since DSL v5.0
+ */
+export interface SectionSpec {
+  /** セクションヘッダー */
+  header: SectionHeader;
+  /** セクション内のWidget配列 */
+  widgets: WidgetSpec[];
+}
+
+/**
+ * Planレイアウト
+ *
+ * @since DSL v5.0
+ */
+export interface PlanLayout {
+  /** レイアウトタイプ（固定: 'sectioned'） */
+  type: 'sectioned';
+  /** セクション間のギャップ（px） */
+  sectionGap: number;
+  /** セクション順序 */
+  sectionOrder?: SectionType[];
+}
+
+/**
+ * PlanUISpec
+ *
+ * DSL v5.0で追加されたPlanフェーズ用のUISpec。
+ * diverge/organize/convergeの3セクションを1ページに統合。
+ *
+ * @since DSL v5.0
+ */
+export interface PlanUISpec {
+  /** UISpecバージョン */
+  version: '5.0';
+
+  /** セッションID */
+  sessionId: string;
+
+  /** ステージ（固定: 'plan'） */
+  stage: 'plan';
+
+  /** 3セクション構造 */
+  sections: {
+    diverge: SectionSpec;
+    organize: SectionSpec;
+    converge: SectionSpec;
+  };
+
+  /**
+   * セクション横断のReactiveBinding
+   * diverge→organize→converge間のW2WRを定義
+   */
+  reactiveBindings: ReactiveBindingSpec;
+
+  /** Planレイアウト */
+  layout: PlanLayout;
+
+  /** メタデータ */
+  metadata: UISpecMetadata;
+}
+
+/**
+ * 空のPlanUISpecを作成
+ *
+ * @since DSL v5.0
+ */
+export function createEmptyPlanUISpec(
+  sessionId: string,
+  llmModel: string
+): PlanUISpec {
+  const emptySection: SectionSpec = {
+    header: { title: '', description: '' },
+    widgets: [],
+  };
+
+  return {
+    version: '5.0',
+    sessionId,
+    stage: 'plan',
+    sections: {
+      diverge: { ...emptySection, header: { title: '発散', description: 'アイデアを広げる' } },
+      organize: { ...emptySection, header: { title: '整理', description: '構造化する' } },
+      converge: { ...emptySection, header: { title: '収束', description: '優先順位をつける' } },
+    },
+    reactiveBindings: {
+      bindings: [],
+    },
+    layout: {
+      type: 'sectioned',
+      sectionGap: 24,
+      sectionOrder: ['diverge', 'organize', 'converge'],
+    },
+    metadata: {
+      generatedAt: Date.now(),
+      llmModel,
+    },
+  };
+}
+
+/**
+ * SectionSpecの型ガード
+ *
+ * @since DSL v5.0
+ */
+export function isSectionSpec(value: unknown): value is SectionSpec {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.header === 'object' &&
+    v.header !== null &&
+    typeof (v.header as Record<string, unknown>).title === 'string' &&
+    typeof (v.header as Record<string, unknown>).description === 'string' &&
+    Array.isArray(v.widgets)
+  );
+}
+
+/**
+ * PlanLayoutの型ガード
+ *
+ * @since DSL v5.0
+ */
+export function isPlanLayout(value: unknown): value is PlanLayout {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return v.type === 'sectioned' && typeof v.sectionGap === 'number';
+}
+
+/**
+ * PlanUISpecの型ガード
+ *
+ * @since DSL v5.0
+ */
+export function isPlanUISpec(value: unknown): value is PlanUISpec {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+
+  if (v.version !== '5.0') return false;
+  if (typeof v.sessionId !== 'string') return false;
+  if (v.stage !== 'plan') return false;
+  if (typeof v.sections !== 'object' || v.sections === null) return false;
+
+  const sections = v.sections as Record<string, unknown>;
+  if (!isSectionSpec(sections.diverge)) return false;
+  if (!isSectionSpec(sections.organize)) return false;
+  if (!isSectionSpec(sections.converge)) return false;
+
+  if (typeof v.reactiveBindings !== 'object') return false;
+  if (!isPlanLayout(v.layout)) return false;
+  if (typeof v.metadata !== 'object') return false;
+
+  return true;
+}
+
+/**
+ * UISpec または PlanUISpec の統合型
+ *
+ * @since DSL v5.0
+ */
+export type AnyUISpec = UISpec | PlanUISpec;
+
+/**
+ * AnyUISpecからWidgetを全て取得
+ *
+ * @since DSL v5.0
+ */
+export function getAllWidgetsFromUISpec(uiSpec: AnyUISpec): WidgetSpec[] {
+  if (isPlanUISpec(uiSpec)) {
+    return [
+      ...uiSpec.sections.diverge.widgets,
+      ...uiSpec.sections.organize.widgets,
+      ...uiSpec.sections.converge.widgets,
+    ];
+  }
+  return uiSpec.widgets;
+}
+
+/**
+ * AnyUISpecからWidgetを検索
+ *
+ * @since DSL v5.0
+ */
+export function findWidgetInAnyUISpec(uiSpec: AnyUISpec, widgetId: string): WidgetSpec | undefined {
+  return getAllWidgetsFromUISpec(uiSpec).find((w) => w.id === widgetId);
+}

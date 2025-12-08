@@ -17,7 +17,8 @@ import {
   createUISpecGeneratorV4,
   getMockWidgetSelectionService,
 } from '../services/v4';
-import type { StageType as StageTypeV4 } from '../types/v4/ors.types';
+import type { StageType as StageTypeV4, PlanORS } from '../types/v4/ors.types';
+import type { PlanUISpec } from '../types/v4/ui-spec.types';
 
 const uiRoutes = new Hono();
 
@@ -1126,6 +1127,233 @@ uiRoutes.post('/generate-v4-stage', async (c) => {
     });
   } catch (error) {
     console.error('❌ Stage Execution error:', error);
+
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        },
+      },
+      500
+    );
+  }
+});
+
+/**
+ * Plan統合生成API (DSL v5)
+ * POST /v1/ui/generate-v4-plan
+ *
+ * Planフェーズ全体（diverge/organize/converge）を1ページとして生成
+ * 3セクション分のORS + UISpecを一括生成
+ *
+ * Widget選定は事前にgenerate-v4-widgetsで実行済みであること前提
+ */
+uiRoutes.post('/generate-v4-plan', async (c) => {
+  try {
+    const body = await c.req.json();
+
+    // バリデーション
+    if (!body.sessionId) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_REQUEST',
+            message: 'sessionId is required',
+          },
+        },
+        400
+      );
+    }
+
+    if (!body.concernText) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_REQUEST',
+            message: 'concernText is required',
+          },
+        },
+        400
+      );
+    }
+
+    console.log(`🎨 Plan Unified Generation request for session: ${body.sessionId}`);
+    console.log(`📝 Concern: "${body.concernText.slice(0, 50)}..."`);
+
+    const startTime = Date.now();
+    const services = getV4Services();
+    const bottleneckType = body.options?.bottleneckType || 'thought';
+    const enableReactivity = body.options?.enableReactivity !== false;
+
+    // Widget選定結果をキャッシュから取得（必須）
+    let widgetSelectionResult = widgetSelectionCache.get(body.sessionId);
+
+    if (!widgetSelectionResult) {
+      // キャッシュがない場合はWidget選定を実行
+      console.log(`⚠️ No cached widget selection, executing now...`);
+      const selectionLLMResult = await services.widgetSelectionService.selectWidgets({
+        concernText: body.concernText,
+        bottleneckType,
+        sessionId: body.sessionId,
+      });
+
+      if (!selectionLLMResult.success || !selectionLLMResult.data) {
+        const fallbackResult = services.widgetSelectionService.fallbackSelection({
+          concernText: body.concernText,
+          bottleneckType,
+          sessionId: body.sessionId,
+        });
+        widgetSelectionResult = {
+          result: { success: true, data: fallbackResult, metrics: { taskType: 'widget_selection', modelId: 'fallback', latencyMs: 0, retryCount: 0, success: true, timestamp: Date.now() } },
+          bottleneckType,
+        };
+      } else {
+        widgetSelectionResult = { result: selectionLLMResult, bottleneckType };
+      }
+      widgetSelectionCache.set(body.sessionId, widgetSelectionResult);
+    }
+
+    const widgetSelection = widgetSelectionResult.result.data!;
+
+    // Plan ORS生成（3セクション分を一括）
+    console.log(`📊 [Plan ORS Generation] for all sections`);
+    const orsStart = Date.now();
+
+    const planOrsResult = await services.orsGeneratorService.generatePlanORS({
+      concernText: body.concernText,
+      bottleneckType,
+      widgetSelectionResult: widgetSelection,
+      sessionId: body.sessionId,
+    });
+
+    let planOrs: PlanORS = planOrsResult.data!;
+    if (!planOrsResult.success || !planOrs) {
+      console.log(`⚠️ Plan ORS generation failed, using fallback`);
+      planOrs = services.orsGeneratorService.fallbackPlanORS({
+        concernText: body.concernText,
+        bottleneckType,
+        widgetSelectionResult: widgetSelection,
+        sessionId: body.sessionId,
+      });
+    }
+
+    const orsMetrics = { latencyMs: Date.now() - orsStart };
+
+    // Plan UISpec生成（3セクション分を一括）
+    console.log(`🎨 [Plan UISpec Generation]`);
+    const uispecStart = Date.now();
+
+    const planUiSpecResult = await services.uiSpecGeneratorV4.generatePlanUISpec({
+      planORS: planOrs,
+      concernText: body.concernText,
+      widgetSelectionResult: widgetSelection,
+      sessionId: body.sessionId,
+      enableReactivity,
+    });
+
+    let planUiSpec: PlanUISpec = planUiSpecResult.data!;
+    if (!planUiSpecResult.success || !planUiSpec) {
+      console.log(`⚠️ Plan UISpec generation failed, using fallback`);
+      planUiSpec = services.uiSpecGeneratorV4.fallbackPlanUISpec({
+        planORS: planOrs,
+        concernText: body.concernText,
+        widgetSelectionResult: widgetSelection,
+        sessionId: body.sessionId,
+        enableReactivity,
+      });
+    }
+
+    const uispecMetrics = { latencyMs: Date.now() - uispecStart };
+    const totalLatency = Date.now() - startTime;
+
+    // メトリクス集計
+    const totalTokens = (planOrsResult.metrics?.inputTokens || 0) + (planOrsResult.metrics?.outputTokens || 0) +
+      (planUiSpecResult.metrics?.inputTokens || 0) + (planUiSpecResult.metrics?.outputTokens || 0);
+
+    logMetricsSummary(body.sessionId);
+
+    // DB保存（stage='plan'）
+    let generationId: string | undefined;
+    try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.sessionId);
+
+      if (isUuid) {
+        const gemini = getGeminiService();
+
+        const promptData = JSON.stringify({
+          planOrs: {
+            prompt: planOrsResult.prompt || null,
+            inputParams: {
+              concernText: body.concernText,
+              bottleneckType,
+              widgetSelection,
+            },
+          },
+          planUiSpec: {
+            prompt: planUiSpecResult.prompt || null,
+            inputParams: {
+              planOrs,
+              concernText: body.concernText,
+              widgetSelection,
+              enableReactivity,
+            },
+          },
+        });
+
+        const [inserted] = await db.insert(experimentGenerations).values({
+          sessionId: body.sessionId,
+          stage: 'plan', // DSL v5 Plan統合ステージ
+          modelId: gemini.getModelName(),
+          prompt: promptData,
+          generatedOrs: planOrs,
+          generatedUiSpec: planUiSpec,
+          orsTokens: (planOrsResult.metrics?.inputTokens || 0) + (planOrsResult.metrics?.outputTokens || 0),
+          orsDuration: orsMetrics.latencyMs,
+          uiSpecTokens: (planUiSpecResult.metrics?.inputTokens || 0) + (planUiSpecResult.metrics?.outputTokens || 0),
+          uiSpecDuration: uispecMetrics.latencyMs,
+          totalPromptTokens: (planOrsResult.metrics?.inputTokens || 0) + (planUiSpecResult.metrics?.inputTokens || 0),
+          totalResponseTokens: (planOrsResult.metrics?.outputTokens || 0) + (planUiSpecResult.metrics?.outputTokens || 0),
+          totalGenerateDuration: totalLatency,
+        }).returning({ id: experimentGenerations.id });
+
+        if (inserted) {
+          generationId = inserted.id;
+          console.log(`💾 Plan Generation saved to DB: ${generationId}`);
+        }
+      }
+    } catch (dbError) {
+      console.error('❌ Failed to save Plan Generation to DB:', dbError);
+    }
+
+    console.log(`✅ Plan Unified Generation completed`);
+    console.log(`📊 Metrics: ors=${orsMetrics.latencyMs}ms, uispec=${uispecMetrics.latencyMs}ms, total=${totalLatency}ms`);
+
+    return c.json({
+      success: true,
+      planUiSpec,
+      planOrs,
+      widgetSelectionResult: widgetSelection,
+      mode: 'plan',
+      generationId,
+      generation: {
+        model: 'gemini-2.5-flash-lite',
+        generatedAt: new Date().toISOString(),
+        processingTimeMs: totalLatency,
+        promptTokens: (planOrsResult.metrics?.inputTokens || 0) + (planUiSpecResult.metrics?.inputTokens || 0),
+        responseTokens: (planOrsResult.metrics?.outputTokens || 0) + (planUiSpecResult.metrics?.outputTokens || 0),
+        totalTokens,
+        stages: {
+          planOrsGeneration: orsMetrics,
+          planUiSpecGeneration: uispecMetrics,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('❌ Plan Unified Generation error:', error);
 
     return c.json(
       {

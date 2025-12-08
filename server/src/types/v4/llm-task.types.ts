@@ -60,7 +60,18 @@ export const LLM_TASK_CATEGORIES: Record<LLMTaskType, LLMTaskCategory> = {
 /**
  * LLMプロバイダー
  */
-export type LLMProvider = 'gemini' | 'openai' | 'anthropic';
+export type LLMProvider = 'gemini' | 'openai' | 'anthropic' | 'azure';
+
+/**
+ * Azure OpenAI 利用可能モデル
+ */
+export const AZURE_AVAILABLE_MODELS = [
+  'gpt-51-global',
+  'gpt-51-codex-global',
+  'gpt-51-codex-mini-global'
+] as const;
+
+export type AzureModelId = typeof AZURE_AVAILABLE_MODELS[number];
 
 /**
  * モデル設定
@@ -413,7 +424,7 @@ export function isLLMTaskType(value: unknown): value is LLMTaskType {
  * LLMProviderの型ガード
  */
 export function isLLMProvider(value: unknown): value is LLMProvider {
-  return value === 'gemini' || value === 'openai' || value === 'anthropic';
+  return value === 'gemini' || value === 'openai' || value === 'anthropic' || value === 'azure';
 }
 
 /**

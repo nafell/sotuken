@@ -44,6 +44,11 @@ export interface PlanPreviewProps {
   showDetails?: boolean;
   /** カスタムクラス名 */
   className?: string;
+  /**
+   * DSL v5: スキップ機能を非表示にするかどうか
+   * DSL v5では3セクションが1ページに統合されるため、スキップ不要
+   */
+  hideSkipControls?: boolean;
 }
 
 // =============================================================================
@@ -63,9 +68,11 @@ interface StageCardProps {
   isSkipped: boolean;
   /** スキップ状態を切り替える */
   onSkipToggle: () => void;
+  /** スキップコントロールを非表示にするか */
+  hideSkipControls?: boolean;
 }
 
-function StageCard({ stage, index, selection, isExpanded, onToggle, isSkipped, onSkipToggle }: StageCardProps) {
+function StageCard({ stage, index, selection, isExpanded, onToggle, isSkipped, onSkipToggle, hideSkipControls }: StageCardProps) {
   const stageColors: Record<StageType, string> = {
     diverge: '#8b5cf6',   // purple
     organize: '#3b82f6',  // blue
@@ -159,39 +166,41 @@ function StageCard({ stage, index, selection, isExpanded, onToggle, isSkipped, o
           </p>
         </div>
 
-        {/* スキップトグル */}
-        <label
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.375rem',
-            cursor: 'pointer',
-            marginRight: '0.5rem',
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            onSkipToggle();
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={isSkipped}
-            onChange={() => {}}
+        {/* スキップトグル（DSL v5では非表示） */}
+        {!hideSkipControls && (
+          <label
             style={{
-              width: '1rem',
-              height: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.375rem',
               cursor: 'pointer',
-              accentColor: '#f59e0b',
+              marginRight: '0.5rem',
             }}
-          />
-          <span style={{
-            color: isSkipped ? '#f59e0b' : '#64748b',
-            fontSize: '0.75rem',
-            whiteSpace: 'nowrap',
-          }}>
-            スキップ
-          </span>
-        </label>
+            onClick={(e) => {
+              e.stopPropagation();
+              onSkipToggle();
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={isSkipped}
+              onChange={() => {}}
+              style={{
+                width: '1rem',
+                height: '1rem',
+                cursor: 'pointer',
+                accentColor: '#f59e0b',
+              }}
+            />
+            <span style={{
+              color: isSkipped ? '#f59e0b' : '#64748b',
+              fontSize: '0.75rem',
+              whiteSpace: 'nowrap',
+            }}>
+              スキップ
+            </span>
+          </label>
+        )}
 
         {/* 展開/折りたたみアイコン */}
         <span
@@ -362,6 +371,7 @@ export function PlanPreview({
   isLoading = false,
   showDetails = true,
   className = '',
+  hideSkipControls = false,
 }: PlanPreviewProps) {
   const [expandedStages, setExpandedStages] = useState<Set<StageType>>(
     new Set(showDetails ? STAGE_ORDER : [])
@@ -506,12 +516,13 @@ export function PlanPreview({
             onToggle={() => toggleStage(stage)}
             isSkipped={!!skippedStages[stage]}
             onSkipToggle={() => toggleSkip(stage)}
+            hideSkipControls={hideSkipControls}
           />
         ))}
       </div>
 
-      {/* スキップ状態の警告 */}
-      {skippedCount > 0 && (
+      {/* スキップ状態の警告（DSL v5では非表示） */}
+      {!hideSkipControls && skippedCount > 0 && (
         <div
           style={{
             backgroundColor: '#f59e0b22',

@@ -760,7 +760,7 @@ uiRoutes.post('/generate-v4-widgets', async (c) => {
             sessionId: body.sessionId,
             stage: 'widget_selection',
             modelId: 'mock',
-            prompt: JSON.stringify({ mock: true, caseId: options?.caseId }),
+            prompt: JSON.stringify({ mock: true, caseId }),
             generatedWidgetSelection: mockResult.result,
             widgetSelectionTokens: 0,
             widgetSelectionDuration: latencyMs,

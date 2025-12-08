@@ -168,6 +168,12 @@ export default function SessionDetail() {
                   <span style={styles.infoLabel}>Model:</span>
                   <span style={styles.infoValue}>{session.modelId}</span>
                 </div>
+                {session.useMockWidgetSelection && (
+                  <div style={styles.infoItem}>
+                    <span style={styles.infoLabel}>Widget Selection:</span>
+                    <span style={{ ...styles.infoValue, color: '#D97706' }}>Mock Mode</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -386,7 +392,12 @@ export default function SessionDetail() {
                   >
                     <div style={styles.generationHeaderLeft}>
                       <span style={stageBadgeStyle}>{stageLabel}</span>
-                      <span style={styles.generationModel}>{gen.modelId}</span>
+                      <span style={styles.generationModel}>
+                        {gen.modelId}
+                        {gen.modelId === 'mock' && (
+                          <span style={styles.mockBadge}>Mock</span>
+                        )}
+                      </span>
                     </div>
                     <div style={styles.generationHeaderRight}>
                       <span style={styles.generationMetric}>
@@ -817,6 +828,16 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '12px',
     color: '#6B7280',
     fontFamily: 'monospace'
+  },
+  mockBadge: {
+    marginLeft: '8px',
+    padding: '2px 8px',
+    backgroundColor: '#FCD34D',
+    color: '#92400E',
+    borderRadius: '4px',
+    fontSize: '11px',
+    fontWeight: 600,
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
   },
   generationMetric: {
     fontSize: '12px',

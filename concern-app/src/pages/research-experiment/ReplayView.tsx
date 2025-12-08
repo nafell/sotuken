@@ -337,7 +337,12 @@ export default function ReplayView() {
               <div style={styles.metricsBar}>
                 <div style={styles.metricItem}>
                   <span style={styles.metricLabel}>Model:</span>
-                  <span style={styles.metricValue}>{currentGeneration.modelId}</span>
+                  <span style={styles.metricValue}>
+                    {currentGeneration.modelId}
+                    {currentGeneration.modelId === 'mock' && (
+                      <span style={styles.mockBadge}>Mock</span>
+                    )}
+                  </span>
                 </div>
                 <div style={styles.metricItem}>
                   <span style={styles.metricLabel}>Prompt:</span>
@@ -803,6 +808,16 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#111827',
     fontWeight: 500,
     fontFamily: 'monospace'
+  },
+  mockBadge: {
+    marginLeft: '8px',
+    padding: '2px 8px',
+    backgroundColor: '#FCD34D',
+    color: '#92400E',
+    borderRadius: '4px',
+    fontSize: '11px',
+    fontWeight: 600,
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
   },
   widgetRenderArea: {
     padding: '0'

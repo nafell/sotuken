@@ -750,10 +750,35 @@ uiRoutes.post('/generate-v4-widgets', async (c) => {
 
       console.log(`✅ Mock Widget Selection completed in ${latencyMs}ms`);
 
+      // モック結果をDBに保存
+      let generationId: string | undefined;
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.sessionId);
+      if (isUuid) {
+        try {
+          const [inserted] = await db.insert(experimentGenerations).values({
+            sessionId: body.sessionId,
+            stage: 'widget_selection',
+            modelId: 'mock',
+            prompt: JSON.stringify({ mock: true, caseId: options?.caseId }),
+            generatedWidgetSelection: mockResult.result,
+            widgetSelectionTokens: 0,
+            widgetSelectionDuration: latencyMs,
+            totalPromptTokens: 0,
+            totalResponseTokens: 0,
+            totalGenerateDuration: latencyMs,
+          }).returning({ id: experimentGenerations.id });
+          generationId = inserted.id;
+          console.log(`💾 Mock generation saved: ${generationId}`);
+        } catch (dbError) {
+          console.error('❌ Failed to save mock generation:', dbError);
+        }
+      }
+
       return c.json({
         success: true,
         widgetSelectionResult: mockResult.result,
         generation: {
+          id: generationId,
           model: 'mock',
           generatedAt: new Date().toISOString(),
           processingTimeMs: latencyMs,

@@ -459,3 +459,150 @@ export function migrateV3WidgetSpec(
     },
   };
 }
+
+// =============================================================================
+// DSL v5: PlanUISpec (Plan統合用)
+// =============================================================================
+
+/**
+ * セクション種別 (Plan統合用)
+ */
+export type SectionType = 'diverge' | 'organize' | 'converge';
+
+/**
+ * セクションヘッダー
+ */
+export interface SectionHeader {
+  title: string;
+  description: string;
+}
+
+/**
+ * セクションSpec
+ */
+export interface SectionSpec {
+  header: SectionHeader;
+  widgets: WidgetSpec[];
+}
+
+/**
+ * Plan用レイアウト
+ */
+export interface PlanLayout {
+  type: 'sectioned';
+  sectionGap: number;
+  sectionOrder?: SectionType[];
+}
+
+/**
+ * PlanUISpec
+ *
+ * DSL v5のPlanフェーズ統合生成で使用。
+ * diverge/organize/convergeの3セクションを1ページに表示。
+ */
+export interface PlanUISpec {
+  /** UISpecバージョン（DSL v5） */
+  version: '5.0';
+
+  /** セッションID */
+  sessionId: string;
+
+  /** ステージ（常に'plan'） */
+  stage: 'plan';
+
+  /** セクション */
+  sections: {
+    diverge: SectionSpec;
+    organize: SectionSpec;
+    converge: SectionSpec;
+  };
+
+  /** Widget間のReactiveBinding（セクション横断） */
+  reactiveBindings: ReactiveBindingSpec;
+
+  /** 画面レイアウト */
+  layout: PlanLayout;
+
+  /** メタデータ */
+  metadata: UISpecMetadata;
+}
+
+/**
+ * PlanUISpecの型ガード
+ */
+export function isPlanUISpec(value: unknown): value is PlanUISpec {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    v.version === '5.0' &&
+    v.stage === 'plan' &&
+    typeof v.sections === 'object' &&
+    typeof v.reactiveBindings === 'object' &&
+    typeof v.layout === 'object' &&
+    typeof v.metadata === 'object'
+  );
+}
+
+/**
+ * AnyUISpec型（v4 UISpec または v5 PlanUISpec）
+ */
+export type AnyUISpec = UISpec | PlanUISpec;
+
+/**
+ * PlanUISpecをUISpecに変換（UIRendererV4で使用するため）
+ *
+ * 3セクションのWidgetをフラット化して1つのUISpecとして返す。
+ * セクションヘッダーは各セクションの最初のWidgetのconfigに含める。
+ */
+export function flattenPlanUISpecToUISpec(planUISpec: PlanUISpec): UISpec {
+  const allWidgets: WidgetSpec[] = [];
+  let position = 0;
+
+  const sectionOrder: SectionType[] = planUISpec.layout.sectionOrder || ['diverge', 'organize', 'converge'];
+
+  for (const sectionType of sectionOrder) {
+    const section = planUISpec.sections[sectionType];
+    if (!section) continue;
+
+    // セクション内のWidgetをpositionを振り直して追加
+    for (const widget of section.widgets) {
+      allWidgets.push({
+        ...widget,
+        position: position++,
+        // セクション情報をmetadataに追加
+        metadata: {
+          ...widget.metadata,
+          context: {
+            ...(widget.metadata.context || {}),
+            section: sectionType,
+            sectionTitle: section.header.title,
+            sectionDescription: section.header.description,
+          },
+        },
+      });
+    }
+  }
+
+  return {
+    version: '4.0',
+    sessionId: planUISpec.sessionId,
+    stage: 'diverge', // Plan統合の場合、stageは便宜上'diverge'とする
+    widgets: allWidgets,
+    reactiveBindings: planUISpec.reactiveBindings,
+    layout: {
+      type: 'single_column',
+      gap: planUISpec.layout.sectionGap,
+    },
+    metadata: planUISpec.metadata,
+  };
+}
+
+/**
+ * UISpecまたはPlanUISpecをUIRendererV4用のUISpecに変換
+ */
+export function normalizeToUISpec(spec: AnyUISpec): UISpec {
+  if (isPlanUISpec(spec)) {
+    return flattenPlanUISpecToUISpec(spec);
+  }
+  return spec;
+}

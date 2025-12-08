@@ -18,6 +18,11 @@ import type {
   UISpecMetadata,
   WidgetConfig,
   DataBindingDirection,
+  PlanUISpec,
+  SectionSpec,
+  SectionHeader,
+  PlanLayout,
+  SectionType,
 } from '../../types/v4/ui-spec.types';
 import type {
   ReactiveBindingSpec,
@@ -27,11 +32,11 @@ import type {
   BindingMechanism,
   WidgetPortPath,
 } from '../../types/v4/reactive-binding.types';
-import type { ORS, StageType, Entity, Attribute } from '../../types/v4/ors.types';
-import type { StageSelection, SelectedWidget, SuggestedBinding } from '../../types/v4/widget-selection.types';
+import type { ORS, StageType, Entity, Attribute, PlanORS, PlanSectionType } from '../../types/v4/ors.types';
+import type { StageSelection, SelectedWidget, SuggestedBinding, WidgetSelectionResult } from '../../types/v4/widget-selection.types';
 import type { LLMCallResult } from '../../types/v4/llm-task.types';
 import type { WidgetDefinitionV4 } from '../../types/v4/widget-definition.types';
-import { isUISpec, createEmptyUISpec, createWidgetSpec, createDataBindingSpec } from '../../types/v4/ui-spec.types';
+import { isUISpec, isPlanUISpec, createEmptyUISpec, createEmptyPlanUISpec, createWidgetSpec, createDataBindingSpec } from '../../types/v4/ui-spec.types';
 import {
   createReactiveBindingSpec,
   createReactiveBinding,
@@ -55,6 +60,22 @@ export interface UISpecGeneratorInput {
   stageSelection: StageSelection;
   /** ステージ種別 */
   stage: StageType;
+  /** セッションID */
+  sessionId: string;
+  /** Reactivity有効フラグ */
+  enableReactivity?: boolean;
+}
+
+/**
+ * DSL v5: Plan統合UISpec生成入力
+ */
+export interface PlanUISpecGeneratorInput {
+  /** PlanORS（データ構造） */
+  planORS: PlanORS;
+  /** ユーザーの悩み */
+  concernText: string;
+  /** Widget選定結果（全ステージ分） */
+  widgetSelectionResult: WidgetSelectionResult;
   /** セッションID */
   sessionId: string;
   /** Reactivity有効フラグ */
@@ -127,6 +148,473 @@ export class UISpecGeneratorV4 {
       ...result,
       data: validatedUISpec,
     };
+  }
+
+  // ===========================================================================
+  // DSL v5: Plan統合UISpec生成
+  // ===========================================================================
+
+  /**
+   * Plan統合UISpec生成を実行
+   *
+   * DSL v5のPlanフェーズ用。diverge/organize/convergeの3セクション分の
+   * UISpecを1回のLLM呼び出しで生成する。
+   *
+   * @param input Plan UISpec生成入力
+   * @returns Plan UISpec生成結果
+   */
+  async generatePlanUISpec(input: PlanUISpecGeneratorInput): Promise<LLMCallResult<PlanUISpec>> {
+    const { planORS, concernText, widgetSelectionResult, sessionId, enableReactivity = true } = input;
+
+    if (this.debug) {
+      console.log(`[UISpecGeneratorV4] Starting Plan UISpec generation for session: ${sessionId}`);
+    }
+
+    // 各セクションのWidget定義情報を収集
+    const divergeDefinitions = this.collectWidgetDefinitions(widgetSelectionResult.stages.diverge);
+    const organizeDefinitions = this.collectWidgetDefinitions(widgetSelectionResult.stages.organize);
+    const convergeDefinitions = this.collectWidgetDefinitions(widgetSelectionResult.stages.converge);
+
+    // LLM呼び出し
+    const result = await this.llmOrchestrator.execute<PlanUISpec>('plan_uispec_generation', {
+      ors: JSON.stringify(planORS, null, 2),
+      concernText,
+      divergeSelection: this.formatSelectionForPrompt(widgetSelectionResult.stages.diverge),
+      divergePurpose: widgetSelectionResult.stages.diverge.purpose,
+      divergeTarget: widgetSelectionResult.stages.diverge.target,
+      organizeSelection: this.formatSelectionForPrompt(widgetSelectionResult.stages.organize),
+      organizePurpose: widgetSelectionResult.stages.organize.purpose,
+      organizeTarget: widgetSelectionResult.stages.organize.target,
+      convergeSelection: this.formatSelectionForPrompt(widgetSelectionResult.stages.converge),
+      convergePurpose: widgetSelectionResult.stages.converge.purpose,
+      convergeTarget: widgetSelectionResult.stages.converge.target,
+      widgetDefinitions: JSON.stringify({
+        diverge: divergeDefinitions,
+        organize: organizeDefinitions,
+        converge: convergeDefinitions,
+      }, null, 2),
+      enableReactivity: enableReactivity.toString(),
+      sessionId,
+    });
+
+    if (!result.success || !result.data) {
+      // フォールバック
+      if (this.debug) {
+        console.log(`[UISpecGeneratorV4] Plan UISpec generation failed, using fallback`);
+      }
+      return {
+        ...result,
+        data: this.fallbackPlanUISpec(input),
+      };
+    }
+
+    // 結果の検証と補正
+    const validatedPlanUISpec = this.validateAndNormalizePlanUISpec(
+      result.data,
+      planORS,
+      widgetSelectionResult,
+      sessionId,
+      enableReactivity
+    );
+
+    return {
+      ...result,
+      data: validatedPlanUISpec,
+    };
+  }
+
+  /**
+   * StageSelectionをプロンプト用文字列にフォーマット
+   */
+  private formatSelectionForPrompt(stageSelection: StageSelection): string {
+    return stageSelection.widgets
+      .map((w, i) => `${i + 1}. ${w.widgetId} - ${w.purpose}`)
+      .join('\n');
+  }
+
+  /**
+   * PlanUISpec検証・正規化
+   */
+  private validateAndNormalizePlanUISpec(
+    result: unknown,
+    planORS: PlanORS,
+    widgetSelectionResult: WidgetSelectionResult,
+    sessionId: string,
+    enableReactivity: boolean
+  ): PlanUISpec {
+    if (this.debug) {
+      console.log('[UISpecGeneratorV4] Validating Plan UISpec...');
+    }
+
+    // 型ガードでチェック
+    if (isPlanUISpec(result)) {
+      // メタデータを補完
+      return {
+        ...result,
+        sessionId,
+        metadata: {
+          ...result.metadata,
+          generatedAt: result.metadata.generatedAt || Date.now(),
+        },
+      };
+    }
+
+    // 結果がオブジェクトの場合、部分的に変換を試みる
+    if (typeof result === 'object' && result !== null) {
+      const obj = result as Record<string, unknown>;
+      return this.buildPlanUISpecFromPartial(obj, planORS, widgetSelectionResult, sessionId, enableReactivity);
+    }
+
+    // 変換失敗時はデフォルトPlanUISpecを返す
+    return this.createDefaultPlanUISpec(planORS, widgetSelectionResult, sessionId, enableReactivity);
+  }
+
+  /**
+   * 部分的な結果からPlanUISpecを構築
+   */
+  private buildPlanUISpecFromPartial(
+    obj: Record<string, unknown>,
+    planORS: PlanORS,
+    widgetSelectionResult: WidgetSelectionResult,
+    sessionId: string,
+    enableReactivity: boolean
+  ): PlanUISpec {
+    const sections: Record<SectionType, SectionSpec> = {
+      diverge: this.extractSectionSpec(obj, 'diverge', widgetSelectionResult.stages.diverge, planORS),
+      organize: this.extractSectionSpec(obj, 'organize', widgetSelectionResult.stages.organize, planORS),
+      converge: this.extractSectionSpec(obj, 'converge', widgetSelectionResult.stages.converge, planORS),
+    };
+
+    // reactiveBindings を抽出
+    const bindings: ReactiveBinding[] = [];
+    if (typeof obj.reactiveBindings === 'object' && obj.reactiveBindings !== null) {
+      const rbSpec = obj.reactiveBindings as Record<string, unknown>;
+      if (Array.isArray(rbSpec.bindings)) {
+        for (const b of rbSpec.bindings) {
+          if (typeof b === 'object' && b !== null) {
+            const binding = this.normalizeReactiveBinding(b as Record<string, unknown>);
+            if (binding) {
+              bindings.push(binding);
+            }
+          }
+        }
+      }
+    }
+
+    // layout を抽出
+    const layout: PlanLayout = this.normalizePlanLayout(obj.layout);
+
+    return {
+      version: '5.0',
+      sessionId,
+      stage: 'plan',
+      sections,
+      reactiveBindings: createReactiveBindingSpec(enableReactivity ? bindings : []),
+      layout,
+      metadata: {
+        generatedAt: Date.now(),
+        llmModel: 'unknown',
+      },
+    };
+  }
+
+  /**
+   * セクションSpecを抽出
+   */
+  private extractSectionSpec(
+    obj: Record<string, unknown>,
+    sectionType: SectionType,
+    stageSelection: StageSelection,
+    planORS: PlanORS
+  ): SectionSpec {
+    // sections オブジェクトから該当セクションを取得
+    if (typeof obj.sections === 'object' && obj.sections !== null) {
+      const sectionsObj = obj.sections as Record<string, unknown>;
+      const sectionData = sectionsObj[sectionType];
+
+      if (typeof sectionData === 'object' && sectionData !== null) {
+        const section = sectionData as Record<string, unknown>;
+
+        // header を抽出
+        const header = this.extractSectionHeader(section.header, sectionType);
+
+        // widgets を抽出
+        const widgets: WidgetSpec[] = [];
+        if (Array.isArray(section.widgets)) {
+          for (let i = 0; i < section.widgets.length; i++) {
+            const w = section.widgets[i];
+            if (typeof w === 'object' && w !== null) {
+              // ORS風の空オブジェクトを渡す（PlanORSからORS形式を作成するのは複雑なため）
+              const widgetSpec = this.normalizeWidgetSpec(w as Record<string, unknown>, i, {
+                version: '4.0',
+                entities: planORS.entities,
+                dependencyGraph: planORS.dependencyGraph,
+                metadata: {
+                  generatedAt: planORS.metadata.generatedAt,
+                  llmModel: planORS.metadata.llmModel,
+                  sessionId: planORS.metadata.sessionId,
+                  stage: sectionType as StageType,
+                },
+              });
+              if (widgetSpec) {
+                widgets.push(widgetSpec);
+              }
+            }
+          }
+        }
+
+        // widgets が空の場合はデフォルトを使用
+        if (widgets.length === 0) {
+          return this.createDefaultSectionSpec(sectionType, stageSelection, planORS);
+        }
+
+        return { header, widgets };
+      }
+    }
+
+    // セクションデータがない場合はデフォルトを作成
+    return this.createDefaultSectionSpec(sectionType, stageSelection, planORS);
+  }
+
+  /**
+   * セクションヘッダーを抽出
+   */
+  private extractSectionHeader(value: unknown, sectionType: SectionType): SectionHeader {
+    if (typeof value === 'object' && value !== null) {
+      const obj = value as Record<string, unknown>;
+      return {
+        title: typeof obj.title === 'string' ? obj.title : this.getDefaultSectionTitle(sectionType),
+        description: typeof obj.description === 'string' ? obj.description : this.getDefaultSectionDescription(sectionType),
+      };
+    }
+    return {
+      title: this.getDefaultSectionTitle(sectionType),
+      description: this.getDefaultSectionDescription(sectionType),
+    };
+  }
+
+  /**
+   * デフォルトセクションタイトルを取得
+   */
+  private getDefaultSectionTitle(sectionType: SectionType): string {
+    const titles: Record<SectionType, string> = {
+      diverge: '発散',
+      organize: '整理',
+      converge: '収束',
+    };
+    return titles[sectionType];
+  }
+
+  /**
+   * デフォルトセクション説明を取得
+   */
+  private getDefaultSectionDescription(sectionType: SectionType): string {
+    const descriptions: Record<SectionType, string> = {
+      diverge: 'アイデアを広げましょう',
+      organize: '情報を整理しましょう',
+      converge: '優先順位をつけましょう',
+    };
+    return descriptions[sectionType];
+  }
+
+  /**
+   * PlanLayout正規化
+   */
+  private normalizePlanLayout(value: unknown): PlanLayout {
+    if (typeof value === 'object' && value !== null) {
+      const obj = value as Record<string, unknown>;
+      return {
+        type: 'sectioned',
+        sectionGap: typeof obj.sectionGap === 'number' ? obj.sectionGap : 24,
+        sectionOrder: Array.isArray(obj.sectionOrder)
+          ? obj.sectionOrder as SectionType[]
+          : ['diverge', 'organize', 'converge'],
+      };
+    }
+    return {
+      type: 'sectioned',
+      sectionGap: 24,
+      sectionOrder: ['diverge', 'organize', 'converge'],
+    };
+  }
+
+  /**
+   * デフォルトセクションSpecを作成
+   */
+  private createDefaultSectionSpec(
+    sectionType: SectionType,
+    stageSelection: StageSelection,
+    planORS: PlanORS
+  ): SectionSpec {
+    const widgets: WidgetSpec[] = [];
+
+    for (let i = 0; i < stageSelection.widgets.length; i++) {
+      const selectedWidget = stageSelection.widgets[i];
+      const definition = getWidgetDefinitionV4(selectedWidget.widgetId);
+      if (!definition) continue;
+
+      const widgetId = `${selectedWidget.widgetId}_${sectionType}_${i}`;
+      const dataBindings = this.createDefaultDataBindingsForPlan(definition, planORS, sectionType);
+
+      widgets.push(
+        createWidgetSpec(widgetId, selectedWidget.widgetId, i, selectedWidget.suggestedConfig ?? {}, dataBindings, {
+          metadata: {
+            purpose: selectedWidget.purpose,
+          },
+        })
+      );
+    }
+
+    return {
+      header: {
+        title: this.getDefaultSectionTitle(sectionType),
+        description: this.getDefaultSectionDescription(sectionType),
+      },
+      widgets,
+    };
+  }
+
+  /**
+   * Plan用のデフォルトDataBindingを作成
+   */
+  private createDefaultDataBindingsForPlan(
+    definition: WidgetDefinitionV4,
+    planORS: PlanORS,
+    sectionType: SectionType
+  ): DataBindingSpec[] {
+    const bindings: DataBindingSpec[] = [];
+
+    // セクション用のエンティティを探す
+    const sectionEntity = planORS.entities.find(e => e.id === `${sectionType}_data`);
+
+    // 入力ポートに対してバインド
+    for (const input of definition.ports.inputs) {
+      if (sectionEntity) {
+        const attr = sectionEntity.attributes.find(a => a.name === 'input' || a.name === input.id);
+        if (attr) {
+          bindings.push(createDataBindingSpec(input.id, `${sectionEntity.id}.${attr.name}`, 'in'));
+        }
+      }
+    }
+
+    // 出力ポートに対してバインド
+    for (const output of definition.ports.outputs) {
+      if (sectionEntity) {
+        const attr = sectionEntity.attributes.find(a => a.name === 'output' || a.name === output.id);
+        if (attr) {
+          bindings.push(createDataBindingSpec(output.id, `${sectionEntity.id}.${attr.name}`, 'out'));
+        }
+      }
+    }
+
+    return bindings;
+  }
+
+  /**
+   * デフォルトPlanUISpec作成
+   */
+  private createDefaultPlanUISpec(
+    planORS: PlanORS,
+    widgetSelectionResult: WidgetSelectionResult,
+    sessionId: string,
+    enableReactivity: boolean
+  ): PlanUISpec {
+    const sections: Record<SectionType, SectionSpec> = {
+      diverge: this.createDefaultSectionSpec('diverge', widgetSelectionResult.stages.diverge, planORS),
+      organize: this.createDefaultSectionSpec('organize', widgetSelectionResult.stages.organize, planORS),
+      converge: this.createDefaultSectionSpec('converge', widgetSelectionResult.stages.converge, planORS),
+    };
+
+    const bindings = enableReactivity
+      ? this.createDefaultCrossSectionBindings(sections)
+      : [];
+
+    return {
+      version: '5.0',
+      sessionId,
+      stage: 'plan',
+      sections,
+      reactiveBindings: createReactiveBindingSpec(bindings),
+      layout: {
+        type: 'sectioned',
+        sectionGap: 24,
+        sectionOrder: ['diverge', 'organize', 'converge'],
+      },
+      metadata: {
+        generatedAt: Date.now(),
+        llmModel: 'fallback',
+      },
+    };
+  }
+
+  /**
+   * セクション間のデフォルトReactiveBindingを作成
+   */
+  private createDefaultCrossSectionBindings(sections: Record<SectionType, SectionSpec>): ReactiveBinding[] {
+    const bindings: ReactiveBinding[] = [];
+
+    // diverge → organize のバインディング
+    if (sections.diverge.widgets.length > 0 && sections.organize.widgets.length > 0) {
+      const sourceWidget = sections.diverge.widgets[sections.diverge.widgets.length - 1];
+      const targetWidget = sections.organize.widgets[0];
+
+      const sourceDef = getWidgetDefinitionV4(sourceWidget.component);
+      const targetDef = getWidgetDefinitionV4(targetWidget.component);
+
+      if (sourceDef && targetDef && sourceDef.ports.outputs.length > 0 && targetDef.ports.inputs.length > 0) {
+        bindings.push(
+          createReactiveBinding(
+            `rb_diverge_to_organize`,
+            `${sourceWidget.id}.${sourceDef.ports.outputs[0].id}` as WidgetPortPath,
+            `${targetWidget.id}.${targetDef.ports.inputs[0].id}` as WidgetPortPath,
+            'update',
+            createPassthroughRelationship(),
+            'realtime',
+            { description: '発散→整理のデータ連携' }
+          )
+        );
+      }
+    }
+
+    // organize → converge のバインディング
+    if (sections.organize.widgets.length > 0 && sections.converge.widgets.length > 0) {
+      const sourceWidget = sections.organize.widgets[sections.organize.widgets.length - 1];
+      const targetWidget = sections.converge.widgets[0];
+
+      const sourceDef = getWidgetDefinitionV4(sourceWidget.component);
+      const targetDef = getWidgetDefinitionV4(targetWidget.component);
+
+      if (sourceDef && targetDef && sourceDef.ports.outputs.length > 0 && targetDef.ports.inputs.length > 0) {
+        bindings.push(
+          createReactiveBinding(
+            `rb_organize_to_converge`,
+            `${sourceWidget.id}.${sourceDef.ports.outputs[0].id}` as WidgetPortPath,
+            `${targetWidget.id}.${targetDef.ports.inputs[0].id}` as WidgetPortPath,
+            'update',
+            createWidgetJavaScriptRelationship('Object.values(source).flat()'),
+            'debounced',
+            { description: '整理→収束のデータ連携', debounceMs: 300 }
+          )
+        );
+      }
+    }
+
+    return bindings;
+  }
+
+  /**
+   * フォールバックPlanUISpec生成
+   *
+   * LLM呼び出しが失敗した場合のフォールバック。
+   */
+  fallbackPlanUISpec(input: PlanUISpecGeneratorInput): PlanUISpec {
+    const { planORS, widgetSelectionResult, sessionId, enableReactivity = true } = input;
+
+    if (this.debug) {
+      console.log(`[UISpecGeneratorV4] Using fallback PlanUISpec for session: ${sessionId}`);
+    }
+
+    return this.createDefaultPlanUISpec(planORS, widgetSelectionResult, sessionId, enableReactivity);
   }
 
   /**

@@ -18,15 +18,19 @@ import type {
   StructuralType,
   ConcreteType,
   GenerationSpec,
+  PlanORS,
+  PlanORSMetadata,
+  PlanSectionType,
 } from '../../types/v4/ors.types';
 import type {
   DependencyGraph,
   DataDependency,
   RelationshipSpec,
 } from '../../types/v4/dependency-graph.types';
-import type { StageSelection, SelectedWidget } from '../../types/v4/widget-selection.types';
+import type { StageSelection, SelectedWidget, WidgetSelectionResult } from '../../types/v4/widget-selection.types';
 import type { LLMCallResult } from '../../types/v4/llm-task.types';
-import { isORS } from '../../types/v4/ors.types';
+import type { SectionType } from '../../types/v4/ui-spec.types';
+import { isORS, isPlanORS, createEmptyPlanORS } from '../../types/v4/ors.types';
 import { createDependencyGraph, isDependencyGraph } from '../../types/v4/dependency-graph.types';
 import { LLMOrchestrator } from './LLMOrchestrator';
 import { getWidgetDefinitionV4 } from '../../definitions/v4/widgets';
@@ -47,6 +51,20 @@ export interface ORSGeneratorInput {
   stageSelection: StageSelection;
   /** 前ステージのORS（継続生成用） */
   previousORS?: ORS;
+  /** セッションID */
+  sessionId: string;
+}
+
+/**
+ * DSL v5: Plan統合ORS生成入力
+ */
+export interface PlanORSGeneratorInput {
+  /** ユーザーの悩み */
+  concernText: string;
+  /** ボトルネックタイプ */
+  bottleneckType: string;
+  /** Widget選定結果（全ステージ分） */
+  widgetSelectionResult: WidgetSelectionResult;
   /** セッションID */
   sessionId: string;
 }
@@ -130,6 +148,300 @@ export class ORSGeneratorService {
     return {
       ...result,
       data: validatedORS,
+    };
+  }
+
+  // ===========================================================================
+  // DSL v5: Plan統合ORS生成
+  // ===========================================================================
+
+  /**
+   * Plan統合ORS生成を実行
+   *
+   * DSL v5のPlanフェーズ用。diverge/organize/convergeの3セクション分の
+   * データ構造を1回のLLM呼び出しで生成する。
+   *
+   * @param input Plan ORS生成入力
+   * @returns Plan ORS生成結果
+   */
+  async generatePlanORS(input: PlanORSGeneratorInput): Promise<LLMCallResult<PlanORS>> {
+    const { concernText, bottleneckType, widgetSelectionResult, sessionId } = input;
+
+    if (this.debug) {
+      console.log(`[ORSGeneratorService] Starting Plan ORS generation for session: ${sessionId}`);
+    }
+
+    // 各セクションのWidget情報を収集
+    const divergeWidgets = this.formatWidgetsForPrompt(widgetSelectionResult.stages.diverge);
+    const organizeWidgets = this.formatWidgetsForPrompt(widgetSelectionResult.stages.organize);
+    const convergeWidgets = this.formatWidgetsForPrompt(widgetSelectionResult.stages.converge);
+
+    // 全セクションのWidget定義からポート情報を収集
+    const allPortInfo = [
+      ...this.collectWidgetPortInfo(widgetSelectionResult.stages.diverge),
+      ...this.collectWidgetPortInfo(widgetSelectionResult.stages.organize),
+      ...this.collectWidgetPortInfo(widgetSelectionResult.stages.converge),
+    ];
+
+    // LLM呼び出し
+    const result = await this.llmOrchestrator.execute<PlanORS>('plan_ors_generation', {
+      concernText,
+      bottleneckType,
+      divergeWidgets,
+      organizeWidgets,
+      convergeWidgets,
+      widgetPortInfo: JSON.stringify(allPortInfo, null, 2),
+      sessionId,
+    });
+
+    if (!result.success || !result.data) {
+      // フォールバック
+      if (this.debug) {
+        console.log(`[ORSGeneratorService] Plan ORS generation failed, using fallback`);
+      }
+      return {
+        ...result,
+        data: this.fallbackPlanORS(input),
+      };
+    }
+
+    // 結果の検証と補正
+    const validatedPlanORS = this.validateAndNormalizePlanORS(
+      result.data,
+      sessionId,
+      concernText,
+      bottleneckType
+    );
+
+    return {
+      ...result,
+      data: validatedPlanORS,
+    };
+  }
+
+  /**
+   * Widget選定結果をプロンプト用文字列にフォーマット
+   */
+  private formatWidgetsForPrompt(stageSelection: StageSelection): string {
+    return stageSelection.widgets
+      .map((w, i) => `${i + 1}. ${w.widgetId} - ${w.purpose}`)
+      .join('\n');
+  }
+
+  /**
+   * PlanORS検証・正規化
+   */
+  private validateAndNormalizePlanORS(
+    result: unknown,
+    sessionId: string,
+    concernText: string,
+    bottleneckType: string
+  ): PlanORS {
+    // 型ガードでチェック
+    if (isPlanORS(result)) {
+      // メタデータを補完
+      return {
+        ...result,
+        metadata: {
+          ...result.metadata,
+          sessionId,
+          concernText,
+          bottleneckType,
+          generatedAt: result.metadata.generatedAt || Date.now(),
+        },
+      };
+    }
+
+    // 結果がオブジェクトの場合、部分的に変換を試みる
+    if (typeof result === 'object' && result !== null) {
+      const obj = result as Record<string, unknown>;
+      return this.buildPlanORSFromPartial(obj, sessionId, concernText, bottleneckType);
+    }
+
+    // 変換失敗時はデフォルトPlanORSを返す
+    return createEmptyPlanORS(sessionId, concernText, bottleneckType, 'fallback');
+  }
+
+  /**
+   * 部分的な結果からPlanORSを構築
+   */
+  private buildPlanORSFromPartial(
+    obj: Record<string, unknown>,
+    sessionId: string,
+    concernText: string,
+    bottleneckType: string
+  ): PlanORS {
+    const entities: Entity[] = [];
+    const dependencies: DataDependency[] = [];
+
+    // entities が存在する場合
+    if (Array.isArray(obj.entities)) {
+      for (const e of obj.entities) {
+        if (typeof e === 'object' && e !== null) {
+          const entity = this.normalizeEntity(e as Record<string, unknown>);
+          if (entity) {
+            entities.push(entity);
+          }
+        }
+      }
+    }
+
+    // dependencyGraph が存在する場合
+    if (typeof obj.dependencyGraph === 'object' && obj.dependencyGraph !== null) {
+      const dpg = obj.dependencyGraph as Record<string, unknown>;
+      if (Array.isArray(dpg.dependencies)) {
+        for (const d of dpg.dependencies) {
+          if (typeof d === 'object' && d !== null) {
+            const dep = this.normalizeDataDependency(d as Record<string, unknown>);
+            if (dep) {
+              dependencies.push(dep);
+            }
+          }
+        }
+      }
+    }
+
+    // planMetadataを抽出
+    const planMetadata = typeof obj.planMetadata === 'object' && obj.planMetadata !== null
+      ? obj.planMetadata as { concernText?: string; bottleneckType?: string; sections?: PlanSectionType[] }
+      : {};
+
+    return {
+      version: '5.0',
+      planMetadata: {
+        concernText: planMetadata.concernText || concernText,
+        bottleneckType: planMetadata.bottleneckType || bottleneckType,
+        sections: planMetadata.sections || ['diverge', 'organize', 'converge'],
+      },
+      entities,
+      dependencyGraph: createDependencyGraph(dependencies),
+      metadata: {
+        generatedAt: Date.now(),
+        llmModel: 'unknown',
+        sessionId,
+        concernText,
+        bottleneckType,
+        sections: ['diverge', 'organize', 'converge'],
+      },
+    };
+  }
+
+  /**
+   * フォールバックPlanORS生成
+   *
+   * LLM呼び出しが失敗した場合のフォールバック。
+   * Widget選定結果に基づいてルールベースでPlanORSを生成。
+   */
+  fallbackPlanORS(input: PlanORSGeneratorInput): PlanORS {
+    const { concernText, bottleneckType, widgetSelectionResult, sessionId } = input;
+
+    if (this.debug) {
+      console.log(`[ORSGeneratorService] Using fallback PlanORS for session: ${sessionId}`);
+    }
+
+    const entities: Entity[] = [];
+    const dependencies: DataDependency[] = [];
+
+    // 基本のconcernエンティティ
+    entities.push({
+      id: 'concern',
+      type: 'concern',
+      attributes: [
+        {
+          name: 'text',
+          structuralType: 'SVAL',
+          valueType: 'string',
+          description: 'ユーザーの悩みテキスト',
+        },
+      ],
+    });
+
+    // 各セクションのデータエンティティを作成
+    const sections: PlanSectionType[] = ['diverge', 'organize', 'converge'];
+
+    for (const section of sections) {
+      const stageSelection = widgetSelectionResult.stages[section];
+
+      // セクションデータエンティティ
+      entities.push({
+        id: `${section}_data`,
+        type: 'stage_data',
+        attributes: [
+          {
+            name: 'output',
+            structuralType: 'ARRY',
+            itemType: 'DICT',
+            description: `${section}セクションの出力データ`,
+          },
+        ],
+      });
+
+      // Widget毎にエンティティを作成
+      for (const selectedWidget of stageSelection.widgets) {
+        const definition = getWidgetDefinitionV4(selectedWidget.widgetId);
+        if (!definition) continue;
+
+        const widgetEntityId = `widget_${section}_${selectedWidget.widgetId}`;
+        const attributes: Attribute[] = [];
+
+        // 入力ポートからattribute生成
+        for (const inputPort of definition.ports.inputs) {
+          attributes.push(this.portToAttribute(inputPort, 'input'));
+        }
+
+        // 出力ポートからattribute生成
+        for (const output of definition.ports.outputs) {
+          attributes.push(this.portToAttribute(output, 'output'));
+        }
+
+        entities.push({
+          id: widgetEntityId,
+          type: 'widget_data',
+          attributes,
+        });
+      }
+    }
+
+    // セクション間の依存関係を追加
+    dependencies.push({
+      id: 'dep_diverge_to_organize',
+      source: 'diverge_data.output',
+      target: 'organize_data.input',
+      mechanism: 'update',
+      relationship: {
+        type: 'javascript',
+        javascript: 'source',
+      },
+    });
+
+    dependencies.push({
+      id: 'dep_organize_to_converge',
+      source: 'organize_data.output',
+      target: 'converge_data.input',
+      mechanism: 'update',
+      relationship: {
+        type: 'javascript',
+        javascript: 'Object.values(source).flat()',
+      },
+    });
+
+    return {
+      version: '5.0',
+      planMetadata: {
+        concernText,
+        bottleneckType,
+        sections: ['diverge', 'organize', 'converge'],
+      },
+      entities,
+      dependencyGraph: createDependencyGraph(dependencies),
+      metadata: {
+        generatedAt: Date.now(),
+        llmModel: 'fallback',
+        sessionId,
+        concernText,
+        bottleneckType,
+        sections: ['diverge', 'organize', 'converge'],
+      },
     };
   }
 

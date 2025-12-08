@@ -154,6 +154,8 @@ export class UISpecGeneratorV4 {
             dataType: p.dataType,
             description: p.description,
           })),
+          // generatedValue用のヒント（v4.1追加）
+          generationHints: definition.generationHints,
         });
       }
     }
@@ -692,6 +694,8 @@ interface WidgetDefinitionSummary {
     dataType: string;
     description?: string;
   }[];
+  /** 動的コンテンツ生成ヒント（v4.1追加） */
+  generationHints?: import('../../types/v4/widget-definition.types').WidgetGenerationHints;
 }
 
 // =============================================================================

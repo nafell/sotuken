@@ -374,12 +374,14 @@ export default function SessionDetail() {
                 const genDuration = gen.totalGenerateDuration || gen.generateDuration || 0;
                 // Widget選定フェーズかステージ実行フェーズかを判定
                 const isWidgetSelection = gen.stage === 'widget_selection';
-                const stageLabel = isWidgetSelection ? '🔍 Widget Selection' : gen.stage;
+                const isPlanUnified = gen.stage === 'plan';
+                const stageLabel = isWidgetSelection ? '🔍 Widget Selection'
+                  : isPlanUnified ? '📋 Plan (Unified)' : gen.stage;
                 return (
                   <div key={gen.id} style={{
                     ...styles.stageRow,
-                    backgroundColor: isWidgetSelection ? '#f5f3ff' : undefined,
-                    borderLeft: isWidgetSelection ? '3px solid #7c3aed' : undefined,
+                    backgroundColor: isWidgetSelection ? '#f5f3ff' : isPlanUnified ? '#e0f2fe' : undefined,
+                    borderLeft: isWidgetSelection ? '3px solid #7c3aed' : isPlanUnified ? '3px solid #0ea5e9' : undefined,
                   }}>
                     <span style={styles.stageName}>{idx + 1}. {stageLabel}</span>
                     <span style={styles.stageMetric}>{tokens} tokens</span>
@@ -434,10 +436,14 @@ export default function SessionDetail() {
               const genDuration = gen.totalGenerateDuration || gen.generateDuration || 0;
               // Widget選定フェーズかステージ実行フェーズかを判定
               const isWidgetSelection = gen.stage === 'widget_selection';
-              const stageLabel = isWidgetSelection ? '🔍 Widget Selection' : gen.stage;
+              const isPlanUnified = gen.stage === 'plan';
+              const stageLabel = isWidgetSelection ? '🔍 Widget Selection'
+                : isPlanUnified ? '📋 Plan (Unified)' : gen.stage;
               const stageBadgeStyle = isWidgetSelection
                 ? { ...styles.generationStage, backgroundColor: '#7c3aed', color: 'white' }
-                : styles.generationStage;
+                : isPlanUnified
+                  ? { ...styles.generationStage, backgroundColor: '#0ea5e9', color: 'white' }
+                  : styles.generationStage;
               return (
                 <div key={gen.id} style={styles.generationCard}>
                   <div

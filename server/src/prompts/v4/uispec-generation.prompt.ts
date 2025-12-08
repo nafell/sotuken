@@ -68,8 +68,13 @@ Widget間のリアクティブなUI連携を定義します。
 ### 4. レイアウト設定
 画面全体のレイアウトを定義します。
 
-### 5. コンテンツ生成（generatedValue）
-Widget定義に**generationHints**がある場合、ユーザーの悩みに関連するコンテンツを動的に生成してconfig内に配置してください。
+### 5. コンテンツ生成（generatedValue）【必須タスク】
+Widget定義に**generationHints**がある場合、ユーザーの悩みに関連するコンテンツを動的に生成してconfig内に**必ず**配置してください。
+
+**確認手順**:
+1. Widget定義情報を確認し、generationHintsフィールドを持つWidgetを特定する
+2. 該当Widgetのconfigに、generationHints.samples.fieldで指定されたキー（例: "sampleCards"）を追加する
+3. ユーザーの悩みに関連した具体的なサンプルを生成する
 
 **Type B: サンプルデータ（samples）**
 generationHints.samplesが定義されている場合:
@@ -208,6 +213,28 @@ generationHints.samplesが定義されている場合:
 \`\`\`
 
 ## 重要な注意点
+
+### generatedValue（必須）
+**generationHintsを持つWidgetには必ずサンプルコンテンツを生成してください。**
+
+1. Widget定義情報の中で**generationHints**フィールドがあるWidgetを確認してください
+2. generationHints.samplesがある場合、**config内にsampleCardsフィールドを必ず追加**してください
+3. サンプル内容は**ユーザーの具体的な悩み**（ORS内のconcern.textまたは文脈から推測）に関連させてください
+4. 各アイテムと親コンテナに**isGenerated: true**を必ず付与してください
+
+**例**: brainstorm_cardsにgenerationHints.samplesがある場合:
+\`\`\`json
+"config": {
+  "title": "...",
+  "sampleCards": {
+    "items": [
+      { "id": "sample_1", "text": "【悩みに関連する具体的なアイデア】", "isGenerated": true },
+      { "id": "sample_2", "text": "【悩みに関連する具体的なアイデア】", "isGenerated": true }
+    ],
+    "isGenerated": true
+  }
+}
+\`\`\`
 
 ### DataBinding
 1. 各WidgetのポートIDはWidget定義のports.inputs/outputsを参照してください

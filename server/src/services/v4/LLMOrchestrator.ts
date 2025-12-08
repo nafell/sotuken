@@ -27,6 +27,9 @@ import {
   ORS_GENERATION_PROMPT,
   UISPEC_GENERATION_PROMPT,
   SUMMARY_GENERATION_PROMPT,
+  // DSL v5: Plan統合プロンプト
+  PLAN_ORS_GENERATION_PROMPT,
+  PLAN_UISPEC_GENERATION_PROMPT,
 } from '../../prompts/v4';
 
 // =============================================================================
@@ -394,6 +397,9 @@ export function createLLMOrchestratorWithDefaultPrompts(config?: Omit<LLMOrchest
   promptManager.registerTemplate('ors-generation', ORS_GENERATION_PROMPT);
   promptManager.registerTemplate('uispec-generation', UISPEC_GENERATION_PROMPT);
   promptManager.registerTemplate('summary-generation', SUMMARY_GENERATION_PROMPT);
+  // DSL v5: Plan統合プロンプト
+  promptManager.registerTemplate('plan-ors-generation', PLAN_ORS_GENERATION_PROMPT);
+  promptManager.registerTemplate('plan-uispec-generation', PLAN_UISPEC_GENERATION_PROMPT);
 
   return new LLMOrchestrator({
     ...config,

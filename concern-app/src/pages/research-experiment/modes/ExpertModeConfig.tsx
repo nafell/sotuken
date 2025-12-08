@@ -32,6 +32,9 @@ export default function ExpertModeConfig() {
                 setWidgetCount(settingsData.defaults.widgetCount);
                 setModelId(settingsData.defaults.modelId);
                 if (casesData.length > 0) setSelectedCaseId(casesData[0].caseId);
+
+                // Auto-generate evaluator ID (like UserModeConfig)
+                setEvaluatorId(`expert_${Date.now().toString(36).slice(-4)}`);
             } catch (err) {
                 console.error(err);
             } finally {
@@ -73,6 +76,7 @@ export default function ExpertModeConfig() {
                             placeholder="e.g. expert_01"
                             style={styles.input}
                         />
+                        <p style={styles.hint}>Auto-generated, but can be customized.</p>
                     </div>
                 </div>
 

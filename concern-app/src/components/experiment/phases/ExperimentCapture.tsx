@@ -12,9 +12,9 @@ export function ExperimentCapture({ onComplete, initialText = '', mode }: Experi
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Technical/Expertモードで初期テキストがある場合、自動的に次へ進む
+    // Technicalモードで初期テキストがある場合、自動的に次へ進む
     useEffect(() => {
-        if ((mode === 'technical' || mode === 'expert') && initialText) {
+        if (mode === 'technical' && initialText) {
             const autoProceed = async () => {
                 setIsAnalyzing(true);
                 try {

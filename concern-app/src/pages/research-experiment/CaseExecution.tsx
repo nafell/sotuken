@@ -10,7 +10,6 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   experimentApi,
   type TestCase,
-  type ExperimentSettings,
   type ExperimentSession
 } from '../../services/ExperimentApiService';
 import { ExperimentExecutor } from '../../components/experiment/ExperimentExecutor';
@@ -23,7 +22,6 @@ export default function CaseExecution() {
   const navigate = useNavigate();
 
   const [testCase, setTestCase] = useState<TestCase | null>(null);
-  const [settings, setSettings] = useState<ExperimentSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,7 +69,6 @@ export default function CaseExecution() {
         // userモードの場合、テストケースは取得しない
         if (isUserMode) {
           const settingsData = await experimentApi.getSettings();
-          setSettings(settingsData);
           // URLパラメータから設定を取得、なければデフォルト
           setWidgetCount(urlWidgets ? parseInt(urlWidgets) : settingsData.defaults.widgetCount);
           setModelId(urlModel || settingsData.defaults.modelId);
@@ -100,10 +97,11 @@ export default function CaseExecution() {
             experimentApi.getSettings()
           ]);
           setTestCase(caseData);
-          setSettings(settingsData);
-          setWidgetCount(settingsData.defaults.widgetCount);
-          setModelId(settingsData.defaults.modelId);
-          setExperimentType(settingsData.defaults.experimentType);
+          // URLパラメータから設定を取得、なければデフォルト
+          setWidgetCount(urlWidgets ? parseInt(urlWidgets) : settingsData.defaults.widgetCount);
+          setModelId(urlModel || settingsData.defaults.modelId);
+          setExperimentType(urlMode || settingsData.defaults.experimentType);
+          setEvaluatorId(urlEvaluator || '');
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -269,87 +267,27 @@ export default function CaseExecution() {
         {/* Execution Config */}
         {executionState === 'config' && (
           <section style={styles.section}>
-            <h2 style={styles.sectionTitle}>
-              {isUserMode ? 'Session Configuration' : 'Execution Configuration'}
-            </h2>
+            <h2 style={styles.sectionTitle}>Session Configuration</h2>
             <div style={styles.configForm}>
-              {/* ユーザモードでは設定は固定されているので読み取り専用で表示 */}
-              {isUserMode ? (
-                <>
-                  <div style={styles.infoCard}>
-                    <div style={styles.infoRow}>
-                      <span style={styles.infoLabel}>Participant ID:</span>
-                      <span style={styles.infoValue}>{evaluatorId || '(not set)'}</span>
-                    </div>
-                    <div style={styles.infoRow}>
-                      <span style={styles.infoLabel}>Widget Count:</span>
-                      <span style={styles.infoValue}>{widgetCount}</span>
-                    </div>
-                    <div style={styles.infoRow}>
-                      <span style={styles.infoLabel}>Model:</span>
-                      <span style={styles.infoValue}>{modelId}</span>
-                    </div>
-                  </div>
-                  <p style={styles.userModeHint}>
-                    You will be asked to input your concern in the next step.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>Experiment Type</label>
-                    <select
-                      value={experimentType}
-                      onChange={(e) => setExperimentType(e.target.value)}
-                      style={styles.formSelect}
-                    >
-                      {settings?.experimentTypes.map(type => (
-                        <option key={type.id} value={type.id}>{type.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>Widget Count</label>
-                    <select
-                      value={widgetCount}
-                      onChange={(e) => setWidgetCount(parseInt(e.target.value))}
-                      style={styles.formSelect}
-                    >
-                      {settings?.widgetCountConditions.map(c => (
-                        <option key={c.id} value={c.widgetCount}>
-                          {c.widgetCount} - {c.description}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>Model</label>
-                    <select
-                      value={modelId}
-                      onChange={(e) => setModelId(e.target.value)}
-                      style={styles.formSelect}
-                    >
-                      {settings?.modelConditions.map(c => (
-                        <option key={c.id} value={c.modelId}>
-                          {c.id} - {c.description}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>Evaluator ID (optional)</label>
-                    <input
-                      type="text"
-                      value={evaluatorId}
-                      onChange={(e) => setEvaluatorId(e.target.value)}
-                      placeholder="e.g., evaluator_01"
-                      style={styles.formInput}
-                    />
-                  </div>
-                </>
+              {/* 全モード共通で読み取り専用表示 */}
+              <div style={styles.infoCard}>
+                <div style={styles.infoRow}>
+                  <span style={styles.infoLabel}>{isUserMode ? 'Participant ID:' : 'Evaluator ID:'}</span>
+                  <span style={styles.infoValue}>{evaluatorId || '(not set)'}</span>
+                </div>
+                <div style={styles.infoRow}>
+                  <span style={styles.infoLabel}>Widget Count:</span>
+                  <span style={styles.infoValue}>{widgetCount}</span>
+                </div>
+                <div style={styles.infoRow}>
+                  <span style={styles.infoLabel}>Model:</span>
+                  <span style={styles.infoValue}>{modelId}</span>
+                </div>
+              </div>
+              {isUserMode && (
+                <p style={styles.userModeHint}>
+                  You will be asked to input your concern in the next step.
+                </p>
               )}
 
               <button
@@ -573,32 +511,6 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: '#fff',
     borderRadius: '8px',
     border: '1px solid #E5E7EB'
-  },
-  formGroup: {
-    marginBottom: '16px'
-  },
-  formLabel: {
-    display: 'block',
-    fontSize: '14px',
-    fontWeight: 500,
-    color: '#374151',
-    marginBottom: '6px'
-  },
-  formSelect: {
-    width: '100%',
-    padding: '10px 12px',
-    borderRadius: '6px',
-    border: '1px solid #D1D5DB',
-    fontSize: '14px',
-    backgroundColor: '#fff'
-  },
-  formInput: {
-    width: '100%',
-    padding: '10px 12px',
-    borderRadius: '6px',
-    border: '1px solid #D1D5DB',
-    fontSize: '14px',
-    boxSizing: 'border-box'
   },
   startButton: {
     width: '100%',

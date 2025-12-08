@@ -148,12 +148,15 @@ export default function SessionDetail() {
           <p style={styles.sessionId}>{session.sessionId}</p>
         </div>
         <div style={styles.headerActions}>
-          {(session.generationSuccess || session.completedAt) && (
+          {generations.length > 0 && (
             <button
               onClick={() => navigate(`/research-experiment/data/replay/${session.sessionId}`)}
               style={styles.replayButton}
             >
               Replay Session
+              {!session.completedAt && (
+                <span style={styles.inProgressBadge}>In Progress</span>
+              )}
             </button>
           )}
           <Link to="/research-experiment/data/sessions" style={styles.backButton}>← Back</Link>
@@ -729,7 +732,18 @@ const styles: Record<string, React.CSSProperties> = {
     border: 'none',
     borderRadius: '6px',
     fontSize: '14px',
-    cursor: 'pointer'
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  },
+  inProgressBadge: {
+    fontSize: '10px',
+    fontWeight: 600,
+    backgroundColor: '#F59E0B',
+    color: '#fff',
+    padding: '2px 6px',
+    borderRadius: '4px'
   },
   backButton: {
     color: '#6B7280',

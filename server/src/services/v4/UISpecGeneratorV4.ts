@@ -160,6 +160,11 @@ export class UISpecGeneratorV4 {
    * DSL v5のPlanフェーズ用。diverge/organize/convergeの3セクション分の
    * UISpecを1回のLLM呼び出しで生成する。
    *
+   * 改善点（v5.1）:
+   * - プロンプトにgeneratedValueチェックリストを追加
+   * - W2WR接続ヒントを明示的に提供
+   * - 各セクションのポート情報を整形して渡す
+   *
    * @param input Plan UISpec生成入力
    * @returns Plan UISpec生成結果
    */
@@ -175,6 +180,21 @@ export class UISpecGeneratorV4 {
     const organizeDefinitions = this.collectWidgetDefinitions(widgetSelectionResult.stages.organize);
     const convergeDefinitions = this.collectWidgetDefinitions(widgetSelectionResult.stages.converge);
 
+    // 全Widget定義を統合（チェックリスト生成用）
+    const allDefinitions = [...divergeDefinitions, ...organizeDefinitions, ...convergeDefinitions];
+
+    // プロンプト用の追加コンテキストを生成
+    const divergePortInfo = this.formatPortInfoForPrompt(divergeDefinitions);
+    const organizePortInfo = this.formatPortInfoForPrompt(organizeDefinitions);
+    const convergePortInfo = this.formatPortInfoForPrompt(convergeDefinitions);
+    const w2wrHints = this.generateW2WRHints(widgetSelectionResult);
+    const generatedValueChecklist = this.generateGeneratedValueChecklist(allDefinitions);
+
+    if (this.debug) {
+      console.log(`[UISpecGeneratorV4] W2WR Hints:\n${w2wrHints}`);
+      console.log(`[UISpecGeneratorV4] GeneratedValue Checklist:\n${generatedValueChecklist}`);
+    }
+
     // LLM呼び出し
     const result = await this.llmOrchestrator.execute<PlanUISpec>('plan_uispec_generation', {
       ors: JSON.stringify(planORS, null, 2),
@@ -182,18 +202,23 @@ export class UISpecGeneratorV4 {
       divergeSelection: this.formatSelectionForPrompt(widgetSelectionResult.stages.diverge),
       divergePurpose: widgetSelectionResult.stages.diverge.purpose,
       divergeTarget: widgetSelectionResult.stages.diverge.target,
+      divergePortInfo,
       organizeSelection: this.formatSelectionForPrompt(widgetSelectionResult.stages.organize),
       organizePurpose: widgetSelectionResult.stages.organize.purpose,
       organizeTarget: widgetSelectionResult.stages.organize.target,
+      organizePortInfo,
       convergeSelection: this.formatSelectionForPrompt(widgetSelectionResult.stages.converge),
       convergePurpose: widgetSelectionResult.stages.converge.purpose,
       convergeTarget: widgetSelectionResult.stages.converge.target,
+      convergePortInfo,
       widgetDefinitions: JSON.stringify({
         diverge: divergeDefinitions,
         organize: organizeDefinitions,
         converge: convergeDefinitions,
       }, null, 2),
       enableReactivity: enableReactivity.toString(),
+      w2wrHints,
+      generatedValueChecklist,
       sessionId,
     });
 
@@ -216,6 +241,9 @@ export class UISpecGeneratorV4 {
       sessionId,
       enableReactivity
     );
+
+    // 生成後検証（警告ログ出力）
+    this.validateGeneratedContent(validatedPlanUISpec, widgetSelectionResult, enableReactivity);
 
     return {
       ...result,
@@ -649,6 +677,149 @@ export class UISpecGeneratorV4 {
     }
 
     return summaries;
+  }
+
+  // ===========================================================================
+  // DSL v5: プロンプト補助メソッド（W2WR, generatedValue用）
+  // ===========================================================================
+
+  /**
+   * Widget別のポート情報を明示的に整形
+   * プロンプトに渡すための読みやすい形式
+   */
+  private formatPortInfoForPrompt(widgets: WidgetDefinitionSummary[]): string {
+    return widgets.map(w => {
+      const inputs = w.inputs.map(i => `  IN: ${i.id} (${i.dataType})${i.required ? ' [required]' : ''}`).join('\n');
+      const outputs = w.outputs.map(o => `  OUT: ${o.id} (${o.dataType})`).join('\n');
+      const hints = w.generationHints
+        ? `  GENERATE: config.${w.generationHints.labels?.field || w.generationHints.samples?.field}`
+        : '';
+      return `${w.id} (complexity: ${w.complexity}):\n${inputs}\n${outputs}${hints ? '\n' + hints : ''}`;
+    }).join('\n\n');
+  }
+
+  /**
+   * Widget選択結果から推奨W2WR接続を生成
+   * LLMに明示的な接続ヒントを渡す
+   */
+  private generateW2WRHints(widgetSelectionResult: WidgetSelectionResult): string {
+    const hints: string[] = [];
+    const divergeWidgets = widgetSelectionResult.stages.diverge.widgets;
+    const organizeWidgets = widgetSelectionResult.stages.organize.widgets;
+    const convergeWidgets = widgetSelectionResult.stages.converge.widgets;
+
+    // diverge → organize 接続推奨
+    for (let di = 0; di < divergeWidgets.length; di++) {
+      const dw = divergeWidgets[di];
+      const dwDef = getWidgetDefinitionV4(dw.widgetId);
+      if (!dwDef) continue;
+
+      for (let oi = 0; oi < organizeWidgets.length; oi++) {
+        const ow = organizeWidgets[oi];
+        const owDef = getWidgetDefinitionV4(ow.widgetId);
+        if (!owDef) continue;
+
+        // 出力ポートと入力ポートを接続
+        for (const outPort of dwDef.ports.outputs) {
+          for (const inPort of owDef.ports.inputs) {
+            hints.push(`- ${dw.widgetId}_${di}.${outPort.id} → ${ow.widgetId}_${oi}.${inPort.id} (diverge→organize)`);
+          }
+        }
+      }
+    }
+
+    // organize → converge 接続推奨
+    for (let oi = 0; oi < organizeWidgets.length; oi++) {
+      const ow = organizeWidgets[oi];
+      const owDef = getWidgetDefinitionV4(ow.widgetId);
+      if (!owDef) continue;
+
+      for (let ci = 0; ci < convergeWidgets.length; ci++) {
+        const cw = convergeWidgets[ci];
+        const cwDef = getWidgetDefinitionV4(cw.widgetId);
+        if (!cwDef) continue;
+
+        // 出力ポートと入力ポートを接続
+        for (const outPort of owDef.ports.outputs) {
+          for (const inPort of cwDef.ports.inputs) {
+            hints.push(`- ${ow.widgetId}_${oi}.${outPort.id} → ${cw.widgetId}_${ci}.${inPort.id} (organize→converge)`);
+          }
+        }
+      }
+    }
+
+    return hints.length > 0 ? hints.join('\n') : '(No specific connections suggested)';
+  }
+
+  /**
+   * generatedValueチェックリストを生成
+   * LLMに生成すべきコンテンツを明示
+   */
+  private generateGeneratedValueChecklist(allDefinitions: WidgetDefinitionSummary[]): string {
+    const checks: string[] = [];
+
+    for (const w of allDefinitions) {
+      if (w.generationHints) {
+        const field = w.generationHints.labels?.field || w.generationHints.samples?.field;
+        const count = w.generationHints.labels?.count || w.generationHints.samples?.count;
+        const countStr = typeof count === 'object' ? `${count.min}-${count.max} items` : count ? `${count} items` : 'items';
+        const hintType = w.generationHints.labels ? 'labels' : 'samples';
+        checks.push(`[ ] ${w.id}: config.${field} (${hintType}, ${countStr})`);
+      }
+    }
+
+    return checks.length > 0 ? checks.join('\n') : '(No widgets require generated content)';
+  }
+
+  /**
+   * 生成後のgeneratedValueとW2WR検証
+   * 欠損時に警告ログを出力
+   */
+  private validateGeneratedContent(
+    planUISpec: PlanUISpec,
+    widgetSelectionResult: WidgetSelectionResult,
+    enableReactivity: boolean
+  ): void {
+    // generatedValue検証
+    for (const sectionType of ['diverge', 'organize', 'converge'] as const) {
+      const section = planUISpec.sections[sectionType];
+      const stageSelection = widgetSelectionResult.stages[sectionType];
+
+      for (let i = 0; i < section.widgets.length; i++) {
+        const widget = section.widgets[i];
+        const selectedWidget = stageSelection.widgets[i];
+        if (!selectedWidget) continue;
+
+        const def = getWidgetDefinitionV4(widget.component || selectedWidget.widgetId);
+        if (!def?.generationHints) continue;
+
+        const field = def.generationHints.labels?.field || def.generationHints.samples?.field;
+        if (field && !widget.config[field]) {
+          console.warn(`[UISpecGeneratorV4] Missing generatedValue for ${widget.id}.config.${field}`);
+        } else if (field && widget.config[field]) {
+          // 存在確認 - isGeneratedマーカーチェック
+          const content = widget.config[field];
+          if (typeof content === 'object' && content !== null) {
+            const hasIsGenerated = 'isGenerated' in content ||
+              (Array.isArray(content) && content.some((item: Record<string, unknown>) => item.isGenerated === true));
+            if (!hasIsGenerated) {
+              console.warn(`[UISpecGeneratorV4] ${widget.id}.config.${field} missing isGenerated marker`);
+            }
+          }
+        }
+      }
+    }
+
+    // W2WR検証
+    if (enableReactivity) {
+      if (!planUISpec.reactiveBindings?.bindings || planUISpec.reactiveBindings.bindings.length === 0) {
+        console.warn('[UISpecGeneratorV4] ReactiveBindings is empty when enableReactivity=true');
+      } else {
+        if (this.debug) {
+          console.log(`[UISpecGeneratorV4] ReactiveBindings count: ${planUISpec.reactiveBindings.bindings.length}`);
+        }
+      }
+    }
   }
 
   /**

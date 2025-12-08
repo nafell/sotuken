@@ -4,6 +4,7 @@ import { UIRendererV4 } from '../../../services/ui-generation/UIRendererV4';
 import { PLAN_STAGE_CONFIGS } from '../types';
 import type { PlanStage, StageResult, WidgetResultData, ExperimentError } from '../types';
 import type { ORS } from '../../../types/v4/ors.types';
+import type { SkippedStages } from '../../../types/v4/widget-selection.types';
 
 interface ExperimentPlanProps {
     sessionId: string;
@@ -11,6 +12,8 @@ interface ExperimentPlanProps {
     currentStage: PlanStage;
     stageResults: Partial<Record<PlanStage, StageResult>>;
     bottleneckType?: string;
+    /** スキップ予定のステージ */
+    skippedStages?: SkippedStages;
     onStageResult: (stage: PlanStage, result: Partial<StageResult>, generationId?: string, renderDuration?: number) => void;
     onWidgetUpdate: (stage: PlanStage, widgetResult: WidgetResultData) => void;
     onNextStage: () => void;
@@ -30,6 +33,7 @@ export function ExperimentPlan({
     currentStage,
     stageResults,
     bottleneckType,
+    skippedStages,
     onStageResult,
     onWidgetUpdate,
     onNextStage,
@@ -55,6 +59,28 @@ export function ExperimentPlan({
     const stageConfig = PLAN_STAGE_CONFIGS.find(c => c.stage === currentStage);
 
     const handleGenerate = useCallback(async () => {
+        // スキップ対象のステージかチェック
+        if (skippedStages?.[currentStage]) {
+            console.log(`⏭️ Skipping stage: ${currentStage}`);
+
+            // スキップ結果を生成
+            const skipResult: Partial<StageResult> = {
+                stage: currentStage,
+                skipped: true,
+                mode: 'widget',
+                widgetResults: [],
+            };
+
+            // 結果を通知
+            onStageResult(currentStage, skipResult, undefined, 0);
+
+            // 少し待ってから次のステージへ自動進行
+            setTimeout(() => {
+                onNextStage();
+            }, 300);
+            return;
+        }
+
         setStatus('generating');
         setError(null);
 
@@ -99,7 +125,7 @@ export function ExperimentPlan({
             setError(err instanceof Error ? err.message : 'Unknown error');
             setStatus('error');
         }
-    }, [currentStage, currentStageIndex, sessionId, concernText, stageResults, bottleneckType]);
+    }, [currentStage, currentStageIndex, sessionId, concernText, stageResults, bottleneckType, skippedStages, onStageResult, onNextStage]);
 
     // ステージ変更時にリセット＆自動生成開始
     useEffect(() => {

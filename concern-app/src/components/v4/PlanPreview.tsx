@@ -16,6 +16,7 @@ import type {
   WidgetSelectionResult,
   StageSelection,
   SelectedWidget,
+  SkippedStages,
 } from '../../types/v4/widget-selection.types';
 import { STAGE_ORDER, STAGE_NAMES, STAGE_DISPLAY_NAMES } from '../../types/v4/widget-selection.types';
 
@@ -31,8 +32,8 @@ export interface PlanPreviewProps {
   selectionResult: WidgetSelectionResult;
   /** ユーザーの悩みテキスト */
   concernText?: string;
-  /** 開始ボタンクリック時のコールバック */
-  onConfirm: () => void;
+  /** 開始ボタンクリック時のコールバック（スキップ設定を渡す） */
+  onConfirm: (skippedStages: SkippedStages) => void;
   /** キャンセルボタンクリック時のコールバック */
   onCancel?: () => void;
   /** 再生成ボタンクリック時のコールバック */
@@ -58,9 +59,13 @@ interface StageCardProps {
   selection: StageSelection;
   isExpanded: boolean;
   onToggle: () => void;
+  /** このステージがスキップ予定かどうか */
+  isSkipped: boolean;
+  /** スキップ状態を切り替える */
+  onSkipToggle: () => void;
 }
 
-function StageCard({ stage, index, selection, isExpanded, onToggle }: StageCardProps) {
+function StageCard({ stage, index, selection, isExpanded, onToggle, isSkipped, onSkipToggle }: StageCardProps) {
   const stageColors: Record<StageType, string> = {
     diverge: '#8b5cf6',   // purple
     organize: '#3b82f6',  // blue
@@ -68,7 +73,7 @@ function StageCard({ stage, index, selection, isExpanded, onToggle }: StageCardP
     summary: '#f59e0b',   // amber
   };
 
-  const color = stageColors[stage];
+  const color = isSkipped ? '#6b7280' : stageColors[stage]; // グレー（スキップ時）
 
   return (
     <div
@@ -77,6 +82,8 @@ function StageCard({ stage, index, selection, isExpanded, onToggle }: StageCardP
         borderRadius: '0.75rem',
         overflow: 'hidden',
         border: `1px solid ${color}33`,
+        opacity: isSkipped ? 0.6 : 1,
+        transition: 'opacity 0.2s',
       }}
     >
       {/* ヘッダー */}
@@ -116,12 +123,29 @@ function StageCard({ stage, index, selection, isExpanded, onToggle }: StageCardP
         {/* ステージ情報 */}
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontWeight: 'bold', color: '#f1f5f9', fontSize: '1rem' }}>
+            <span style={{
+              fontWeight: 'bold',
+              color: isSkipped ? '#94a3b8' : '#f1f5f9',
+              fontSize: '1rem',
+              textDecoration: isSkipped ? 'line-through' : 'none',
+            }}>
               {STAGE_NAMES[stage]}
             </span>
             <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>
               ({STAGE_DISPLAY_NAMES[stage]})
             </span>
+            {isSkipped && (
+              <span style={{
+                backgroundColor: '#f59e0b33',
+                color: '#f59e0b',
+                padding: '0.125rem 0.5rem',
+                borderRadius: '0.25rem',
+                fontSize: '0.625rem',
+                fontWeight: 'bold',
+              }}>
+                SKIP
+              </span>
+            )}
           </div>
           <p
             style={{
@@ -134,6 +158,40 @@ function StageCard({ stage, index, selection, isExpanded, onToggle }: StageCardP
             {selection.purpose}
           </p>
         </div>
+
+        {/* スキップトグル */}
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.375rem',
+            cursor: 'pointer',
+            marginRight: '0.5rem',
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onSkipToggle();
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={isSkipped}
+            onChange={() => {}}
+            style={{
+              width: '1rem',
+              height: '1rem',
+              cursor: 'pointer',
+              accentColor: '#f59e0b',
+            }}
+          />
+          <span style={{
+            color: isSkipped ? '#f59e0b' : '#64748b',
+            fontSize: '0.75rem',
+            whiteSpace: 'nowrap',
+          }}>
+            スキップ
+          </span>
+        </label>
 
         {/* 展開/折りたたみアイコン */}
         <span
@@ -308,6 +366,7 @@ export function PlanPreview({
   const [expandedStages, setExpandedStages] = useState<Set<StageType>>(
     new Set(showDetails ? STAGE_ORDER : [])
   );
+  const [skippedStages, setSkippedStages] = useState<SkippedStages>({});
 
   const toggleStage = (stage: StageType) => {
     setExpandedStages((prev) => {
@@ -319,6 +378,21 @@ export function PlanPreview({
       }
       return newSet;
     });
+  };
+
+  const toggleSkip = (stage: StageType) => {
+    setSkippedStages((prev) => ({
+      ...prev,
+      [stage]: !prev[stage],
+    }));
+  };
+
+  // 少なくとも1つのステージが実行されるかチェック
+  const skippedCount = STAGE_ORDER.filter((stage) => skippedStages[stage]).length;
+  const canConfirm = skippedCount < STAGE_ORDER.length;
+
+  const handleConfirm = () => {
+    onConfirm(skippedStages);
   };
 
   const expandAll = () => setExpandedStages(new Set(STAGE_ORDER));
@@ -430,9 +504,31 @@ export function PlanPreview({
             selection={selectionResult.stages[stage]}
             isExpanded={expandedStages.has(stage)}
             onToggle={() => toggleStage(stage)}
+            isSkipped={!!skippedStages[stage]}
+            onSkipToggle={() => toggleSkip(stage)}
           />
         ))}
       </div>
+
+      {/* スキップ状態の警告 */}
+      {skippedCount > 0 && (
+        <div
+          style={{
+            backgroundColor: '#f59e0b22',
+            borderRadius: '0.5rem',
+            padding: '0.75rem 1rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+          }}
+        >
+          <span style={{ color: '#f59e0b', fontSize: '1rem' }}>⚠</span>
+          <span style={{ color: '#fbbf24', fontSize: '0.875rem' }}>
+            {skippedCount}つのステージがスキップされます
+            {!canConfirm && '（少なくとも1つのステージを実行してください）'}
+          </span>
+        </div>
+      )}
 
       {/* 合計所要時間 */}
       {selectionResult.totalEstimatedDuration && (
@@ -491,17 +587,17 @@ export function PlanPreview({
         )}
 
         <button
-          onClick={onConfirm}
-          disabled={isLoading}
+          onClick={handleConfirm}
+          disabled={isLoading || !canConfirm}
           style={{
             padding: '0.75rem 2rem',
-            backgroundColor: '#3b82f6',
+            backgroundColor: canConfirm ? '#3b82f6' : '#6b7280',
             border: 'none',
             borderRadius: '0.5rem',
             color: 'white',
             fontSize: '0.875rem',
             fontWeight: 'bold',
-            cursor: isLoading ? 'not-allowed' : 'pointer',
+            cursor: isLoading || !canConfirm ? 'not-allowed' : 'pointer',
             opacity: isLoading ? 0.5 : 1,
             display: 'flex',
             alignItems: 'center',

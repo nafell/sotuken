@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { experimentApi } from '../../../services/ExperimentApiService';
 import type { Task, ExperimentError } from '../types';
-import type { WidgetSelectionResult } from '../../../types/v4/widget-selection.types';
+import type { WidgetSelectionResult, SkippedStages } from '../../../types/v4/widget-selection.types';
 
 export type FlowPhase = 'capture' | 'plan-preview' | 'plan' | 'breakdown' | 'complete';
 
@@ -10,6 +10,8 @@ export interface ExperimentFlowState {
     concernText: string;
     bottleneckType: string | null;
     widgetSelectionResult: WidgetSelectionResult | null;
+    /** スキップ予定のステージ */
+    skippedStages: SkippedStages;
     planStageResults: Record<string, unknown>;
     breakdownTasks: Task[];
     experimentErrors: ExperimentError[]; // 全ステージのエラーを集約
@@ -38,6 +40,7 @@ export function useExperimentFlow({
         concernText: initialContext?.concernText || '',
         bottleneckType: initialContext?.bottleneckType || null,
         widgetSelectionResult: null,
+        skippedStages: {},
         planStageResults: {},
         breakdownTasks: [],
         experimentErrors: [],
@@ -88,11 +91,16 @@ export function useExperimentFlow({
     }, [sessionId]);
 
     // PlanPreview: Widget選定結果をセットしてPlanフェーズへ進む
-    const handlePlanPreviewConfirm = useCallback((widgetSelectionResult: WidgetSelectionResult) => {
+    const handlePlanPreviewConfirm = useCallback((
+        widgetSelectionResult: WidgetSelectionResult,
+        skippedStages: SkippedStages = {}
+    ) => {
         console.log('✅ Plan Preview confirmed, proceeding to Plan phase');
+        console.log('📋 Skipped stages:', skippedStages);
         setState(prev => ({
             ...prev,
             widgetSelectionResult,
+            skippedStages,
             currentPhase: 'plan'
         }));
     }, []);

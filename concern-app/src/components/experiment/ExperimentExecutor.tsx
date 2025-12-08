@@ -6,7 +6,7 @@ import { ExperimentBreakdown } from './phases/ExperimentBreakdown';
 import { PlanPreview } from '../v4/PlanPreview';
 import { apiService } from '../../services/api/ApiService';
 import type { PlanStage } from './types';
-import { createEmptyWidgetSelectionResult, type WidgetSelectionResult } from '../../types/v4/widget-selection.types';
+import { createEmptyWidgetSelectionResult, type WidgetSelectionResult, type SkippedStages } from '../../types/v4/widget-selection.types';
 
 interface ExperimentExecutorProps {
     sessionId: string;
@@ -113,9 +113,9 @@ export function ExperimentExecutor({
     }, [currentPlanStage]);
 
     // PlanPreviewの確認ボタンハンドラ
-    const handlePlanPreviewConfirm = useCallback(() => {
+    const handlePlanPreviewConfirm = useCallback((skippedStages: SkippedStages) => {
         if (widgetSelectionResult) {
-            actions.handlePlanPreviewConfirm(widgetSelectionResult);
+            actions.handlePlanPreviewConfirm(widgetSelectionResult, skippedStages);
         }
     }, [widgetSelectionResult, actions]);
 
@@ -161,6 +161,7 @@ export function ExperimentExecutor({
                         currentStage={currentPlanStage}
                         stageResults={state.planStageResults}
                         bottleneckType={state.bottleneckType || undefined}
+                        skippedStages={state.skippedStages}
                         onStageResult={actions.handlePlanStageComplete}
                         onWidgetUpdate={(stage, result) => {
                             // Widget更新は現状ログのみか、必要ならState更新

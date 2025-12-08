@@ -19,13 +19,17 @@ import type { DICT, SVAL } from './ors.types';
  * LLMタスク種別
  *
  * DSL v4の3段階LLM呼び出し + 追加タスク
+ * DSL v5: Plan統合生成タスク追加
  */
 export type LLMTaskType =
-  | 'capture_diagnosis'    // Captureフェーズ診断（ボトルネック判定）
-  | 'widget_selection'     // 第1段階: Widget選定（4ステージ一括）
-  | 'ors_generation'       // 第2段階: ORS + DpG生成
-  | 'uispec_generation'    // 第3段階: UISpec生成
-  | 'summary_generation';  // まとめ生成（Breakdownフェーズ）
+  | 'capture_diagnosis'      // Captureフェーズ診断（ボトルネック判定）
+  | 'widget_selection'       // 第1段階: Widget選定（4ステージ一括）
+  | 'ors_generation'         // 第2段階: ORS + DpG生成
+  | 'uispec_generation'      // 第3段階: UISpec生成
+  | 'summary_generation'     // まとめ生成（Breakdownフェーズ）
+  // DSL v5: Plan統合生成
+  | 'plan_ors_generation'    // Plan統合ORS生成（3セクション分を1回で）
+  | 'plan_uispec_generation'; // Plan統合UISpec生成（3セクション分を1回で）
 
 /**
  * LLMタスク分類
@@ -44,6 +48,9 @@ export const LLM_TASK_CATEGORIES: Record<LLMTaskType, LLMTaskCategory> = {
   ors_generation: 'structured',
   uispec_generation: 'structured',
   summary_generation: 'general',
+  // DSL v5: Plan統合生成
+  plan_ors_generation: 'structured',
+  plan_uispec_generation: 'structured',
 };
 
 // =============================================================================
@@ -325,6 +332,23 @@ export const DEFAULT_LLM_TASK_CONFIGS: LLMTaskConfigMap = {
     timeout: 30000,
     description: 'Breakdownフェーズのまとめを生成',
   },
+  // DSL v5: Plan統合生成
+  plan_ors_generation: {
+    taskType: 'plan_ors_generation',
+    model: DEFAULT_MODEL_CONFIGS.structured,
+    promptTemplateId: 'plan-ors-generation',
+    maxRetries: 3,
+    timeout: 90000, // 3セクション分なので長めに設定
+    description: 'Plan統合ORS生成（diverge/organize/converge 3セクション分）',
+  },
+  plan_uispec_generation: {
+    taskType: 'plan_uispec_generation',
+    model: DEFAULT_MODEL_CONFIGS.structured,
+    promptTemplateId: 'plan-uispec-generation',
+    maxRetries: 3,
+    timeout: 90000, // 3セクション分なので長めに設定
+    description: 'Plan統合UISpec生成（diverge/organize/converge 3セクション分）',
+  },
 };
 
 // =============================================================================
@@ -378,6 +402,9 @@ export function isLLMTaskType(value: unknown): value is LLMTaskType {
     'ors_generation',
     'uispec_generation',
     'summary_generation',
+    // DSL v5
+    'plan_ors_generation',
+    'plan_uispec_generation',
   ];
   return typeof value === 'string' && validTypes.includes(value as LLMTaskType);
 }

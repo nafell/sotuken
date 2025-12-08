@@ -209,6 +209,12 @@ export interface ORSMetadata {
 export type StageType = 'diverge' | 'organize' | 'converge' | 'summary';
 
 /**
+ * DSL v5: Plan統合ステージ種別
+ * Planフェーズで使用される3つのセクション
+ */
+export type PlanSectionType = 'diverge' | 'organize' | 'converge';
+
+/**
  * ORS (Object-Relational Schema)
  *
  * DSL v4のTDDM層（データモデル層）の中核。
@@ -372,4 +378,134 @@ export function isORS(value: unknown): value is ORS {
     typeof v.dependencyGraph === 'object' &&
     typeof v.metadata === 'object'
   );
+}
+
+// =============================================================================
+// DSL v5: PlanORS (Plan統合用)
+// =============================================================================
+
+/**
+ * PlanORS メタデータ
+ * Plan統合生成用の拡張メタデータ
+ */
+export interface PlanORSMetadata {
+  /** 生成日時（Unix timestamp） */
+  generatedAt: number;
+  /** 使用したLLMモデル */
+  llmModel: string;
+  /** セッションID */
+  sessionId: string;
+  /** ユーザーの悩み */
+  concernText: string;
+  /** ボトルネックタイプ */
+  bottleneckType: string;
+  /** 含まれるセクション */
+  sections: PlanSectionType[];
+  /** カスタムメタデータ */
+  custom?: DICT<SVAL>;
+}
+
+/**
+ * PlanORS (Plan統合ORS)
+ *
+ * DSL v5のPlanフェーズ統合生成で使用。
+ * diverge/organize/convergeの3セクション分のデータ構造を1つのORSで定義。
+ */
+export interface PlanORS {
+  /** ORSバージョン（DSL v5） */
+  version: '5.0';
+
+  /** Planメタデータ */
+  planMetadata: {
+    concernText: string;
+    bottleneckType: string;
+    sections: PlanSectionType[];
+  };
+
+  /** エンティティ定義のリスト */
+  entities: Entity[];
+
+  /**
+   * 依存関係グラフ
+   * セクション間のデータ依存を定義
+   */
+  dependencyGraph: DependencyGraph;
+
+  /** メタデータ */
+  metadata: PlanORSMetadata;
+}
+
+/**
+ * PlanORSの型ガード
+ */
+export function isPlanORS(value: unknown): value is PlanORS {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    v.version === '5.0' &&
+    typeof v.planMetadata === 'object' &&
+    Array.isArray(v.entities) &&
+    typeof v.dependencyGraph === 'object' &&
+    typeof v.metadata === 'object'
+  );
+}
+
+/**
+ * 空のPlanORSを作成
+ */
+export function createEmptyPlanORS(
+  sessionId: string,
+  concernText: string,
+  bottleneckType: string,
+  llmModel: string
+): PlanORS {
+  return {
+    version: '5.0',
+    planMetadata: {
+      concernText,
+      bottleneckType,
+      sections: ['diverge', 'organize', 'converge'],
+    },
+    entities: [
+      {
+        id: 'concern',
+        type: 'concern',
+        attributes: [
+          {
+            name: 'text',
+            structuralType: 'SVAL',
+            valueType: 'string',
+            description: 'ユーザーの元の悩みテキスト',
+          },
+        ],
+      },
+    ],
+    dependencyGraph: {
+      dependencies: [],
+      metadata: {
+        version: '5.0',
+        generatedAt: Date.now(),
+      },
+    },
+    metadata: {
+      generatedAt: Date.now(),
+      llmModel,
+      sessionId,
+      concernText,
+      bottleneckType,
+      sections: ['diverge', 'organize', 'converge'],
+    },
+  };
+}
+
+/**
+ * AnyORS型（v4 ORS または v5 PlanORS）
+ */
+export type AnyORS = ORS | PlanORS;
+
+/**
+ * AnyORSの型ガード
+ */
+export function isAnyORS(value: unknown): value is AnyORS {
+  return isORS(value) || isPlanORS(value);
 }

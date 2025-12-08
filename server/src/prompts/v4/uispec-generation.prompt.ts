@@ -123,7 +123,14 @@ generationHints.samplesが定義されている場合:
         "title": "アイデアを出してみましょう",
         "placeholder": "思いついたことを書いてください",
         "minItems": 3,
-        "maxItems": 10
+        "maxItems": 10,
+        "sampleCards": {
+          "items": [
+            { "id": "sample_1", "text": "現状の問題点を洗い出す", "isGenerated": true },
+            { "id": "sample_2", "text": "理想の状態を具体的にイメージする", "isGenerated": true }
+          ],
+          "isGenerated": true
+        }
       },
       "dataBindings": [
         {

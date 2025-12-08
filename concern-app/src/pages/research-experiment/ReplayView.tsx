@@ -19,6 +19,7 @@ import {
 } from '../../services/ExperimentApiService';
 import UIRendererV3 from '../../services/ui-generation/UIRendererV3';
 import { analyzeW2WRFromUISpec, type W2WRAnalysis } from '../../utils/w2wrAnalyzer';
+import { flattenPlanUISpecToUISpec, isPlanUISpec } from '../../types/v4/ui-spec.types';
 
 type ViewMode = 'widget' | 'data';
 
@@ -474,20 +475,27 @@ export default function ReplayView() {
               </div>
 
               {/* Widget View Mode - V4: generatedUiSpec を優先, fallback to generatedDsl */}
-              {viewMode === 'widget' && (currentGeneration.generatedUiSpec || currentGeneration.generatedDsl) && (
-                <div style={styles.widgetRenderArea}>
-                  <div style={styles.readOnlyBanner}>
-                    Read-Only Preview - Interactions are disabled
+              {/* DSL v5: PlanUISpecの場合はflattenしてからUIRendererV3に渡す */}
+              {viewMode === 'widget' && (currentGeneration.generatedUiSpec || currentGeneration.generatedDsl) && (() => {
+                const rawUiSpec = currentGeneration.generatedUiSpec || currentGeneration.generatedDsl;
+                const uiSpecForRenderer = isPlanUISpec(rawUiSpec)
+                  ? flattenPlanUISpecToUISpec(rawUiSpec)
+                  : rawUiSpec;
+                return (
+                  <div style={styles.widgetRenderArea}>
+                    <div style={styles.readOnlyBanner}>
+                      Read-Only Preview - Interactions are disabled
+                    </div>
+                    <div style={styles.widgetContainer}>
+                      <UIRendererV3
+                        uiSpec={uiSpecForRenderer}
+                        onWidgetUpdate={handleWidgetUpdate}
+                        onWidgetComplete={handleWidgetComplete}
+                      />
+                    </div>
                   </div>
-                  <div style={styles.widgetContainer}>
-                    <UIRendererV3
-                      uiSpec={currentGeneration.generatedUiSpec || currentGeneration.generatedDsl}
-                      onWidgetUpdate={handleWidgetUpdate}
-                      onWidgetComplete={handleWidgetComplete}
-                    />
-                  </div>
-                </div>
-              )}
+                );
+              })()}
 
               {viewMode === 'widget' && !currentGeneration.generatedUiSpec && !currentGeneration.generatedDsl && (
                 <div style={styles.noWidgetMessage}>

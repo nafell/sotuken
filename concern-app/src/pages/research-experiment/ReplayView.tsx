@@ -153,9 +153,9 @@ export default function ReplayView() {
   };
 
   // 各段階のプロンプト展開状態
-  const [expandedPromptStages, setExpandedPromptStages] = useState<{ ors: boolean; uiSpec: boolean }>({ ors: false, uiSpec: false });
+  const [expandedPromptStages, setExpandedPromptStages] = useState<{ widgetSelection: boolean; ors: boolean; uiSpec: boolean }>({ widgetSelection: false, ors: false, uiSpec: false });
 
-  const togglePromptStage = (stage: 'ors' | 'uiSpec') => {
+  const togglePromptStage = (stage: 'widgetSelection' | 'ors' | 'uiSpec') => {
     setExpandedPromptStages(prev => ({ ...prev, [stage]: !prev[stage] }));
   };
 
@@ -526,6 +526,50 @@ export default function ReplayView() {
                   {/* 2段階プロンプト表示 (ORS/DpG + UISpec / Plan ORS + Plan UISpec) */}
                   {(() => {
                     const parsedPrompt = parsePromptData(currentGeneration.prompt);
+
+                    // Widget Selectionモード (widgetSelection)
+                    if (parsedPrompt && parsedPrompt.widgetSelection) {
+                      return (
+                        <div style={styles.promptStagesContainer}>
+                          <div style={styles.promptStageCard}>
+                            <div
+                              style={styles.promptStageHeader}
+                              onClick={() => togglePromptStage('widgetSelection')}
+                            >
+                              <div style={styles.promptStageHeaderLeft}>
+                                <span style={styles.promptStageIcon}>
+                                  {expandedPromptStages.widgetSelection ? '▼' : '▶'}
+                                </span>
+                                <span style={styles.promptStageBadgeWidgetSelection}>Widget Selection</span>
+                                <span style={styles.promptStageTitle}>Generation Prompt</span>
+                              </div>
+                              <div style={styles.promptStageHeaderRight}>
+                                {currentGeneration.widgetSelectionDuration && (
+                                  <span style={styles.promptStageMetric}>{currentGeneration.widgetSelectionDuration}ms</span>
+                                )}
+                              </div>
+                            </div>
+                            {expandedPromptStages.widgetSelection && (
+                              <div style={styles.promptStageBody}>
+                                {parsedPrompt.widgetSelection.inputParams && (
+                                  <div style={styles.inputParamsBox}>
+                                    <div style={styles.inputParamsTitle}>Input Parameters</div>
+                                    <div style={styles.inputParamsGrid}>
+                                      {Object.entries(parsedPrompt.widgetSelection.inputParams).map(([key, value]) => (
+                                        <div key={key}><span style={styles.inputParamLabel}>{key}:</span> {String(value ?? '-')}</div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                <pre style={styles.promptPreWidgetSelection}>
+                                  {parsedPrompt.widgetSelection.prompt || 'Prompt not available'}
+                                </pre>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
 
                     // DSL v5 Plan統合モード (planOrs + planUiSpec)
                     if (parsedPrompt && (parsedPrompt.planOrs || parsedPrompt.planUiSpec)) {
@@ -1416,6 +1460,14 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#6B7280',
     width: '12px'
   },
+  promptStageBadgeWidgetSelection: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#7C3AED',
+    backgroundColor: '#EDE9FE',
+    padding: '3px 8px',
+    borderRadius: '4px'
+  },
   promptStageBadgeOrs: {
     fontSize: '11px',
     fontWeight: 600,
@@ -1470,6 +1522,19 @@ const styles: Record<string, React.CSSProperties> = {
   inputParamLabel: {
     fontWeight: 500,
     color: '#6B7280'
+  },
+  promptPreWidgetSelection: {
+    backgroundColor: '#FAF5FF',
+    padding: '12px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    overflow: 'auto',
+    maxHeight: '400px',
+    margin: 0,
+    fontFamily: 'monospace',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+    border: '1px solid #DDD6FE'
   },
   promptPreOrs: {
     backgroundColor: '#F0F9FF',

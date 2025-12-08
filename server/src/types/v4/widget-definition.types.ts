@@ -47,12 +47,60 @@ export interface WidgetMetadataV4 extends V3WidgetMetadata {
 // =============================================================================
 
 /**
+ * ラベル生成ヒント (Type A)
+ *
+ * UIのラベル・説明文を動的生成するための指示
+ * @since DSL v4.1
+ */
+export interface LabelGenerationHint {
+  /** 配置先のconfigフィールド名 */
+  field: string;
+  /** LLMへの生成指示 */
+  instruction: string;
+  /** 生成数 */
+  count?: number;
+  /** アイテムのスキーマ（フィールド名: 型説明） */
+  schema: Record<string, string>;
+}
+
+/**
+ * サンプル生成ヒント (Type B)
+ *
+ * サンプルデータを動的生成するための指示
+ * @since DSL v4.1
+ */
+export interface SampleGenerationHint {
+  /** 配置先のconfigフィールド名 */
+  field: string;
+  /** LLMへの生成指示 */
+  instruction: string;
+  /** 生成数の範囲 */
+  count: { min: number; max: number };
+  /** アイテムのスキーマ（フィールド名: 型説明） */
+  schema: Record<string, string>;
+}
+
+/**
+ * Widget生成ヒント
+ *
+ * UISpec生成時にLLMが動的コンテンツを生成するための指示
+ * @since DSL v4.1
+ */
+export interface WidgetGenerationHints {
+  /** ラベル・説明文の生成ヒント (Type A) */
+  labels?: LabelGenerationHint;
+  /** サンプルデータの生成ヒント (Type B) */
+  samples?: SampleGenerationHint;
+}
+
+/**
  * v4 Widget定義
  *
  * v3から以下を追加:
  * - metadata.complexity
  * - summarizationPrompt: stage_summaryで使用する言語化プロンプト
  * - stage: 'all' を追加（全ステージ対応Widget用）
+ * - generationHints: 動的コンテンツ生成ヒント（v4.1追加）
  */
 export interface WidgetDefinitionV4 {
   /** Widget ID（システム全体で一意） */
@@ -91,6 +139,14 @@ export interface WidgetDefinitionV4 {
    * - {{outputs}}: Widgetの出力ポート値
    */
   summarizationPrompt?: string;
+
+  /**
+   * 動的コンテンツ生成ヒント
+   *
+   * UISpec生成時にLLMがWidget固有のコンテンツを生成するための指示。
+   * @since DSL v4.1
+   */
+  generationHints?: WidgetGenerationHints;
 }
 
 /**

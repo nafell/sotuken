@@ -87,6 +87,19 @@ export const BrainstormCardsDefinitionV4: WidgetDefinitionV4 = {
   summarizationPrompt: `作成されたカードの内容を箇条書きで列挙してください。
 カードの色情報は省略してください。
 {{state}}`,
+  generationHints: {
+    samples: {
+      field: 'sampleCards',
+      instruction:
+        'ユーザーの悩みに関連するアイデアの種となるカードを2-3個生成してください。ユーザーの思考を促すきっかけとなる具体的な内容にしてください。',
+      count: { min: 2, max: 3 },
+      schema: {
+        id: 'string (sample_1, sample_2, ...)',
+        text: 'string (日本語、15-30文字程度)',
+        color: 'string (optional, hex color)',
+      },
+    },
+  },
 };
 
 /**

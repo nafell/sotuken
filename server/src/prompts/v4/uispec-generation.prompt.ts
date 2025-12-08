@@ -73,8 +73,31 @@ Widget定義に**generationHints**がある場合、ユーザーの悩みに関�
 
 **確認手順**:
 1. Widget定義情報を確認し、generationHintsフィールドを持つWidgetを特定する
-2. 該当Widgetのconfigに、generationHints.samples.fieldで指定されたキー（例: "sampleCards"）を追加する
-3. ユーザーの悩みに関連した具体的なサンプルを生成する
+2. generationHints.labels または generationHints.samples を確認し、fieldで指定されたキーをconfigに追加する
+3. ユーザーの悩みに関連した具体的なコンテンツを生成する
+
+**Type A: ラベル生成（labels）**
+generationHints.labelsが定義されている場合:
+- fieldで指定されたキー（例: "emotions"）にラベル配列を配置
+- instructionに従い、countで指定された数のラベルを生成
+- 各ラベルには必ず**isGenerated: true**を付与
+
+**生成例: EmotionPalette**
+ユーザーの悩み: 「転職するか迷っている」
+
+\`\`\`json
+{
+  "id": "emotion_palette_0",
+  "component": "emotion_palette",
+  "config": {
+    "emotions": [
+      { "id": "emotion_1", "label": "不安", "color": "#9370DB", "category": "negative", "description": "将来への心配", "isGenerated": true },
+      { "id": "emotion_2", "label": "期待", "color": "#FFA500", "category": "positive", "description": "新しい可能性へのワクワク", "isGenerated": true },
+      { "id": "emotion_3", "label": "迷い", "color": "#87CEEB", "category": "neutral", "description": "決断できない気持ち", "isGenerated": true }
+    ]
+  }
+}
+\`\`\`
 
 **Type B: サンプルデータ（samples）**
 generationHints.samplesが定義されている場合:

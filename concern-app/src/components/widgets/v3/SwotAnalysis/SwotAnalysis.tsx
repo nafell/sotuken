@@ -13,6 +13,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import type { BaseWidgetProps } from '../../../../types/widget.types';
 import type { WidgetResult } from '../../../../types/result.types';
+import type { GeneratedContentContainer, GeneratedSampleItem } from '../../../../types/ui-spec.types';
 import {
   SwotAnalysisController,
   SWOT_QUADRANTS,
@@ -22,7 +23,13 @@ import {
   type SwotItem,
 } from './SwotAnalysisController';
 import { useReactivePorts } from '../../../../hooks/useReactivePorts';
+import { GeneratedBadge } from '../../../ui/GeneratedBadge';
 import styles from './SwotAnalysis.module.css';
+
+/** SWOT用のサンプルアイテム型 */
+interface SwotSampleItem extends GeneratedSampleItem {
+  quadrant: SwotQuadrant;
+}
 
 /**
  * SwotAnalysis Component
@@ -52,6 +59,12 @@ export const SwotAnalysis: React.FC<BaseWidgetProps> = ({
   const [selectedImportance, setSelectedImportance] = useState<SwotItem['importance']>('medium');
   const controllerRef = useRef<SwotAnalysisController>(
     new SwotAnalysisController()
+  );
+
+  // サンプルアイテム（generatedValue）
+  const sampleItemsConfig = spec.config?.sampleItems as GeneratedContentContainer<SwotSampleItem> | undefined;
+  const [sampleItems, setSampleItems] = useState<SwotSampleItem[]>(
+    (sampleItemsConfig?.items || []) as SwotSampleItem[]
   );
 
   // configから初期アイテムを設定
@@ -136,6 +149,31 @@ export const SwotAnalysis: React.FC<BaseWidgetProps> = ({
     },
     [onUpdate, spec.id, emitAllPorts]
   );
+
+  /**
+   * サンプルアイテムを採用
+   */
+  const handleAdoptSample = useCallback(
+    (sample: SwotSampleItem) => {
+      controllerRef.current.addItem(sample.text, sample.quadrant, 'medium');
+      setSampleItems((prev) => prev.filter((s) => s.id !== sample.id));
+      forceUpdate({});
+
+      emitAllPorts();
+      if (onUpdate) {
+        const result = controllerRef.current.getResult(spec.id);
+        onUpdate(spec.id, result.data);
+      }
+    },
+    [emitAllPorts, onUpdate, spec.id]
+  );
+
+  /**
+   * サンプルアイテムを却下
+   */
+  const handleDismissSample = useCallback((sampleId: string) => {
+    setSampleItems((prev) => prev.filter((s) => s.id !== sampleId));
+  }, []);
 
   /**
    * 重要度変更
@@ -254,12 +292,45 @@ export const SwotAnalysis: React.FC<BaseWidgetProps> = ({
                 <span className={styles.quadrantCount}>{counts[quadrant.id]}</span>
               </div>
 
+              {/* サンプルアイテム（AI生成） */}
+              {sampleItems.filter((s) => s.quadrant === quadrant.id).length > 0 && (
+                <div className={styles.sampleItemsSection}>
+                  <div className={styles.sampleItemsHeader}>
+                    <GeneratedBadge />
+                    <span>参考にどうぞ</span>
+                  </div>
+                  {sampleItems
+                    .filter((s) => s.quadrant === quadrant.id)
+                    .map((sample) => (
+                      <div key={sample.id} className={styles.sampleItem}>
+                        <span className={styles.sampleItemText}>{sample.text}</span>
+                        <div className={styles.sampleItemActions}>
+                          <button
+                            className={styles.sampleAdoptButton}
+                            onClick={() => handleAdoptSample(sample)}
+                            title="使う"
+                          >
+                            + 使う
+                          </button>
+                          <button
+                            className={styles.sampleDismissButton}
+                            onClick={() => handleDismissSample(sample.id)}
+                            title="却下"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+
               <div className={styles.itemsList}>
-                {items.length === 0 ? (
+                {items.length === 0 && sampleItems.filter((s) => s.quadrant === quadrant.id).length === 0 ? (
                   <div className={styles.emptyState}>
                     項目を追加してください
                   </div>
-                ) : (
+                ) : items.length === 0 ? null : (
                   items.map((item, index) => (
                     <div key={item.id} className={styles.item} data-testid={`swot-${quadrant.id}-item-${index}`}>
                       <div

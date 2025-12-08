@@ -13,9 +13,18 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import type { BaseWidgetProps } from '../../../../types/widget.types';
 import type { WidgetResult } from '../../../../types/result.types';
+import type { GeneratedSampleItem } from '../../../../types/ui-spec.types';
 import { TradeoffBalanceController } from './TradeoffBalanceController';
 import { useReactivePorts } from '../../../../hooks/useReactivePorts';
+import { GeneratedBadge } from '../../../ui/GeneratedBadge';
 import styles from './TradeoffBalance.module.css';
+
+/** TradeoffBalance用の初期アイテム型 */
+interface TradeoffItem extends Partial<GeneratedSampleItem> {
+  text: string;
+  side: 'left' | 'right';
+  weight?: number;
+}
 
 /**
  * TradeoffBalance Component
@@ -40,6 +49,8 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
   const [rightLabel, setRightLabel] = useState(spec.config.rightLabel || '選択肢B');
   const [newLeftItem, setNewLeftItem] = useState('');
   const [newRightItem, setNewRightItem] = useState('');
+  // 生成されたアイテムのIDを追跡（GeneratedBadge表示用）
+  const [generatedItemIds, setGeneratedItemIds] = useState<Set<string>>(new Set());
   const controllerRef = useRef<TradeoffBalanceController>(
     new TradeoffBalanceController(
       spec.config.leftLabel || '選択肢A',
@@ -49,17 +60,21 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
 
   // configから初期アイテムを設定
   useEffect(() => {
-    const initialItems = spec.config.items as Array<{
-      text: string;
-      side: 'left' | 'right';
-      weight?: number;
-    }> | undefined;
+    const initialItems = spec.config.items as TradeoffItem[] | undefined;
 
     if (initialItems && initialItems.length > 0) {
       controllerRef.current.reset();
+      const generatedIds = new Set<string>();
+
       initialItems.forEach((item) => {
-        controllerRef.current.addItem(item.text, item.side, item.weight || 50);
+        const addedItem = controllerRef.current.addItem(item.text, item.side, item.weight || 50);
+        // isGeneratedフラグが設定されている場合、追跡する
+        if (item.isGenerated && addedItem) {
+          generatedIds.add(addedItem.id);
+        }
       });
+
+      setGeneratedItemIds(generatedIds);
       forceUpdate({});
     }
   }, [spec.config.items]);
@@ -298,7 +313,14 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
               leftItems.map((item) => (
                 <div key={item.id} className={styles.item} data-testid={`tradeoff-left-item-${item.id}`}>
                   <div className={styles.itemHeader} data-testid={`tradeoff-left-item-header-${item.id}`}>
-                    <span className={styles.itemText}>{item.text}</span>
+                    <span className={styles.itemText}>
+                      {item.text}
+                      {generatedItemIds.has(item.id) && (
+                        <span className={styles.generatedBadgeWrapper}>
+                          <GeneratedBadge />
+                        </span>
+                      )}
+                    </span>
                     <span className={styles.itemWeight}>{item.weight}</span>
                     <button
                       className={styles.deleteButton}
@@ -367,7 +389,14 @@ export const TradeoffBalance: React.FC<BaseWidgetProps> = ({
               rightItems.map((item) => (
                 <div key={item.id} className={styles.item} data-testid={`tradeoff-right-item-${item.id}`}>
                   <div className={styles.itemHeader} data-testid={`tradeoff-right-item-header-${item.id}`}>
-                    <span className={styles.itemText}>{item.text}</span>
+                    <span className={styles.itemText}>
+                      {item.text}
+                      {generatedItemIds.has(item.id) && (
+                        <span className={styles.generatedBadgeWrapper}>
+                          <GeneratedBadge />
+                        </span>
+                      )}
+                    </span>
                     <span className={styles.itemWeight}>{item.weight}</span>
                     <button
                       className={styles.deleteButton}

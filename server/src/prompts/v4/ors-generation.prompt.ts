@@ -152,7 +152,7 @@ Entity.Attribute間のデータ依存関係を定義します。
   },
   "metadata": {
     "generatedAt": ${Date.now()},
-    "llmModel": "gemini-2.5-flash",
+    "llmModel": "gemini-2.5-flash-lite",
     "sessionId": "{{sessionId}}",
     "stage": "{{stage}}"
   }

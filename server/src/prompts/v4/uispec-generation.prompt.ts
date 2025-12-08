@@ -68,6 +68,43 @@ Widget間のリアクティブなUI連携を定義します。
 ### 4. レイアウト設定
 画面全体のレイアウトを定義します。
 
+### 5. コンテンツ生成（generatedValue）
+Widget定義に**generationHints**がある場合、ユーザーの悩みに関連するコンテンツを動的に生成してconfig内に配置してください。
+
+**Type B: サンプルデータ（samples）**
+generationHints.samplesが定義されている場合:
+- fieldで指定されたキー（例: "sampleCards"）にGeneratedContentContainerを配置
+- instructionに従い、countで指定された範囲の数のアイテムを生成
+- 各アイテムには必ず**isGenerated: true**を付与
+- コンテナにも**isGenerated: true**を付与
+
+**生成例: BrainstormCards**
+ユーザーの悩み: 「転職するか迷っている」
+
+\`\`\`json
+{
+  "id": "brainstorm_0",
+  "component": "brainstorm_cards",
+  "config": {
+    "title": "転職について考えてみましょう",
+    "sampleCards": {
+      "items": [
+        { "id": "sample_1", "text": "現職で得られているもの・失うもの", "isGenerated": true },
+        { "id": "sample_2", "text": "転職で実現したい理想の働き方", "isGenerated": true }
+      ],
+      "isGenerated": true
+    }
+  }
+}
+\`\`\`
+
+**重要ルール**:
+1. 生成内容はユーザーの**具体的な悩みの内容に関連**させる（一般的すぎる内容はNG）
+2. サンプルは「考えるきっかけ」であり、**完成した答えではない**
+3. **日本語で生成**する
+4. **isGenerated: true**マーカーを必ず付与する
+5. generationHintsがないWidgetには生成コンテンツを含めない
+
 ## 出力形式
 以下のJSON形式で出力してください：
 

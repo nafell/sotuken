@@ -10,7 +10,7 @@
  * - メタ情報・メトリクス表示
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   experimentApi,
@@ -18,6 +18,7 @@ import {
   type ExperimentGeneration
 } from '../../services/ExperimentApiService';
 import UIRendererV3 from '../../services/ui-generation/UIRendererV3';
+import { analyzeW2WRFromUISpec, type W2WRAnalysis } from '../../utils/w2wrAnalyzer';
 
 type ViewMode = 'widget' | 'data';
 
@@ -140,8 +141,31 @@ export default function ReplayView() {
     setExpandedPromptStages(prev => ({ ...prev, [stage]: !prev[stage] }));
   };
 
+  // W2WR展開状態
+  const [w2wrExpanded, setW2wrExpanded] = useState(true);
+  const [expandedDependencies, setExpandedDependencies] = useState<Set<number>>(new Set());
+
+  const toggleW2wrSection = () => setW2wrExpanded(prev => !prev);
+  const toggleDependency = (index: number) => {
+    setExpandedDependencies(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  };
+
   // Get current generation
   const currentGeneration = generations[currentStep];
+
+  // W2WR解析結果（現在のgenerationのUISpecから）
+  const w2wrAnalysis = useMemo<W2WRAnalysis | null>(() => {
+    if (!currentGeneration?.generatedUiSpec) return null;
+    return analyzeW2WRFromUISpec(currentGeneration.generatedUiSpec);
+  }, [currentGeneration?.generatedUiSpec]);
 
   // Calculate aggregated metrics from generations (V4対応)
   const aggregatedMetrics = {
@@ -596,6 +620,163 @@ export default function ReplayView() {
                       <pre style={styles.jsonPre}>
                         {formatJson(currentGeneration.generatedUiSpec)}
                       </pre>
+                    </div>
+                  )}
+
+                  {/* W2WR Reactivity Analysis */}
+                  {w2wrAnalysis && (
+                    <div style={styles.w2wrSection}>
+                      {/* W2WR Header */}
+                      <div
+                        style={styles.w2wrHeader}
+                        onClick={toggleW2wrSection}
+                      >
+                        <div style={styles.w2wrHeaderLeft}>
+                          <span style={styles.w2wrIcon}>
+                            {w2wrExpanded ? '\u25BC' : '\u25B6'}
+                          </span>
+                          <span style={styles.w2wrBadge}>W2WR</span>
+                          <span style={styles.w2wrTitle}>Reactivity Analysis</span>
+                        </div>
+                        <div style={styles.w2wrHeaderRight}>
+                          <span style={styles.w2wrMetric}>
+                            {w2wrAnalysis.totalCount} dependencies
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* W2WR Content */}
+                      {w2wrExpanded && (
+                        <div style={styles.w2wrBody}>
+                          {/* Summary */}
+                          <div style={styles.w2wrSummary}>
+                            <div style={styles.w2wrSummaryRow}>
+                              <span style={styles.w2wrSummaryLabel}>Total:</span>
+                              <span style={styles.w2wrSummaryValue}>{w2wrAnalysis.totalCount}</span>
+                            </div>
+                            <div style={styles.w2wrSummaryRow}>
+                              <span style={styles.w2wrSummaryLabel}>Valid:</span>
+                              <span style={{
+                                ...styles.w2wrSummaryValue,
+                                color: '#10B981'
+                              }}>
+                                {w2wrAnalysis.validCount}
+                              </span>
+                            </div>
+                            <div style={styles.w2wrSummaryRow}>
+                              <span style={styles.w2wrSummaryLabel}>Errors:</span>
+                              <span style={{
+                                ...styles.w2wrSummaryValue,
+                                color: w2wrAnalysis.errorCount > 0 ? '#EF4444' : '#6B7280'
+                              }}>
+                                {w2wrAnalysis.errorCount}
+                              </span>
+                            </div>
+                            <div style={styles.w2wrSummaryRow}>
+                              <span style={styles.w2wrSummaryLabel}>Cycle:</span>
+                              {w2wrAnalysis.hasCycle ? (
+                                <span style={styles.w2wrBadgeError}>Detected</span>
+                              ) : (
+                                <span style={styles.w2wrBadgeOk}>OK</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Cycle Error Message */}
+                          {w2wrAnalysis.cycleError && (
+                            <div style={styles.w2wrCycleError}>
+                              {w2wrAnalysis.cycleError}
+                            </div>
+                          )}
+
+                          {/* Dependencies List */}
+                          {w2wrAnalysis.dependencies.length > 0 && (
+                            <div style={styles.w2wrDependenciesList}>
+                              <div style={styles.w2wrListHeader}>Dependencies</div>
+                              {w2wrAnalysis.dependencies.map((dep, index) => (
+                                <div key={index} style={styles.w2wrDependencyItem}>
+                                  {/* Dependency Header */}
+                                  <div
+                                    style={styles.w2wrDepHeader}
+                                    onClick={() => toggleDependency(index)}
+                                  >
+                                    <div style={styles.w2wrDepHeaderLeft}>
+                                      <span style={styles.w2wrDepIcon}>
+                                        {expandedDependencies.has(index) ? '\u25BC' : '\u25B6'}
+                                      </span>
+                                      <span style={styles.w2wrDepIndex}>#{index + 1}</span>
+                                      <span style={styles.w2wrDepPath}>
+                                        {dep.source} <span style={styles.w2wrDepArrow}>\u2192</span> {dep.target}
+                                      </span>
+                                    </div>
+                                    <div style={styles.w2wrDepHeaderRight}>
+                                      {dep.validation.isValid ? (
+                                        <span style={styles.w2wrBadgeOk}>OK</span>
+                                      ) : (
+                                        <span style={styles.w2wrBadgeError}>Error</span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Dependency Details */}
+                                  {expandedDependencies.has(index) && (
+                                    <div style={styles.w2wrDepDetails}>
+                                      <div style={styles.w2wrDepDetailRow}>
+                                        <span style={styles.w2wrDepDetailLabel}>Mechanism:</span>
+                                        <span style={styles.w2wrDepDetailValue}>{dep.mechanism || '-'}</span>
+                                      </div>
+                                      <div style={styles.w2wrDepDetailRow}>
+                                        <span style={styles.w2wrDepDetailLabel}>Update Mode:</span>
+                                        <span style={styles.w2wrDepDetailValue}>{dep.updateMode || '-'}</span>
+                                      </div>
+                                      <div style={styles.w2wrDepDetailRow}>
+                                        <span style={styles.w2wrDepDetailLabel}>Relationship:</span>
+                                        <span style={styles.w2wrDepDetailValue}>{dep.relationshipType || '-'}</span>
+                                      </div>
+                                      {dep.javascriptCode && (
+                                        <div style={styles.w2wrDepCodeBlock}>
+                                          <div style={styles.w2wrDepCodeLabel}>JavaScript:</div>
+                                          <pre style={styles.w2wrDepCode}>{dep.javascriptCode}</pre>
+                                        </div>
+                                      )}
+                                      {dep.transformFunction && (
+                                        <div style={styles.w2wrDepDetailRow}>
+                                          <span style={styles.w2wrDepDetailLabel}>Transform:</span>
+                                          <code style={styles.w2wrDepDetailCode}>{dep.transformFunction}</code>
+                                        </div>
+                                      )}
+                                      {dep.llmPrompt && (
+                                        <div style={styles.w2wrDepCodeBlock}>
+                                          <div style={styles.w2wrDepCodeLabel}>LLM Prompt:</div>
+                                          <pre style={styles.w2wrDepCode}>{dep.llmPrompt}</pre>
+                                        </div>
+                                      )}
+                                      {/* Validation Errors */}
+                                      {!dep.validation.isValid && dep.validation.errors.length > 0 && (
+                                        <div style={styles.w2wrDepErrors}>
+                                          <div style={styles.w2wrDepErrorsLabel}>Validation Errors:</div>
+                                          <ul style={styles.w2wrDepErrorsList}>
+                                            {dep.validation.errors.map((err, errIdx) => (
+                                              <li key={errIdx} style={styles.w2wrDepErrorItem}>{err}</li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* No Dependencies Message */}
+                          {w2wrAnalysis.dependencies.length === 0 && (
+                            <div style={styles.w2wrNoDeps}>
+                              No W2WR dependencies defined in this stage.
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -1192,5 +1373,244 @@ const styles: Record<string, React.CSSProperties> = {
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
     border: '1px solid #DDD6FE'
+  },
+  // W2WR Reactivity Analysis スタイル
+  w2wrSection: {
+    margin: '16px 20px',
+    border: '1px solid #F59E0B',
+    borderRadius: '8px',
+    overflow: 'hidden',
+    backgroundColor: '#FFFBEB'
+  },
+  w2wrHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '10px 14px',
+    backgroundColor: '#FEF3C7',
+    cursor: 'pointer',
+    userSelect: 'none'
+  },
+  w2wrHeaderLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px'
+  },
+  w2wrHeaderRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  },
+  w2wrIcon: {
+    fontSize: '10px',
+    color: '#92400E',
+    width: '12px'
+  },
+  w2wrBadge: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#92400E',
+    backgroundColor: '#FCD34D',
+    padding: '3px 8px',
+    borderRadius: '4px'
+  },
+  w2wrTitle: {
+    fontSize: '13px',
+    fontWeight: 500,
+    color: '#92400E'
+  },
+  w2wrMetric: {
+    fontSize: '12px',
+    color: '#92400E',
+    fontFamily: 'monospace'
+  },
+  w2wrBody: {
+    padding: '12px 14px',
+    borderTop: '1px solid #FCD34D',
+    backgroundColor: '#FFFBEB'
+  },
+  w2wrSummary: {
+    display: 'flex',
+    gap: '24px',
+    padding: '10px 12px',
+    backgroundColor: '#FEF3C7',
+    borderRadius: '6px',
+    marginBottom: '12px'
+  },
+  w2wrSummaryRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px'
+  },
+  w2wrSummaryLabel: {
+    fontSize: '12px',
+    color: '#92400E',
+    fontWeight: 500
+  },
+  w2wrSummaryValue: {
+    fontSize: '12px',
+    fontWeight: 600,
+    fontFamily: 'monospace'
+  },
+  w2wrBadgeOk: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#065F46',
+    backgroundColor: '#D1FAE5',
+    padding: '2px 8px',
+    borderRadius: '4px'
+  },
+  w2wrBadgeError: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#991B1B',
+    backgroundColor: '#FEE2E2',
+    padding: '2px 8px',
+    borderRadius: '4px'
+  },
+  w2wrCycleError: {
+    padding: '10px 12px',
+    backgroundColor: '#FEE2E2',
+    color: '#991B1B',
+    borderRadius: '6px',
+    fontSize: '12px',
+    marginBottom: '12px',
+    border: '1px solid #FECACA'
+  },
+  w2wrDependenciesList: {
+    border: '1px solid #E5E7EB',
+    borderRadius: '6px',
+    overflow: 'hidden',
+    backgroundColor: '#fff'
+  },
+  w2wrListHeader: {
+    padding: '8px 12px',
+    backgroundColor: '#F9FAFB',
+    borderBottom: '1px solid #E5E7EB',
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px'
+  },
+  w2wrDependencyItem: {
+    borderBottom: '1px solid #E5E7EB'
+  },
+  w2wrDepHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '10px 12px',
+    cursor: 'pointer',
+    userSelect: 'none',
+    backgroundColor: '#fff'
+  },
+  w2wrDepHeaderLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  },
+  w2wrDepHeaderRight: {
+    display: 'flex',
+    alignItems: 'center'
+  },
+  w2wrDepIcon: {
+    fontSize: '10px',
+    color: '#6B7280',
+    width: '12px'
+  },
+  w2wrDepIndex: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#6B7280',
+    backgroundColor: '#F3F4F6',
+    padding: '2px 6px',
+    borderRadius: '4px'
+  },
+  w2wrDepPath: {
+    fontSize: '12px',
+    fontFamily: 'monospace',
+    color: '#374151'
+  },
+  w2wrDepArrow: {
+    color: '#9CA3AF',
+    margin: '0 4px'
+  },
+  w2wrDepDetails: {
+    padding: '12px',
+    backgroundColor: '#F9FAFB',
+    borderTop: '1px solid #E5E7EB'
+  },
+  w2wrDepDetailRow: {
+    display: 'flex',
+    gap: '8px',
+    marginBottom: '6px',
+    fontSize: '12px'
+  },
+  w2wrDepDetailLabel: {
+    fontWeight: 500,
+    color: '#6B7280',
+    minWidth: '100px'
+  },
+  w2wrDepDetailValue: {
+    color: '#374151',
+    fontFamily: 'monospace'
+  },
+  w2wrDepDetailCode: {
+    backgroundColor: '#E5E7EB',
+    padding: '2px 6px',
+    borderRadius: '4px',
+    fontSize: '11px'
+  },
+  w2wrDepCodeBlock: {
+    marginTop: '8px',
+    marginBottom: '8px'
+  },
+  w2wrDepCodeLabel: {
+    fontSize: '11px',
+    fontWeight: 500,
+    color: '#6B7280',
+    marginBottom: '4px'
+  },
+  w2wrDepCode: {
+    backgroundColor: '#1F2937',
+    color: '#F3F4F6',
+    padding: '10px 12px',
+    borderRadius: '6px',
+    fontSize: '11px',
+    fontFamily: 'monospace',
+    overflow: 'auto',
+    maxHeight: '200px',
+    margin: 0,
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word'
+  },
+  w2wrDepErrors: {
+    marginTop: '8px',
+    padding: '10px 12px',
+    backgroundColor: '#FEE2E2',
+    borderRadius: '6px',
+    border: '1px solid #FECACA'
+  },
+  w2wrDepErrorsLabel: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#991B1B',
+    marginBottom: '6px'
+  },
+  w2wrDepErrorsList: {
+    margin: 0,
+    paddingLeft: '20px'
+  },
+  w2wrDepErrorItem: {
+    fontSize: '12px',
+    color: '#991B1B',
+    marginBottom: '2px'
+  },
+  w2wrNoDeps: {
+    padding: '20px',
+    textAlign: 'center',
+    color: '#6B7280',
+    fontSize: '13px'
   }
 };

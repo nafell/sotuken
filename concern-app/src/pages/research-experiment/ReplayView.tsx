@@ -179,10 +179,12 @@ export default function ReplayView() {
 
   // Stage display names
   const stageNames: Record<string, string> = {
+    widget_selection: 'Widget選定 (Selection)',
     diverge: '発散 (Diverge)',
     organize: '整理 (Organize)',
     converge: '収束 (Converge)',
-    summary: 'まとめ (Summary)'
+    summary: 'まとめ (Summary)',
+    plan: '📋 Plan統合 (Unified)'
   };
 
   // Dummy handlers for UIRendererV3 (read-only mode)
@@ -381,21 +383,31 @@ export default function ReplayView() {
 
           {/* Step Indicator Pills */}
           <div style={styles.stepIndicators}>
-            {generations.map((gen, idx) => (
-              <button
-                key={gen.id}
-                onClick={() => goToStep(idx)}
-                style={{
-                  ...styles.stepPill,
-                  backgroundColor: idx === currentStep ? '#3B82F6' :
-                                   idx < currentStep ? '#10B981' : '#E5E7EB',
-                  color: idx <= currentStep ? '#fff' : '#6B7280'
-                }}
-                title={`Stage ${idx + 1}: ${stageNames[gen.stage] || gen.stage}`}
-              >
-                {idx + 1}
-              </button>
-            ))}
+            {generations.map((gen, idx) => {
+              const isPlanUnified = gen.stage === 'plan';
+              const isWidgetSelection = gen.stage === 'widget_selection';
+              const getBackgroundColor = () => {
+                if (idx === currentStep) {
+                  return isPlanUnified ? '#0ea5e9' : isWidgetSelection ? '#7c3aed' : '#3B82F6';
+                }
+                if (idx < currentStep) return '#10B981';
+                return '#E5E7EB';
+              };
+              return (
+                <button
+                  key={gen.id}
+                  onClick={() => goToStep(idx)}
+                  style={{
+                    ...styles.stepPill,
+                    backgroundColor: getBackgroundColor(),
+                    color: idx <= currentStep ? '#fff' : '#6B7280'
+                  }}
+                  title={`Stage ${idx + 1}: ${stageNames[gen.stage] || gen.stage}`}
+                >
+                  {isPlanUnified ? '📋' : idx + 1}
+                </button>
+              );
+            })}
           </div>
 
           {/* Current Generation Display */}

@@ -140,6 +140,7 @@ export function ExperimentExecutor({
                                 onCancel={actions.handlePlanPreviewCancel}
                                 isLoading={false}
                                 showDetails={true}
+                                hideSkipControls={true}
                             />
                         )}
                     </div>

@@ -17,7 +17,7 @@
 6. [LLM呼び出し構成](#6-llm呼び出し構成)
 7. [アプリケーションフロー](#7-アプリケーションフロー)
 8. [型システム](#8-型システム)
-9. [generatedValue（将来拡張）](#9-generatedvalue将来拡張)
+9. [generatedValue](#9-generatedvalue)
 10. [Jellyとの対応関係](#10-jellyとの対応関係)
 11. [付録A: 用語対応表（v3→v4）](#11-付録a-用語対応表v3v4)
 
@@ -779,10 +779,28 @@ generatedValueは、LLMがUISpec生成時（第3段階）にWidget内のコン�
 
 | 分類 | 説明 | 例 | 実装状況 |
 |------|------|-----|----------|
-| A. ラベル・説明文 | UIの「枠」を埋めるもの | 感情ラベル、象限説明文 | v4.1予定 |
-| B. サンプルデータ | ユーザー入力の叩き台 | 初期カード、サンプル項目 | v4.1実装 |
+| A. ラベル・説明文 | UIの「枠」を埋めるもの | 感情ラベル | v4.1実装済み |
+| B. サンプルデータ | ユーザー入力の叩き台 | 初期カード、サンプル項目 | v4.1実装済み |
 
-### 9.3 型定義
+### 9.3 Widget別実装状況
+
+| Widget | タイプ | 生成内容 | 実装状況 |
+|--------|--------|----------|----------|
+| BrainstormCards | Type B (samples) | 悩みに関連するアイデアカード2-3個 | 実装済み |
+| SwotAnalysis | Type B (samples) | 各象限に1つずつサンプル項目（計4個） | 実装済み |
+| TradeoffBalance | Type B (samples) | 左右それぞれ1-2個の比較項目 | 実装済み |
+| EmotionPalette | Type A (labels) | 悩みに関連する感情ラベル8個 | 実装済み |
+| MindMap | Type B (samples) | 中心トピックから派生するノード | 未実装（v4.2予定） |
+| MatrixPlacement | Type B (samples) | 配置アイテム3つ程度 | 未実装（v4.2予定） |
+| DependencyMapping | Type B (samples) | 関連ノードの洗い出し | 未実装（v4.2予定） |
+| CardSorting | Type B (samples) | 分類対象のカード3-5個 | 未実装（v4.2予定） |
+| PrioritySliderGrid | Type B (samples) | 評価項目3つ程度 | 未実装（v4.2予定） |
+| QuestionCardChain | - | config.questionsで対応済み | 対象外 |
+| TimelineSlider | - | 個別設計が必要 | 対象外 |
+| StageSummary | - | 前ステージデータを使用 | 対象外 |
+| ExportOptions | - | 固定オプション | 対象外 |
+
+### 9.4 型定義
 
 ```typescript
 /**
@@ -823,7 +841,7 @@ interface WidgetGenerationHints {
 }
 ```
 
-### 9.4 UISpec.config内での使用
+### 9.5 UISpec.config内での使用
 
 generatedValueはWidgetSpec.config内に配置される。
 
@@ -845,7 +863,7 @@ generatedValueはWidgetSpec.config内に配置される。
 }
 ```
 
-### 9.5 Widget定義でのgenerationHints
+### 9.6 Widget定義でのgenerationHints
 
 ```typescript
 // BrainstormCardsの例
@@ -863,13 +881,13 @@ generatedValueはWidgetSpec.config内に配置される。
 }
 ```
 
-### 9.6 フロントエンドでの表示
+### 9.7 フロントエンドでの表示
 
 - `isGenerated: true`のアイテムは視覚的に区別（✨AI提案バッジ等）
 - ユーザーは「使う」「却下」を選択可能
 - 採用されたサンプルはユーザー入力として扱われる（isGeneratedマーカーは除去）
 
-### 9.7 設計原則
+### 9.8 設計原則
 
 1. **追加LLM呼び出しなし**: UISpec生成時に同時生成（3段階構成を維持）
 2. **後方互換性**: generationHintsがないWidgetは従来通り動作

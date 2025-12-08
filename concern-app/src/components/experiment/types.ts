@@ -1,5 +1,11 @@
 export type PlanStage = 'diverge' | 'organize' | 'converge' | 'summary';
 
+/**
+ * DSL v5: Plan統合フェーズ用のステージ
+ * ExperimentErrorなどでPlan統合全体を表す場合に使用
+ */
+export type PlanUnifiedStage = 'plan';
+
 export interface WidgetResultData {
     widgetId: string;
     component: string;
@@ -30,7 +36,7 @@ export type ExperimentErrorType =
 export interface ExperimentError {
     type: ExperimentErrorType;
     message: string;
-    stage?: PlanStage;
+    stage?: PlanStage | PlanUnifiedStage;
     timestamp: number;
     recoverable: boolean; // true: 実験継続可能, false: 実験終了が必要
     details?: Record<string, unknown>; // エラー詳細（widgetId, componentNameなど）

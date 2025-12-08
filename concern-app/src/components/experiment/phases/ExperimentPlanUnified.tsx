@@ -11,9 +11,9 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { apiService, type PlanGenerationResponse } from '../../../services/api/ApiService';
 import { UIRendererV4 } from '../../../services/ui-generation/UIRendererV4';
-import type { StageResult, WidgetResultData, ExperimentError } from '../types';
+import type { WidgetResultData, ExperimentError } from '../types';
 import type { ORS, PlanORS } from '../../../types/v4/ors.types';
-import type { PlanUISpec, normalizeToUISpec } from '../../../types/v4/ui-spec.types';
+import type { PlanUISpec } from '../../../types/v4/ui-spec.types';
 import { flattenPlanUISpecToUISpec } from '../../../types/v4/ui-spec.types';
 
 interface ExperimentPlanUnifiedProps {

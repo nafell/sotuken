@@ -163,14 +163,15 @@ export default function SessionList() {
                     >
                       View
                     </button>
-                    {(session.generationSuccess || session.completedAt) && (
-                      <button
-                        onClick={() => navigate(`/research-experiment/data/replay/${session.sessionId}`)}
-                        style={styles.replayButton}
-                      >
-                        Replay
-                      </button>
-                    )}
+                    <button
+                      onClick={() => navigate(`/research-experiment/data/replay/${session.sessionId}`)}
+                      style={styles.replayButton}
+                    >
+                      Replay
+                      {!session.completedAt && (
+                        <span style={styles.inProgressBadge}>...</span>
+                      )}
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -325,7 +326,15 @@ const styles: Record<string, React.CSSProperties> = {
     border: 'none',
     borderRadius: '4px',
     fontSize: '12px',
-    cursor: 'pointer'
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px'
+  },
+  inProgressBadge: {
+    fontSize: '10px',
+    fontWeight: 600,
+    color: '#F59E0B'
   },
   empty: {
     textAlign: 'center',

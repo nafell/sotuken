@@ -211,6 +211,13 @@ export default function ReplayView() {
 
   return (
     <div style={styles.container}>
+      {/* In Progress Banner */}
+      {!session.completedAt && (
+        <div style={styles.inProgressBanner}>
+          This session is still in progress. Some stages may not be available yet.
+        </div>
+      )}
+
       {/* Header */}
       <header style={styles.header}>
         <div style={styles.headerLeft}>
@@ -218,7 +225,12 @@ export default function ReplayView() {
             Back
           </Link>
           <div>
-            <h1 style={styles.title}>Session Replay</h1>
+            <h1 style={styles.title}>
+              Session Replay
+              {!session.completedAt && (
+                <span style={styles.inProgressTitleBadge}>In Progress</span>
+              )}
+            </h1>
             <p style={styles.sessionInfo}>
               {session.caseId} | {session.modelId} | {session.widgetCount} widgets
             </p>
@@ -671,6 +683,25 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: '100vh',
     backgroundColor: '#F3F4F6',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  },
+  inProgressBanner: {
+    backgroundColor: '#FEF3C7',
+    color: '#92400E',
+    padding: '10px 24px',
+    fontSize: '13px',
+    fontWeight: 500,
+    textAlign: 'center',
+    borderBottom: '1px solid #FCD34D'
+  },
+  inProgressTitleBadge: {
+    marginLeft: '12px',
+    fontSize: '12px',
+    fontWeight: 600,
+    backgroundColor: '#F59E0B',
+    color: '#fff',
+    padding: '4px 8px',
+    borderRadius: '4px',
+    verticalAlign: 'middle'
   },
   loadingState: {
     display: 'flex',

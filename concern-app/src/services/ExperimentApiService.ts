@@ -49,6 +49,8 @@ export interface ExperimentSession {
   evaluatorId?: string;
   widgetCount: number;
   modelId: string;
+  /** モックWidget選定を使用するかどうか */
+  useMockWidgetSelection?: boolean;
   concernText: string;
   contextFactors: any;
   generatedOodm?: any;
@@ -211,6 +213,8 @@ class ExperimentApiService {
     modelId: string;
     concernText: string;
     contextFactors: any;
+    /** モックWidget選定を使用するかどうか */
+    useMockWidgetSelection?: boolean;
   }): Promise<ExperimentSession> {
     const response = await fetch(`${this.baseUrl}/api/experiment/sessions`, {
       method: 'POST',

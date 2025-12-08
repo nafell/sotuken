@@ -31,7 +31,8 @@ experimentRoutes.post('/sessions', async (c) => {
       widgetCount,
       modelId,
       concernText,
-      contextFactors
+      contextFactors,
+      useMockWidgetSelection
     } = body;
 
     // バリデーション
@@ -49,7 +50,8 @@ experimentRoutes.post('/sessions', async (c) => {
       }, 400);
     }
 
-    console.log(`📝 Creating experiment session: type=${experimentType}, case=${caseId}, model=${modelId}`);
+    const mockMode = useMockWidgetSelection === true;
+    console.log(`📝 Creating experiment session: type=${experimentType}, case=${caseId}, model=${modelId}, mock=${mockMode}`);
 
     const [session] = await db
       .insert(experimentSessions)
@@ -61,6 +63,7 @@ experimentRoutes.post('/sessions', async (c) => {
         modelId,
         concernText,
         contextFactors,
+        useMockWidgetSelection: mockMode,
         startedAt: new Date()
       })
       .returning();

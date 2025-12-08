@@ -15,6 +15,7 @@ import {
   createWidgetSelectionService,
   createORSGeneratorService,
   createUISpecGeneratorV4,
+  getMockWidgetSelectionService,
 } from '../services/v4';
 import type { StageType as StageTypeV4 } from '../types/v4/ors.types';
 
@@ -693,12 +694,79 @@ uiRoutes.post('/generate-v4-widgets', async (c) => {
       );
     }
 
+    const useMockWidgetSelection = body.options?.useMockWidgetSelection === true;
+    const caseId = body.options?.caseId;
+
     console.log(`🔍 Widget Selection request for session: ${body.sessionId}`);
     console.log(`📝 Concern: "${body.concernText.slice(0, 50)}..."`);
+    console.log(`🧪 Mock mode: ${useMockWidgetSelection}, caseId: ${caseId || 'N/A'}`);
 
     const startTime = Date.now();
-    const services = getV4Services();
     const bottleneckType = body.options?.bottleneckType || 'thought';
+
+    // モックモード: テストケースのexpectedFlowを使用
+    if (useMockWidgetSelection && caseId) {
+      console.log(`🎭 [Mock Widget Selection] Using expectedFlow from test case: ${caseId}`);
+
+      const mockService = getMockWidgetSelectionService();
+      const mockResult = mockService.generateFromTestCase({
+        caseId,
+        sessionId: body.sessionId,
+        bottleneckType,
+      });
+
+      if (!mockResult.success || !mockResult.result) {
+        console.error(`❌ Mock widget selection failed: ${mockResult.error}`);
+        return c.json(
+          {
+            success: false,
+            error: {
+              code: 'MOCK_FAILED',
+              message: mockResult.error || 'Mock widget selection failed',
+            },
+          },
+          500
+        );
+      }
+
+      const latencyMs = Date.now() - startTime;
+
+      // モック結果をキャッシュに保存（後続のステージ生成で使用）
+      widgetSelectionCache.set(body.sessionId, {
+        result: {
+          success: true,
+          data: mockResult.result,
+          metrics: {
+            taskType: 'widget_selection',
+            modelId: 'mock',
+            latencyMs: 0,
+            retryCount: 0,
+            success: true,
+            timestamp: Date.now(),
+          },
+        },
+        bottleneckType,
+      });
+
+      console.log(`✅ Mock Widget Selection completed in ${latencyMs}ms`);
+
+      return c.json({
+        success: true,
+        widgetSelectionResult: mockResult.result,
+        generation: {
+          model: 'mock',
+          generatedAt: new Date().toISOString(),
+          processingTimeMs: latencyMs,
+          promptTokens: 0,
+          responseTokens: 0,
+          cached: false,
+          isMock: true,
+        },
+      });
+    }
+
+    // 通常モード: LLMによるWidget選定
+    const services = getV4Services();
 
     // キャッシュをチェック
     let widgetSelectionResult = widgetSelectionCache.get(body.sessionId);

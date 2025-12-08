@@ -16,6 +16,10 @@ interface ExperimentExecutorProps {
         bottleneckType?: string;
     };
     onComplete: () => void;
+    /** モックWidget選定を使用するかどうか */
+    useMockWidgetSelection?: boolean;
+    /** テストケースID（モックモード時必須） */
+    caseId?: string;
 }
 
 const PLAN_STAGES: PlanStage[] = ['diverge', 'organize', 'converge', 'summary'];
@@ -24,7 +28,9 @@ export function ExperimentExecutor({
     sessionId,
     mode,
     initialContext,
-    onComplete
+    onComplete,
+    useMockWidgetSelection,
+    caseId
 }: ExperimentExecutorProps) {
     const { state, actions } = useExperimentFlow({
         sessionId,
@@ -46,11 +52,16 @@ export function ExperimentExecutor({
                 setPlanPreviewLoading(true);
                 try {
                     console.log('🔍 Fetching widget selection (Widget選定専用API)...');
+                    console.log(`🧪 Mock mode: ${useMockWidgetSelection}, caseId: ${caseId || 'N/A'}`);
                     // Widget選定専用APIを呼び出す（ORS/UISpec生成は行わない）
                     const response = await apiService.generateWidgetSelection(
                         state.concernText,
                         sessionId,
-                        { bottleneckType: state.bottleneckType || 'thought' }
+                        {
+                            bottleneckType: state.bottleneckType || 'thought',
+                            useMockWidgetSelection,
+                            caseId
+                        }
                     );
 
                     if (response.success && response.widgetSelectionResult) {
@@ -82,7 +93,7 @@ export function ExperimentExecutor({
 
             fetchWidgetSelection();
         }
-    }, [state.currentPhase, state.concernText, state.bottleneckType, sessionId, widgetSelectionResult, planPreviewLoading, actions]);
+    }, [state.currentPhase, state.concernText, state.bottleneckType, sessionId, widgetSelectionResult, planPreviewLoading, actions, useMockWidgetSelection, caseId]);
 
     // Planフェーズのステージ遷移
     const handleNextPlanStage = useCallback(() => {

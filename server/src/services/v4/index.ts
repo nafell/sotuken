@@ -74,3 +74,14 @@ export {
   type BatchSummarizationInput,
   type BatchSummarizationResult,
 } from './WidgetSummarizationService';
+
+// =============================================================================
+// Mock Widget Selection (for experiments)
+// =============================================================================
+export {
+  MockWidgetSelectionService,
+  getMockWidgetSelectionService,
+  resetMockWidgetSelectionService,
+  type MockWidgetSelectionInput,
+  type MockWidgetSelectionOutput,
+} from './MockWidgetSelectionService';

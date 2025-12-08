@@ -42,6 +42,8 @@ export type UnknownWidgetError = ExperimentError;
 export interface StageResult {
     stage: PlanStage;
     mode: 'widget' | 'text';
+    /** このステージがスキップされたかどうか */
+    skipped?: boolean;
     uiSpec?: Record<string, unknown>;
     ors?: Record<string, unknown>; // V4で追加: ORS（Object Representation Schema）
     textSummary?: string;

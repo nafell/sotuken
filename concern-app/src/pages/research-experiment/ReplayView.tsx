@@ -120,6 +120,23 @@ export default function ReplayView() {
         stageSelection?: unknown;
       };
     };
+    // DSL v5 Plan統合用
+    planOrs?: {
+      prompt: string | null;
+      inputParams?: {
+        concernText?: string;
+        bottleneckType?: string;
+        widgetSelection?: unknown;
+      };
+    };
+    planUiSpec?: {
+      prompt: string | null;
+      inputParams?: {
+        concernText?: string;
+        enableReactivity?: boolean;
+        widgetSelection?: unknown;
+      };
+    };
   }
 
   // プロンプトデータをパースするヘルパー
@@ -506,10 +523,94 @@ export default function ReplayView() {
               {/* Data View Mode (V4対応) */}
               {viewMode === 'data' && (
                 <>
-                  {/* 2段階プロンプト表示 (ORS/DpG + UISpec) */}
+                  {/* 2段階プロンプト表示 (ORS/DpG + UISpec / Plan ORS + Plan UISpec) */}
                   {(() => {
                     const parsedPrompt = parsePromptData(currentGeneration.prompt);
 
+                    // DSL v5 Plan統合モード (planOrs + planUiSpec)
+                    if (parsedPrompt && (parsedPrompt.planOrs || parsedPrompt.planUiSpec)) {
+                      return (
+                        <div style={styles.promptStagesContainer}>
+                          {/* Plan ORS Generation Prompt */}
+                          {parsedPrompt.planOrs && (
+                            <div style={styles.promptStageCard}>
+                              <div
+                                style={styles.promptStageHeader}
+                                onClick={() => togglePromptStage('ors')}
+                              >
+                                <div style={styles.promptStageHeaderLeft}>
+                                  <span style={styles.promptStageIcon}>
+                                    {expandedPromptStages.ors ? '▼' : '▶'}
+                                  </span>
+                                  <span style={styles.promptStageBadgeOrs}>Plan ORS</span>
+                                  <span style={styles.promptStageTitle}>Generation Prompt</span>
+                                </div>
+                                <div style={styles.promptStageHeaderRight}>
+                                  {currentGeneration.orsDuration && (
+                                    <span style={styles.promptStageMetric}>{currentGeneration.orsDuration}ms</span>
+                                  )}
+                                </div>
+                              </div>
+                              {expandedPromptStages.ors && (
+                                <div style={styles.promptStageBody}>
+                                  {parsedPrompt.planOrs.inputParams && (
+                                    <div style={styles.inputParamsBox}>
+                                      <div style={styles.inputParamsTitle}>Input Parameters</div>
+                                      <div style={styles.inputParamsGrid}>
+                                        <div><span style={styles.inputParamLabel}>bottleneckType:</span> {parsedPrompt.planOrs.inputParams.bottleneckType || '-'}</div>
+                                      </div>
+                                    </div>
+                                  )}
+                                  <pre style={styles.promptPreOrs}>
+                                    {parsedPrompt.planOrs.prompt || 'Prompt not available'}
+                                  </pre>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Plan UISpec Generation Prompt */}
+                          {parsedPrompt.planUiSpec && (
+                            <div style={styles.promptStageCard}>
+                              <div
+                                style={styles.promptStageHeader}
+                                onClick={() => togglePromptStage('uiSpec')}
+                              >
+                                <div style={styles.promptStageHeaderLeft}>
+                                  <span style={styles.promptStageIcon}>
+                                    {expandedPromptStages.uiSpec ? '▼' : '▶'}
+                                  </span>
+                                  <span style={styles.promptStageBadgeUiSpec}>Plan UISpec</span>
+                                  <span style={styles.promptStageTitle}>Generation Prompt</span>
+                                </div>
+                                <div style={styles.promptStageHeaderRight}>
+                                  {currentGeneration.uiSpecDuration && (
+                                    <span style={styles.promptStageMetric}>{currentGeneration.uiSpecDuration}ms</span>
+                                  )}
+                                </div>
+                              </div>
+                              {expandedPromptStages.uiSpec && (
+                                <div style={styles.promptStageBody}>
+                                  {parsedPrompt.planUiSpec.inputParams && (
+                                    <div style={styles.inputParamsBox}>
+                                      <div style={styles.inputParamsTitle}>Input Parameters</div>
+                                      <div style={styles.inputParamsGrid}>
+                                        <div><span style={styles.inputParamLabel}>enableReactivity:</span> {String(parsedPrompt.planUiSpec.inputParams.enableReactivity ?? '-')}</div>
+                                      </div>
+                                    </div>
+                                  )}
+                                  <pre style={styles.promptPreUiSpec}>
+                                    {parsedPrompt.planUiSpec.prompt || 'Prompt not available'}
+                                  </pre>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    // 通常モード (ors + uiSpec)
                     if (parsedPrompt && (parsedPrompt.ors || parsedPrompt.uiSpec)) {
                       return (
                         <div style={styles.promptStagesContainer}>
@@ -591,8 +692,10 @@ export default function ReplayView() {
                           )}
                         </div>
                       );
-                    } else if (currentGeneration.prompt) {
-                      // Legacy: 旧形式のプロンプト
+                    }
+
+                    // Legacy: 旧形式のプロンプト
+                    if (currentGeneration.prompt) {
                       return (
                         <div style={styles.widgetSection}>
                           <div style={styles.sectionHeader}>

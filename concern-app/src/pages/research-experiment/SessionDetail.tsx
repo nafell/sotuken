@@ -57,6 +57,57 @@ export default function SessionDetail() {
     return JSON.stringify(obj, null, 2);
   };
 
+  // 2段階プロンプトデータ（ORS/DpG + UISpec）のパース用型定義
+  interface ParsedPromptData {
+    widgetSelection?: {
+      prompt: string | null;
+      inputParams?: Record<string, unknown>;
+    };
+    ors?: {
+      prompt: string | null;
+      inputParams?: {
+        concernText?: string;
+        stage?: string;
+        stageSelection?: unknown;
+      };
+    };
+    uiSpec?: {
+      prompt: string | null;
+      inputParams?: {
+        stage?: string;
+        enableReactivity?: boolean;
+        stageSelection?: unknown;
+      };
+    };
+  }
+
+  // プロンプトデータをパースするヘルパー
+  const parsePromptData = (prompt: string | undefined): ParsedPromptData | null => {
+    if (!prompt) return null;
+    try {
+      if (typeof prompt === 'string' && prompt.startsWith('{')) {
+        return JSON.parse(prompt) as ParsedPromptData;
+      }
+    } catch {
+      // パースに失敗した場合はnullを返す
+    }
+    return null;
+  };
+
+  // 各段階のプロンプト展開状態（generation IDごとに管理）
+  const [expandedPromptStages, setExpandedPromptStages] = useState<Record<string, { ors: boolean; uiSpec: boolean }>>({});
+
+  const togglePromptStage = (genId: string, stage: 'ors' | 'uiSpec') => {
+    setExpandedPromptStages(prev => ({
+      ...prev,
+      [genId]: {
+        ors: prev[genId]?.ors ?? false,
+        uiSpec: prev[genId]?.uiSpec ?? false,
+        [stage]: !(prev[genId]?.[stage] ?? false)
+      }
+    }));
+  };
+
   // Calculate aggregated metrics from generations (V4対応)
   const aggregatedMetrics = {
     // V4: totalPromptTokens/totalResponseTokens を優先、なければlegacy フィールドを使用
@@ -413,17 +464,103 @@ export default function SessionDetail() {
 
                   {expandedGeneration === gen.id && (
                     <div style={styles.generationBody}>
-                      {/* Prompt (JSON形式の場合は整形表示) */}
-                      {gen.prompt && (
-                        <div style={styles.generationSection}>
-                          <h4 style={styles.generationSectionTitle}>Prompt</h4>
-                          <pre style={styles.promptPre}>
-                            {typeof gen.prompt === 'string' && gen.prompt.startsWith('{')
-                              ? formatJson(JSON.parse(gen.prompt))
-                              : gen.prompt || 'Not saved'}
-                          </pre>
-                        </div>
-                      )}
+                      {/* 2段階プロンプト表示 (ORS/DpG + UISpec) */}
+                      {(() => {
+                        const parsedPrompt = parsePromptData(gen.prompt);
+                        const promptStates = expandedPromptStages[gen.id] || { ors: false, uiSpec: false };
+
+                        if (parsedPrompt && (parsedPrompt.ors || parsedPrompt.uiSpec)) {
+                          return (
+                            <div style={styles.promptStagesContainer}>
+                              {/* ORS/DpG Generation Prompt */}
+                              {parsedPrompt.ors && (
+                                <div style={styles.promptStageCard}>
+                                  <div
+                                    style={styles.promptStageHeader}
+                                    onClick={() => togglePromptStage(gen.id, 'ors')}
+                                  >
+                                    <div style={styles.promptStageHeaderLeft}>
+                                      <span style={styles.promptStageIcon}>
+                                        {promptStates.ors ? '▼' : '▶'}
+                                      </span>
+                                      <span style={styles.promptStageBadgeOrs}>ORS/DpG</span>
+                                      <span style={styles.promptStageTitle}>Generation Prompt</span>
+                                    </div>
+                                    <div style={styles.promptStageHeaderRight}>
+                                      {gen.orsDuration && (
+                                        <span style={styles.promptStageMetric}>{gen.orsDuration}ms</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {promptStates.ors && (
+                                    <div style={styles.promptStageBody}>
+                                      {parsedPrompt.ors.inputParams && (
+                                        <div style={styles.inputParamsBox}>
+                                          <div style={styles.inputParamsTitle}>Input Parameters</div>
+                                          <div style={styles.inputParamsGrid}>
+                                            <div><span style={styles.inputParamLabel}>stage:</span> {parsedPrompt.ors.inputParams.stage || '-'}</div>
+                                          </div>
+                                        </div>
+                                      )}
+                                      <pre style={styles.promptPreOrs}>
+                                        {parsedPrompt.ors.prompt || 'Prompt not available'}
+                                      </pre>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* UISpec Generation Prompt */}
+                              {parsedPrompt.uiSpec && (
+                                <div style={styles.promptStageCard}>
+                                  <div
+                                    style={styles.promptStageHeader}
+                                    onClick={() => togglePromptStage(gen.id, 'uiSpec')}
+                                  >
+                                    <div style={styles.promptStageHeaderLeft}>
+                                      <span style={styles.promptStageIcon}>
+                                        {promptStates.uiSpec ? '▼' : '▶'}
+                                      </span>
+                                      <span style={styles.promptStageBadgeUiSpec}>UISpec</span>
+                                      <span style={styles.promptStageTitle}>Generation Prompt</span>
+                                    </div>
+                                    <div style={styles.promptStageHeaderRight}>
+                                      {gen.uiSpecDuration && (
+                                        <span style={styles.promptStageMetric}>{gen.uiSpecDuration}ms</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {promptStates.uiSpec && (
+                                    <div style={styles.promptStageBody}>
+                                      {parsedPrompt.uiSpec.inputParams && (
+                                        <div style={styles.inputParamsBox}>
+                                          <div style={styles.inputParamsTitle}>Input Parameters</div>
+                                          <div style={styles.inputParamsGrid}>
+                                            <div><span style={styles.inputParamLabel}>stage:</span> {parsedPrompt.uiSpec.inputParams.stage || '-'}</div>
+                                            <div><span style={styles.inputParamLabel}>enableReactivity:</span> {String(parsedPrompt.uiSpec.inputParams.enableReactivity ?? '-')}</div>
+                                          </div>
+                                        </div>
+                                      )}
+                                      <pre style={styles.promptPreUiSpec}>
+                                        {parsedPrompt.uiSpec.prompt || 'Prompt not available'}
+                                      </pre>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        } else if (gen.prompt) {
+                          // Legacy: 旧形式のプロンプト
+                          return (
+                            <div style={styles.generationSection}>
+                              <h4 style={styles.generationSectionTitle}>Prompt (Legacy)</h4>
+                              <pre style={styles.promptPre}>{gen.prompt}</pre>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
 
                       {/* V4: Widget Selection Result */}
                       {gen.generatedWidgetSelection && (
@@ -922,5 +1059,122 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '12px',
     color: '#6B7280',
     fontFamily: 'monospace'
+  },
+  // 2段階プロンプト表示用スタイル
+  promptStagesContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    marginBottom: '16px'
+  },
+  promptStageCard: {
+    border: '1px solid #E5E7EB',
+    borderRadius: '8px',
+    overflow: 'hidden'
+  },
+  promptStageHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '10px 14px',
+    backgroundColor: '#F9FAFB',
+    cursor: 'pointer',
+    userSelect: 'none'
+  },
+  promptStageHeaderLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px'
+  },
+  promptStageHeaderRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  },
+  promptStageIcon: {
+    fontSize: '10px',
+    color: '#6B7280',
+    width: '12px'
+  },
+  promptStageBadgeOrs: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#0369A1',
+    backgroundColor: '#E0F2FE',
+    padding: '3px 8px',
+    borderRadius: '4px'
+  },
+  promptStageBadgeUiSpec: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#7C3AED',
+    backgroundColor: '#EDE9FE',
+    padding: '3px 8px',
+    borderRadius: '4px'
+  },
+  promptStageTitle: {
+    fontSize: '13px',
+    fontWeight: 500,
+    color: '#374151'
+  },
+  promptStageMetric: {
+    fontSize: '12px',
+    color: '#6B7280',
+    fontFamily: 'monospace'
+  },
+  promptStageBody: {
+    padding: '12px 14px',
+    borderTop: '1px solid #E5E7EB'
+  },
+  inputParamsBox: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: '6px',
+    padding: '10px 12px',
+    marginBottom: '12px'
+  },
+  inputParamsTitle: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#6B7280',
+    marginBottom: '6px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px'
+  },
+  inputParamsGrid: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px 16px',
+    fontSize: '12px',
+    color: '#374151'
+  },
+  inputParamLabel: {
+    fontWeight: 500,
+    color: '#6B7280'
+  },
+  promptPreOrs: {
+    backgroundColor: '#F0F9FF',
+    padding: '12px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    overflow: 'auto',
+    maxHeight: '400px',
+    margin: 0,
+    fontFamily: 'monospace',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+    border: '1px solid #BAE6FD'
+  },
+  promptPreUiSpec: {
+    backgroundColor: '#FAF5FF',
+    padding: '12px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    overflow: 'auto',
+    maxHeight: '400px',
+    margin: 0,
+    fontFamily: 'monospace',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+    border: '1px solid #DDD6FE'
   }
 };

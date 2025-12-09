@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { experimentApi, type TestCaseSummary, type ExperimentSettings } from '../../../services/ExperimentApiService';
+import { experimentApi, type TestCaseSummary, type ExperimentSettings, type LLMProvider } from '../../../services/ExperimentApiService';
 
 export default function ExpertModeConfig() {
     const navigate = useNavigate();
@@ -17,6 +17,7 @@ export default function ExpertModeConfig() {
     const [evaluatorId, setEvaluatorId] = useState('');
     const [selectedCaseId, setSelectedCaseId] = useState('');
     const [widgetCount, setWidgetCount] = useState(12);
+    const [provider, setProvider] = useState<LLMProvider>('gemini');
     const [modelId, setModelId] = useState('gemini-2.5-flash-lite');
     const [useMockWidgetSelection, setUseMockWidgetSelection] = useState(false);
 
@@ -48,9 +49,19 @@ export default function ExpertModeConfig() {
         if (!selectedCaseId || !evaluatorId) return;
 
         navigate(
-            `/research-experiment/execute/${selectedCaseId}?mode=expert&model=${modelId}&widgets=${widgetCount}&evaluator=${evaluatorId}&useMock=${useMockWidgetSelection}`
+            `/research-experiment/execute/${selectedCaseId}?mode=expert&provider=${provider}&model=${modelId}&widgets=${widgetCount}&evaluator=${evaluatorId}&useMock=${useMockWidgetSelection}`
         );
     };
+
+    // 選択中のproviderに応じたモデル一覧をフィルタ
+    const filteredModels = settings?.modelConditions.filter(m => m.provider === provider) || [];
+
+    // providerが変わったらmodelIdをリセット
+    useEffect(() => {
+        if (filteredModels.length > 0 && !filteredModels.find(m => m.modelId === modelId)) {
+            setModelId(filteredModels[0].modelId);
+        }
+    }, [provider, filteredModels, modelId]);
 
     if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading...</div>;
 
@@ -84,17 +95,30 @@ export default function ExpertModeConfig() {
                     <h2 style={styles.sectionTitle}>2. Environment Settings</h2>
                     <div style={styles.row}>
                         <div style={{ ...styles.formGroup, flex: 1 }}>
+                            <label style={styles.label}>LLM Provider</label>
+                            <select
+                                value={provider}
+                                onChange={e => setProvider(e.target.value as LLMProvider)}
+                                style={styles.select}
+                            >
+                                <option value="gemini">Google AI Studio</option>
+                                <option value="azure">Azure OpenAI</option>
+                            </select>
+                        </div>
+                        <div style={{ ...styles.formGroup, flex: 1 }}>
                             <label style={styles.label}>Model</label>
                             <select
                                 value={modelId}
                                 onChange={e => setModelId(e.target.value)}
                                 style={styles.select}
                             >
-                                {settings?.modelConditions.map(m => (
+                                {filteredModels.map(m => (
                                     <option key={m.id} value={m.modelId}>{m.modelId} ({m.description})</option>
                                 ))}
                             </select>
                         </div>
+                    </div>
+                    <div style={styles.row}>
                         <div style={{ ...styles.formGroup, flex: 1 }}>
                             <label style={styles.label}>Widget Count</label>
                             <select
@@ -107,6 +131,7 @@ export default function ExpertModeConfig() {
                                 ))}
                             </select>
                         </div>
+                        <div style={{ ...styles.formGroup, flex: 1 }} />
                     </div>
                     <div style={styles.formGroup}>
                         <label style={styles.checkboxLabel}>

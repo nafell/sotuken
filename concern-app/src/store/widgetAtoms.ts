@@ -77,3 +77,11 @@ export function getWidgetAtomCount(): number {
 export function hasWidgetAtom(widgetId: string): boolean {
   return widgetAtomMap.has(widgetId);
 }
+
+/**
+ * 登録されている全てのWidget IDを取得
+ * @returns Widget IDの配列
+ */
+export function getAllWidgetIds(): string[] {
+  return Array.from(widgetAtomMap.keys());
+}

@@ -1,0 +1,108 @@
+{
+  "stage": "plan",
+  "layout": {
+    "type": "sectioned",
+    "sectionGap": 24,
+    "sectionOrder": [
+      "diverge",
+      "organize",
+      "converge"
+    ]
+  },
+  "version": "5.0",
+  "metadata": {
+    "llmModel": "fallback",
+    "generatedAt": 1765200368399
+  },
+  "sections": {
+    "diverge": {
+      "header": {
+        "title": "発散",
+        "description": "アイデアを広げましょう"
+      },
+      "widgets": [
+        {
+          "id": "mind_map_diverge_0",
+          "config": {},
+          "metadata": {
+            "purpose": "人生の選択肢を放射状に展開"
+          },
+          "position": 0,
+          "component": "mind_map",
+          "dataBindings": []
+        }
+      ]
+    },
+    "converge": {
+      "header": {
+        "title": "収束",
+        "description": "優先順位をつけましょう"
+      },
+      "widgets": [
+        {
+          "id": "priority_slider_grid_converge_0",
+          "config": {},
+          "metadata": {
+            "purpose": "配置結果をもとに優先度を調整"
+          },
+          "position": 0,
+          "component": "priority_slider_grid",
+          "dataBindings": []
+        }
+      ]
+    },
+    "organize": {
+      "header": {
+        "title": "整理",
+        "description": "情報を整理しましょう"
+      },
+      "widgets": [
+        {
+          "id": "matrix_placement_organize_0",
+          "config": {},
+          "metadata": {
+            "purpose": "選択肢を重要度×実現可能性の2軸で配置"
+          },
+          "position": 0,
+          "component": "matrix_placement",
+          "dataBindings": []
+        }
+      ]
+    }
+  },
+  "sessionId": "99be34df-500d-45dd-850f-2699bca27b02",
+  "reactiveBindings": {
+    "bindings": [
+      {
+        "id": "rb_diverge_to_organize",
+        "source": "mind_map_diverge_0.nodes",
+        "target": "matrix_placement_organize_0.items",
+        "enabled": true,
+        "mechanism": "update",
+        "updateMode": "realtime",
+        "description": "発散→整理のデータ連携",
+        "relationship": {
+          "type": "passthrough"
+        }
+      },
+      {
+        "id": "rb_organize_to_converge",
+        "source": "matrix_placement_organize_0.placements",
+        "target": "priority_slider_grid_converge_0.items",
+        "enabled": true,
+        "mechanism": "update",
+        "debounceMs": 300,
+        "updateMode": "debounced",
+        "description": "整理→収束のデータ連携",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "Object.values(source).flat()"
+        }
+      }
+    ],
+    "metadata": {
+      "version": "4.0",
+      "generatedAt": 1765200368399
+    }
+  }
+}

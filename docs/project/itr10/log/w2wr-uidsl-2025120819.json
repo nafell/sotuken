@@ -1,0 +1,108 @@
+{
+  "stage": "plan",
+  "layout": {
+    "type": "sectioned",
+    "sectionGap": 24,
+    "sectionOrder": [
+      "diverge",
+      "organize",
+      "converge"
+    ]
+  },
+  "version": "5.0",
+  "metadata": {
+    "llmModel": "fallback",
+    "generatedAt": 1765189284026
+  },
+  "sections": {
+    "diverge": {
+      "header": {
+        "title": "発散",
+        "description": "アイデアを広げましょう"
+      },
+      "widgets": [
+        {
+          "id": "brainstorm_cards_diverge_0",
+          "config": {},
+          "metadata": {
+            "purpose": "候補企業をカードとして書き出す"
+          },
+          "position": 0,
+          "component": "brainstorm_cards",
+          "dataBindings": []
+        }
+      ]
+    },
+    "converge": {
+      "header": {
+        "title": "収束",
+        "description": "優先順位をつけましょう"
+      },
+      "widgets": [
+        {
+          "id": "priority_slider_grid_converge_0",
+          "config": {},
+          "metadata": {
+            "purpose": "分類結果をもとに優先度を設定"
+          },
+          "position": 0,
+          "component": "priority_slider_grid",
+          "dataBindings": []
+        }
+      ]
+    },
+    "organize": {
+      "header": {
+        "title": "整理",
+        "description": "情報を整理しましょう"
+      },
+      "widgets": [
+        {
+          "id": "card_sorting_organize_0",
+          "config": {},
+          "metadata": {
+            "purpose": "企業を業界・条件別に分類"
+          },
+          "position": 0,
+          "component": "card_sorting",
+          "dataBindings": []
+        }
+      ]
+    }
+  },
+  "sessionId": "cbe73fd2-e44a-4f66-b84b-aea12978e4ee",
+  "reactiveBindings": {
+    "bindings": [
+      {
+        "id": "rb_diverge_to_organize",
+        "source": "brainstorm_cards_diverge_0.cards",
+        "target": "card_sorting_organize_0.cards",
+        "enabled": true,
+        "mechanism": "update",
+        "updateMode": "realtime",
+        "description": "発散→整理のデータ連携",
+        "relationship": {
+          "type": "passthrough"
+        }
+      },
+      {
+        "id": "rb_organize_to_converge",
+        "source": "card_sorting_organize_0.categories",
+        "target": "priority_slider_grid_converge_0.items",
+        "enabled": true,
+        "mechanism": "update",
+        "debounceMs": 300,
+        "updateMode": "debounced",
+        "description": "整理→収束のデータ連携",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "Object.values(source).flat()"
+        }
+      }
+    ],
+    "metadata": {
+      "version": "4.0",
+      "generatedAt": 1765189284026
+    }
+  }
+}

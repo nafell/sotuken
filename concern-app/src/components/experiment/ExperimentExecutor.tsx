@@ -19,6 +19,10 @@ interface ExperimentExecutorProps {
     useMockWidgetSelection?: boolean;
     /** テストケースID（モックモード時必須） */
     caseId?: string;
+    /** LLMプロバイダー（gemini または azure） */
+    provider?: 'gemini' | 'azure';
+    /** 使用するモデルID */
+    modelId?: string;
 }
 
 export function ExperimentExecutor({
@@ -27,7 +31,9 @@ export function ExperimentExecutor({
     initialContext,
     onComplete,
     useMockWidgetSelection,
-    caseId
+    caseId,
+    provider,
+    modelId
 }: ExperimentExecutorProps) {
     const { state, actions } = useExperimentFlow({
         sessionId,
@@ -48,6 +54,7 @@ export function ExperimentExecutor({
                 try {
                     console.log('🔍 Fetching widget selection (Widget選定専用API)...');
                     console.log(`🧪 Mock mode: ${useMockWidgetSelection}, caseId: ${caseId || 'N/A'}`);
+                    console.log(`🤖 Provider: ${provider || 'default'}, Model: ${modelId || 'default'}`);
                     // Widget選定専用APIを呼び出す（ORS/UISpec生成は行わない）
                     const response = await apiService.generateWidgetSelection(
                         state.concernText,
@@ -55,7 +62,9 @@ export function ExperimentExecutor({
                         {
                             bottleneckType: state.bottleneckType || 'thought',
                             useMockWidgetSelection,
-                            caseId
+                            caseId,
+                            provider,
+                            modelId
                         }
                     );
 
@@ -88,7 +97,7 @@ export function ExperimentExecutor({
 
             fetchWidgetSelection();
         }
-    }, [state.currentPhase, state.concernText, state.bottleneckType, sessionId, widgetSelectionResult, planPreviewLoading, actions, useMockWidgetSelection, caseId]);
+    }, [state.currentPhase, state.concernText, state.bottleneckType, sessionId, widgetSelectionResult, planPreviewLoading, actions, useMockWidgetSelection, caseId, provider, modelId]);
 
     // Plan統合フェーズの結果ハンドラ
     const handlePlanUnifiedResult = useCallback((
@@ -159,6 +168,8 @@ export function ExperimentExecutor({
                         onComplete={actions.handlePlanComplete}
                         onBack={actions.handlePlanPreviewCancel}
                         mode={mode}
+                        provider={provider}
+                        modelId={modelId}
                     />
                 );
 

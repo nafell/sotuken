@@ -90,6 +90,18 @@
       "provider": "azure",
       "modelId": "gpt-51-codex-mini-global",
       "description": "Azure GPT-5.1 Codex Mini Global"
+    },
+    {
+      "id": "azure-model-router",
+      "provider": "azure",
+      "modelId": "model-router",
+      "description": "Azure Model Router"
+    },
+    {
+      "id": "azure-gpt41-mini",
+      "provider": "azure",
+      "modelId": "gpt-4.1-mini",
+      "description": "Azure GPT-4.1 Mini"
     }
   ],
 

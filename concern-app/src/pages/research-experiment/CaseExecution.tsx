@@ -28,6 +28,7 @@ export default function CaseExecution() {
   // Execution config
   const [experimentType, setExperimentType] = useState('expert');
   const [widgetCount, setWidgetCount] = useState(12);
+  const [provider, setProvider] = useState<'gemini' | 'azure'>('gemini');
   const [modelId, setModelId] = useState('gemini-2.5-flash-lite');
   const [evaluatorId, setEvaluatorId] = useState('');
 
@@ -54,6 +55,7 @@ export default function CaseExecution() {
   // URLからクエリパラメータを取得
   const searchParams = new URLSearchParams(window.location.search);
   const urlMode = searchParams.get('mode');
+  const urlProvider = searchParams.get('provider') as 'gemini' | 'azure' | null;
   const urlModel = searchParams.get('model');
   const urlWidgets = searchParams.get('widgets');
   const urlEvaluator = searchParams.get('evaluator');
@@ -71,6 +73,7 @@ export default function CaseExecution() {
           const settingsData = await experimentApi.getSettings();
           // URLパラメータから設定を取得、なければデフォルト
           setWidgetCount(urlWidgets ? parseInt(urlWidgets) : settingsData.defaults.widgetCount);
+          setProvider(urlProvider || (settingsData.defaults.provider as 'gemini' | 'azure') || 'gemini');
           setModelId(urlModel || settingsData.defaults.modelId);
           setExperimentType('user');
           setEvaluatorId(urlEvaluator || '');
@@ -99,6 +102,7 @@ export default function CaseExecution() {
           setTestCase(caseData);
           // URLパラメータから設定を取得、なければデフォルト
           setWidgetCount(urlWidgets ? parseInt(urlWidgets) : settingsData.defaults.widgetCount);
+          setProvider(urlProvider || (settingsData.defaults.provider as 'gemini' | 'azure') || 'gemini');
           setModelId(urlModel || settingsData.defaults.modelId);
           setExperimentType(urlMode || settingsData.defaults.experimentType);
           setEvaluatorId(urlEvaluator || '');
@@ -110,7 +114,7 @@ export default function CaseExecution() {
       }
     }
     loadData();
-  }, [caseId, isUserMode, urlWidgets, urlModel, urlEvaluator]);
+  }, [caseId, isUserMode, urlWidgets, urlProvider, urlModel, urlEvaluator]);
 
   const handleStartExecution = async () => {
     if (!testCase) return;
@@ -212,6 +216,8 @@ export default function CaseExecution() {
             onComplete={handleComplete}
             useMockWidgetSelection={useMockWidgetSelection}
             caseId={testCase?.caseId}
+            provider={provider}
+            modelId={modelId}
           />
         </ErrorBoundary>
       </div>
@@ -278,6 +284,10 @@ export default function CaseExecution() {
                 <div style={styles.infoRow}>
                   <span style={styles.infoLabel}>Widget Count:</span>
                   <span style={styles.infoValue}>{widgetCount}</span>
+                </div>
+                <div style={styles.infoRow}>
+                  <span style={styles.infoLabel}>Provider:</span>
+                  <span style={styles.infoValue}>{provider === 'azure' ? 'Azure OpenAI' : 'Google AI Studio'}</span>
                 </div>
                 <div style={styles.infoRow}>
                   <span style={styles.infoLabel}>Model:</span>

@@ -76,10 +76,9 @@ AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
 AZURE_OPENAI_API_KEY=your_api_key_here
 AZURE_OPENAI_API_VERSION=2024-12-01-preview
 
-# デプロイメント名（モデルIDと異なる場合のみ設定）
-# AZURE_OPENAI_DEPLOYMENT_GPT51=gpt-51-global
-# AZURE_OPENAI_DEPLOYMENT_GPT51_CODEX=gpt-51-codex-global
-# AZURE_OPENAI_DEPLOYMENT_GPT51_CODEX_MINI=gpt-51-codex-mini-global
+# モデルルーターのデプロイメント名（必須）
+# Azure AI Foundryでデプロイしたモデルルーターの名前を指定
+AZURE_OPENAI_DEPLOYMENT_MODEL_ROUTER=your-model-router-deployment-name
 ```
 
 ## 対応モデル
@@ -194,4 +193,4 @@ POST /v1/ui/generate-v4-plan
 ## 既知の制限事項
 
 - Azure OpenAI のレート制限はGeminiと異なる可能性があり、エラー時のリトライ戦略は既存のまま
-- デプロイメント名はモデルIDと同一である前提（環境変数で上書き可能）
+- モデルルーター経由でのAPI呼び出しのため、`AZURE_OPENAI_DEPLOYMENT_MODEL_ROUTER`環境変数の設定が必須

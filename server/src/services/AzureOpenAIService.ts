@@ -34,17 +34,16 @@ export const AZURE_AVAILABLE_MODELS = [
 export type AzureModelId = typeof AZURE_AVAILABLE_MODELS[number];
 
 /**
- * モデルIDからデプロイメント名へのマッピング
- * 環境変数で上書き可能
+ * モデルルーターのデプロイメント名を取得
+ * AZURE_OPENAI_DEPLOYMENT_MODEL_ROUTER環境変数で指定
+ * モデルルーター経由で複数モデルに対応
  */
-function getDeploymentName(modelId: string): string {
-  const deploymentMap: Record<string, string | undefined> = {
-    "gpt-51-global": process.env.AZURE_OPENAI_DEPLOYMENT_GPT51 || "gpt-51-global",
-    "gpt-51-codex-global": process.env.AZURE_OPENAI_DEPLOYMENT_GPT51_CODEX || "gpt-51-codex-global",
-    "gpt-51-codex-mini-global": process.env.AZURE_OPENAI_DEPLOYMENT_GPT51_CODEX_MINI || "gpt-51-codex-mini-global",
-  };
-
-  return deploymentMap[modelId] || modelId;
+function getDeploymentName(): string {
+  const modelRouter = process.env.AZURE_OPENAI_DEPLOYMENT_MODEL_ROUTER;
+  if (!modelRouter) {
+    throw new Error("AZURE_OPENAI_DEPLOYMENT_MODEL_ROUTER environment variable is not set");
+  }
+  return modelRouter;
 }
 
 /**
@@ -77,7 +76,7 @@ export class AzureOpenAIService {
     }
 
     this.modelId = modelId;
-    this.deploymentName = getDeploymentName(modelId);
+    this.deploymentName = getDeploymentName();
 
     // OpenAI SDKをAzure用に設定
     this.client = new OpenAI({
@@ -242,13 +241,14 @@ export class AzureOpenAIService {
 
 /**
  * AzureOpenAIServiceインスタンスを作成
- * 環境変数からエンドポイントとAPIキーを取得
+ * 環境変数からエンドポイント、APIキー、モデルルーターのデプロイメント名を取得
  * @param modelId 使用するモデルID
  */
 export function createAzureOpenAIService(modelId: string): AzureOpenAIService {
   const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
   const apiKey = process.env.AZURE_OPENAI_API_KEY;
   const apiVersion = process.env.AZURE_OPENAI_API_VERSION;
+  const modelRouter = process.env.AZURE_OPENAI_DEPLOYMENT_MODEL_ROUTER;
 
   if (!endpoint) {
     throw new Error("AZURE_OPENAI_ENDPOINT environment variable is not set");
@@ -256,6 +256,10 @@ export function createAzureOpenAIService(modelId: string): AzureOpenAIService {
 
   if (!apiKey) {
     throw new Error("AZURE_OPENAI_API_KEY environment variable is not set");
+  }
+
+  if (!modelRouter) {
+    throw new Error("AZURE_OPENAI_DEPLOYMENT_MODEL_ROUTER environment variable is not set");
   }
 
   return new AzureOpenAIService(endpoint, apiKey, modelId, apiVersion);

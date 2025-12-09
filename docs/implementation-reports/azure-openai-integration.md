@@ -71,29 +71,28 @@ this.client = new OpenAI({
 ## 環境変数
 
 ```bash
-# Azure OpenAI Configuration (モデルルーター用)
+# Azure OpenAI Configuration
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
 AZURE_OPENAI_API_KEY=your_api_key_here
 AZURE_OPENAI_API_VERSION=2024-12-01-preview
 
-# モデルルーターのデプロイメント名（model-router使用時に必須）
-AZURE_OPENAI_DEPLOYMENT_MODEL_ROUTER=your-model-router-deployment-name
-
-# GPT-4.1 Mini専用設定（gpt-4.1-mini使用時に必須）
-AZURE_OPENAI_ENDPOINT_GPT4_1_MINI=https://your-gpt41-mini-resource.openai.azure.com
-AZURE_OPENAI_API_KEY_GPT4_1_MINI=your_gpt41_mini_api_key
-AZURE_OPENAI_DEPLOYMENT_GPT4_1_MINI=your-gpt41-mini-deployment-name
+# デプロイメント名（使用するモデルに対応するものを設定）
+AZURE_OPENAI_DEPLOYMENT_GPT4_1_VANILLA=your-gpt41-deployment
+AZURE_OPENAI_DEPLOYMENT_GPT4_1_MINI=your-gpt41-mini-deployment
+AZURE_OPENAI_DEPLOYMENT_GPT5_CHAT=your-gpt5-chat-deployment
+AZURE_OPENAI_DEPLOYMENT_GPT5_MINI=your-gpt5-mini-deployment
+AZURE_OPENAI_DEPLOYMENT_MODEL_ROUTER=your-model-router-deployment
 ```
 
 ## 対応モデル
 
-| モデルID | 説明 |
-|---------|------|
-| `gpt-51-global` | GPT-5.1 Global |
-| `gpt-51-codex-global` | GPT-5.1 Codex Global (コード最適化) |
-| `gpt-51-codex-mini-global` | GPT-5.1 Codex Mini Global (軽量版) |
-| `model-router` | Azure Model Router |
-| `gpt-4.1-mini` | GPT-4.1 Mini（専用エンドポイント）|
+| モデルID | 環境変数 | 説明 |
+|---------|----------|------|
+| `gpt-4.1` | `AZURE_OPENAI_DEPLOYMENT_GPT4_1_VANILLA` | GPT-4.1 |
+| `gpt-4.1-mini` | `AZURE_OPENAI_DEPLOYMENT_GPT4_1_MINI` | GPT-4.1 Mini |
+| `gpt-5-chat` | `AZURE_OPENAI_DEPLOYMENT_GPT5_CHAT` | GPT-5 Chat |
+| `gpt-5-mini` | `AZURE_OPENAI_DEPLOYMENT_GPT5_MINI` | GPT-5 Mini |
+| `model-router` | `AZURE_OPENAI_DEPLOYMENT_MODEL_ROUTER` | Model Router |
 
 ## GUI操作
 
@@ -199,4 +198,4 @@ POST /v1/ui/generate-v4-plan
 ## 既知の制限事項
 
 - Azure OpenAI のレート制限はGeminiと異なる可能性があり、エラー時のリトライ戦略は既存のまま
-- モデルルーター経由でのAPI呼び出しのため、`AZURE_OPENAI_DEPLOYMENT_MODEL_ROUTER`環境変数の設定が必須
+- 使用するモデルに対応するデプロイメント名の環境変数設定が必須

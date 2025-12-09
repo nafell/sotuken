@@ -66,11 +66,11 @@ export type LLMProvider = 'gemini' | 'openai' | 'anthropic' | 'azure';
  * Azure OpenAI 利用可能モデル
  */
 export const AZURE_AVAILABLE_MODELS = [
-  'gpt-51-global',
-  'gpt-51-codex-global',
-  'gpt-51-codex-mini-global',
-  'model-router',
-  'gpt-4.1-mini'
+  'gpt-4.1',
+  'gpt-4.1-mini',
+  'gpt-5-chat',
+  'gpt-5-mini',
+  'model-router'
 ] as const;
 
 export type AzureModelId = typeof AZURE_AVAILABLE_MODELS[number];

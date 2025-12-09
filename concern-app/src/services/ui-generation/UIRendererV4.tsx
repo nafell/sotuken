@@ -21,6 +21,7 @@ import type { BaseWidgetProps, WidgetSpecObject } from '../../types/widget.types
 import type { WidgetPortPath } from '../../types/v4/reactive-binding.types';
 import { DataBindingProcessor, createDataBindingProcessor } from '../ui/DataBindingProcessor';
 import { createReactiveBindingEngineV4, type PropagationEventV4 } from '../ui/ReactiveBindingEngineV4';
+import { getWidgetAtomCount } from '../../store/widgetAtoms';
 
 // v3 Widget Components（既存を再利用）
 import { EmotionPalette } from '../../components/widgets/v3/EmotionPalette/EmotionPalette';
@@ -63,6 +64,22 @@ const WIDGET_COMPONENTS: Record<string, React.FC<BaseWidgetProps>> = {
 };
 
 // =============================================================================
+// Types
+// =============================================================================
+
+/**
+ * Reactivity統計情報
+ */
+export interface ReactivityStats {
+  /** DSL定義のbinding数 */
+  dslBindingCount: number;
+  /** 初期化済みport数 */
+  activePortCount: number;
+  /** 登録済みatom数（widgetAtomMap） */
+  activeAtomCount: number;
+}
+
+// =============================================================================
 // Props
 // =============================================================================
 
@@ -81,6 +98,8 @@ export interface UIRendererV4Props {
   onORSUpdate?: (entityAttribute: string, value: unknown) => void;
   /** Unknown Widgetが検出されたときのコールバック */
   onUnknownWidget?: (widgetId: string, componentName: string) => void;
+  /** Reactivity統計コールバック */
+  onReactivityStats?: (stats: ReactivityStats) => void;
   /** クラス名 */
   className?: string;
   /** コンテキストサマリー */
@@ -170,6 +189,7 @@ export const UIRendererV4: React.FC<UIRendererV4Props> = ({
   onPortChange,
   onORSUpdate,
   onUnknownWidget,
+  onReactivityStats,
   className,
   contextSummary,
   debug = false,
@@ -233,11 +253,24 @@ export const UIRendererV4: React.FC<UIRendererV4Props> = ({
       }
     });
 
+    // Reactivity統計をコールバックで通知
+    if (onReactivityStats) {
+      const stats: ReactivityStats = {
+        dslBindingCount: uiSpec.reactiveBindings?.bindings?.length || 0,
+        activePortCount: engine.getAllPortValues().size,
+        activeAtomCount: getWidgetAtomCount(),
+      };
+      onReactivityStats(stats);
+      if (debug) {
+        console.log('[UIRendererV4] Reactivity stats:', stats);
+      }
+    }
+
     return () => {
       engine.dispose();
       dataBindingProcessor.dispose();
     };
-  }, [engine, dataBindingProcessor, uiSpec.widgets, dataBindingMap, debug, onORSUpdate]);
+  }, [engine, dataBindingProcessor, uiSpec.widgets, dataBindingMap, debug, onORSUpdate, onReactivityStats, uiSpec.reactiveBindings]);
 
   // Widgetをposition順にソート
   const sortedWidgets = useMemo(() => {

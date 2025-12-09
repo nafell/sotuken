@@ -815,6 +815,22 @@ export default function ReplayView() {
                       {/* W2WR Content */}
                       {w2wrExpanded && (
                         <div style={styles.w2wrBody}>
+                          {/* Source Info */}
+                          <div style={styles.w2wrSourceInfo}>
+                            <span style={styles.w2wrSourceLabel}>Source:</span>
+                            <span style={{
+                              ...styles.w2wrSourceBadge,
+                              backgroundColor: w2wrAnalysis.source === 'reactiveBindings' ? '#3B82F6' :
+                                              w2wrAnalysis.source === 'dpg' ? '#8B5CF6' : '#6B7280'
+                            }}>
+                              {w2wrAnalysis.source === 'reactiveBindings' ? 'reactiveBindings (v4/v5)' :
+                               w2wrAnalysis.source === 'dpg' ? 'dpg (v3)' : 'none'}
+                            </span>
+                            {w2wrAnalysis.dslVersion && (
+                              <span style={styles.w2wrVersionBadge}>v{w2wrAnalysis.dslVersion}</span>
+                            )}
+                          </div>
+
                           {/* Summary */}
                           <div style={styles.w2wrSummary}>
                             <div style={styles.w2wrSummaryRow}>
@@ -1616,6 +1632,35 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '12px 14px',
     borderTop: '1px solid #FCD34D',
     backgroundColor: '#FFFBEB'
+  },
+  w2wrSourceInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '12px',
+    padding: '8px 12px',
+    backgroundColor: '#F3F4F6',
+    borderRadius: '6px'
+  },
+  w2wrSourceLabel: {
+    fontSize: '12px',
+    color: '#4B5563',
+    fontWeight: 500
+  },
+  w2wrSourceBadge: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#FFFFFF',
+    padding: '3px 10px',
+    borderRadius: '4px'
+  },
+  w2wrVersionBadge: {
+    fontSize: '11px',
+    fontWeight: 500,
+    color: '#6B7280',
+    backgroundColor: '#E5E7EB',
+    padding: '3px 8px',
+    borderRadius: '4px'
   },
   w2wrSummary: {
     display: 'flex',

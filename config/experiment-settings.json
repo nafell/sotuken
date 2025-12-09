@@ -74,34 +74,34 @@
       "description": "高性能モデル（高品質・高コスト）"
     },
     {
-      "id": "azure-gpt51",
+      "id": "azure-gpt41",
       "provider": "azure",
-      "modelId": "gpt-51-global",
-      "description": "Azure GPT-5.1 Global"
-    },
-    {
-      "id": "azure-gpt51-codex",
-      "provider": "azure",
-      "modelId": "gpt-51-codex-global",
-      "description": "Azure GPT-5.1 Codex Global"
-    },
-    {
-      "id": "azure-gpt51-codex-mini",
-      "provider": "azure",
-      "modelId": "gpt-51-codex-mini-global",
-      "description": "Azure GPT-5.1 Codex Mini Global"
-    },
-    {
-      "id": "azure-model-router",
-      "provider": "azure",
-      "modelId": "model-router",
-      "description": "Azure Model Router"
+      "modelId": "gpt-4.1",
+      "description": "Azure GPT-4.1"
     },
     {
       "id": "azure-gpt41-mini",
       "provider": "azure",
       "modelId": "gpt-4.1-mini",
       "description": "Azure GPT-4.1 Mini"
+    },
+    {
+      "id": "azure-gpt5-chat",
+      "provider": "azure",
+      "modelId": "gpt-5-chat",
+      "description": "Azure GPT-5 Chat"
+    },
+    {
+      "id": "azure-gpt5-mini",
+      "provider": "azure",
+      "modelId": "gpt-5-mini",
+      "description": "Azure GPT-5 Mini"
+    },
+    {
+      "id": "azure-model-router",
+      "provider": "azure",
+      "modelId": "model-router",
+      "description": "Azure Model Router"
     }
   ],
 

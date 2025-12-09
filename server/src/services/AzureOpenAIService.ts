@@ -3,7 +3,7 @@
  * OpenAI SDK経由でAzure OpenAI Serviceにアクセス
  *
  * APIキー認証を使用（Entra IDではない）
- * 対応モデル: GPT-5.1 Global, GPT-5.1-codex Global, GPT-5.1-codex-mini Global
+ * 対応モデル: GPT-4.1, GPT-4.1 Mini, GPT-5 Chat, GPT-5 Mini, Model Router
  */
 
 import OpenAI from "openai";
@@ -26,44 +26,35 @@ export const DEFAULT_API_VERSION = "2024-12-01-preview";
 
 /** 利用可能なモデルID一覧 */
 export const AZURE_AVAILABLE_MODELS = [
-  "gpt-51-global",
-  "gpt-51-codex-global",
-  "gpt-51-codex-mini-global",
-  "model-router",
-  "gpt-4.1-mini"
+  "gpt-4.1",
+  "gpt-4.1-mini",
+  "gpt-5-chat",
+  "gpt-5-mini",
+  "model-router"
 ] as const;
 
 export type AzureModelId = typeof AZURE_AVAILABLE_MODELS[number];
 
 /**
+ * モデルIDからデプロイメント名の環境変数キーへのマッピング
+ */
+const MODEL_TO_DEPLOYMENT_ENV: Record<string, string> = {
+  "gpt-4.1": "AZURE_OPENAI_DEPLOYMENT_GPT4_1_VANILLA",
+  "gpt-4.1-mini": "AZURE_OPENAI_DEPLOYMENT_GPT4_1_MINI",
+  "gpt-5-chat": "AZURE_OPENAI_DEPLOYMENT_GPT5_CHAT",
+  "gpt-5-mini": "AZURE_OPENAI_DEPLOYMENT_GPT5_MINI",
+  "model-router": "AZURE_OPENAI_DEPLOYMENT_MODEL_ROUTER",
+};
+
+/**
  * モデルIDに応じたAzure OpenAI接続設定を取得
+ * 全モデル共通のエンドポイント・APIキーを使用
  * @param modelId 使用するモデルID
  * @returns エンドポイント、APIキー、デプロイメント名
  */
 function getAzureConfig(modelId: string): { endpoint: string; apiKey: string; deploymentName: string } {
-  // GPT-4.1 Mini用の専用エンドポイント
-  if (modelId === "gpt-4.1-mini") {
-    const endpoint = process.env.AZURE_OPENAI_ENDPOINT_GPT4_1_MINI;
-    const apiKey = process.env.AZURE_OPENAI_API_KEY_GPT4_1_MINI;
-    const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT_GPT4_1_MINI;
-
-    if (!endpoint) {
-      throw new Error("AZURE_OPENAI_ENDPOINT_GPT4_1_MINI environment variable is not set");
-    }
-    if (!apiKey) {
-      throw new Error("AZURE_OPENAI_API_KEY_GPT4_1_MINI environment variable is not set");
-    }
-    if (!deploymentName) {
-      throw new Error("AZURE_OPENAI_DEPLOYMENT_GPT4_1_MINI environment variable is not set");
-    }
-
-    return { endpoint, apiKey, deploymentName };
-  }
-
-  // デフォルト: モデルルーター経由
   const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
   const apiKey = process.env.AZURE_OPENAI_API_KEY;
-  const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT_MODEL_ROUTER;
 
   if (!endpoint) {
     throw new Error("AZURE_OPENAI_ENDPOINT environment variable is not set");
@@ -71,8 +62,16 @@ function getAzureConfig(modelId: string): { endpoint: string; apiKey: string; de
   if (!apiKey) {
     throw new Error("AZURE_OPENAI_API_KEY environment variable is not set");
   }
+
+  // モデルIDに対応するデプロイメント名の環境変数を取得
+  const deploymentEnvKey = MODEL_TO_DEPLOYMENT_ENV[modelId];
+  if (!deploymentEnvKey) {
+    throw new Error(`Unknown model ID: ${modelId}. Available models: ${AZURE_AVAILABLE_MODELS.join(", ")}`);
+  }
+
+  const deploymentName = process.env[deploymentEnvKey];
   if (!deploymentName) {
-    throw new Error("AZURE_OPENAI_DEPLOYMENT_MODEL_ROUTER environment variable is not set");
+    throw new Error(`${deploymentEnvKey} environment variable is not set`);
   }
 
   return { endpoint, apiKey, deploymentName };

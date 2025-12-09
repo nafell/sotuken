@@ -25,6 +25,10 @@ interface ExperimentPlanUnifiedProps {
     onComplete: () => void;
     onBack: () => void;
     mode: 'user' | 'expert' | 'technical';
+    /** LLMプロバイダー（gemini または azure） */
+    provider?: 'gemini' | 'azure';
+    /** 使用するモデルID */
+    modelId?: string;
 }
 
 /**
@@ -49,7 +53,9 @@ export function ExperimentPlanUnified({
     onWidgetUpdate,
     onComplete,
     onBack,
-    mode
+    mode,
+    provider,
+    modelId
 }: ExperimentPlanUnifiedProps) {
     const [status, setStatus] = useState<PlanStatus>('idle');
     const [error, setError] = useState<string | null>(null);
@@ -76,6 +82,8 @@ export function ExperimentPlanUnified({
                 {
                     bottleneckType,
                     enableReactivity: true,
+                    provider,
+                    modelId,
                 }
             );
 
@@ -96,7 +104,7 @@ export function ExperimentPlanUnified({
             setStatus('error');
             hasGeneratedRef.current = false;
         }
-    }, [sessionId, concernText, bottleneckType]);
+    }, [sessionId, concernText, bottleneckType, provider, modelId]);
 
     // 初回マウント時に自動生成
     useEffect(() => {

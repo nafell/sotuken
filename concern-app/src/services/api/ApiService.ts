@@ -111,6 +111,10 @@ export interface UISpecV4GenerationOptions {
   useMockWidgetSelection?: boolean;
   /** テストケースID（モックモード時必須） */
   caseId?: string;
+  /** LLMプロバイダー（gemini または azure） */
+  provider?: 'gemini' | 'azure';
+  /** 使用するモデルID */
+  modelId?: string;
 }
 
 /**

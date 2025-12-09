@@ -71,14 +71,18 @@ this.client = new OpenAI({
 ## 環境変数
 
 ```bash
-# Azure OpenAI Configuration
+# Azure OpenAI Configuration (モデルルーター用)
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
 AZURE_OPENAI_API_KEY=your_api_key_here
 AZURE_OPENAI_API_VERSION=2024-12-01-preview
 
-# モデルルーターのデプロイメント名（必須）
-# Azure AI Foundryでデプロイしたモデルルーターの名前を指定
+# モデルルーターのデプロイメント名（model-router使用時に必須）
 AZURE_OPENAI_DEPLOYMENT_MODEL_ROUTER=your-model-router-deployment-name
+
+# GPT-4.1 Mini専用設定（gpt-4.1-mini使用時に必須）
+AZURE_OPENAI_ENDPOINT_GPT4_1_MINI=https://your-gpt41-mini-resource.openai.azure.com
+AZURE_OPENAI_API_KEY_GPT4_1_MINI=your_gpt41_mini_api_key
+AZURE_OPENAI_DEPLOYMENT_GPT4_1_MINI=your-gpt41-mini-deployment-name
 ```
 
 ## 対応モデル
@@ -88,6 +92,8 @@ AZURE_OPENAI_DEPLOYMENT_MODEL_ROUTER=your-model-router-deployment-name
 | `gpt-51-global` | GPT-5.1 Global |
 | `gpt-51-codex-global` | GPT-5.1 Codex Global (コード最適化) |
 | `gpt-51-codex-mini-global` | GPT-5.1 Codex Mini Global (軽量版) |
+| `model-router` | Azure Model Router |
+| `gpt-4.1-mini` | GPT-4.1 Mini（専用エンドポイント）|
 
 ## GUI操作
 

@@ -28,22 +28,54 @@ export const DEFAULT_API_VERSION = "2024-12-01-preview";
 export const AZURE_AVAILABLE_MODELS = [
   "gpt-51-global",
   "gpt-51-codex-global",
-  "gpt-51-codex-mini-global"
+  "gpt-51-codex-mini-global",
+  "model-router",
+  "gpt-4.1-mini"
 ] as const;
 
 export type AzureModelId = typeof AZURE_AVAILABLE_MODELS[number];
 
 /**
- * モデルルーターのデプロイメント名を取得
- * AZURE_OPENAI_DEPLOYMENT_MODEL_ROUTER環境変数で指定
- * モデルルーター経由で複数モデルに対応
+ * モデルIDに応じたAzure OpenAI接続設定を取得
+ * @param modelId 使用するモデルID
+ * @returns エンドポイント、APIキー、デプロイメント名
  */
-function getDeploymentName(): string {
-  const modelRouter = process.env.AZURE_OPENAI_DEPLOYMENT_MODEL_ROUTER;
-  if (!modelRouter) {
+function getAzureConfig(modelId: string): { endpoint: string; apiKey: string; deploymentName: string } {
+  // GPT-4.1 Mini用の専用エンドポイント
+  if (modelId === "gpt-4.1-mini") {
+    const endpoint = process.env.AZURE_OPENAI_ENDPOINT_GPT4_1_MINI;
+    const apiKey = process.env.AZURE_OPENAI_API_KEY_GPT4_1_MINI;
+    const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT_GPT4_1_MINI;
+
+    if (!endpoint) {
+      throw new Error("AZURE_OPENAI_ENDPOINT_GPT4_1_MINI environment variable is not set");
+    }
+    if (!apiKey) {
+      throw new Error("AZURE_OPENAI_API_KEY_GPT4_1_MINI environment variable is not set");
+    }
+    if (!deploymentName) {
+      throw new Error("AZURE_OPENAI_DEPLOYMENT_GPT4_1_MINI environment variable is not set");
+    }
+
+    return { endpoint, apiKey, deploymentName };
+  }
+
+  // デフォルト: モデルルーター経由
+  const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
+  const apiKey = process.env.AZURE_OPENAI_API_KEY;
+  const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT_MODEL_ROUTER;
+
+  if (!endpoint) {
+    throw new Error("AZURE_OPENAI_ENDPOINT environment variable is not set");
+  }
+  if (!apiKey) {
+    throw new Error("AZURE_OPENAI_API_KEY environment variable is not set");
+  }
+  if (!deploymentName) {
     throw new Error("AZURE_OPENAI_DEPLOYMENT_MODEL_ROUTER environment variable is not set");
   }
-  return modelRouter;
+
+  return { endpoint, apiKey, deploymentName };
 }
 
 /**
@@ -60,12 +92,14 @@ export class AzureOpenAIService {
    * @param endpoint Azure OpenAI エンドポイントURL
    * @param apiKey Azure OpenAI APIキー
    * @param modelId 使用するモデルID
+   * @param deploymentName デプロイメント名
    * @param apiVersion APIバージョン（省略時はデフォルト）
    */
   constructor(
     endpoint: string,
     apiKey: string,
     modelId: string,
+    deploymentName: string,
     apiVersion?: string
   ) {
     if (!endpoint) {
@@ -74,9 +108,12 @@ export class AzureOpenAIService {
     if (!apiKey) {
       throw new Error("AZURE_OPENAI_API_KEY is required");
     }
+    if (!deploymentName) {
+      throw new Error("deploymentName is required");
+    }
 
     this.modelId = modelId;
-    this.deploymentName = getDeploymentName();
+    this.deploymentName = deploymentName;
 
     // OpenAI SDKをAzure用に設定
     this.client = new OpenAI({
@@ -241,26 +278,18 @@ export class AzureOpenAIService {
 
 /**
  * AzureOpenAIServiceインスタンスを作成
- * 環境変数からエンドポイント、APIキー、モデルルーターのデプロイメント名を取得
+ * モデルIDに応じて適切な環境変数から接続設定を取得
  * @param modelId 使用するモデルID
  */
 export function createAzureOpenAIService(modelId: string): AzureOpenAIService {
-  const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-  const apiKey = process.env.AZURE_OPENAI_API_KEY;
+  const config = getAzureConfig(modelId);
   const apiVersion = process.env.AZURE_OPENAI_API_VERSION;
-  const modelRouter = process.env.AZURE_OPENAI_DEPLOYMENT_MODEL_ROUTER;
 
-  if (!endpoint) {
-    throw new Error("AZURE_OPENAI_ENDPOINT environment variable is not set");
-  }
-
-  if (!apiKey) {
-    throw new Error("AZURE_OPENAI_API_KEY environment variable is not set");
-  }
-
-  if (!modelRouter) {
-    throw new Error("AZURE_OPENAI_DEPLOYMENT_MODEL_ROUTER environment variable is not set");
-  }
-
-  return new AzureOpenAIService(endpoint, apiKey, modelId, apiVersion);
+  return new AzureOpenAIService(
+    config.endpoint,
+    config.apiKey,
+    modelId,
+    config.deploymentName,
+    apiVersion
+  );
 }

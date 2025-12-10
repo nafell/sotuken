@@ -36,6 +36,13 @@
       "when": 1765394517020,
       "tag": "0004_light_manta",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1765405288037,
+      "tag": "0005_slim_norman_osborn",
+      "breakpoints": true
     }
   ]
 }

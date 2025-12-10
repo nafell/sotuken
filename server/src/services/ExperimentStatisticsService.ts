@@ -51,6 +51,9 @@ interface TrialLogRecord {
   latencyMs: number;
   dslErrors: unknown;
   renderErrors: unknown;
+  w2wrErrors: unknown;
+  reactComponentErrors: unknown;
+  jotaiAtomErrors: unknown;
   typeErrorCount: number;
   referenceErrorCount: number;
   cycleDetected: boolean;
@@ -68,7 +71,7 @@ interface TrialLogRecord {
  */
 function calculateLayer1Metrics(logs: TrialLogRecord[]): Layer1Metrics {
   if (logs.length === 0) {
-    return { VR: 0, TCR: 0, RRR: 0, CDR: 0, RGR: 0 };
+    return { VR: 0, TCR: 0, RRR: 0, CDR: 0, RGR: 0, W2WR_SR: 0, RC_SR: 0, JA_SR: 0 };
   }
 
   const total = logs.length;
@@ -95,12 +98,27 @@ function calculateLayer1Metrics(logs: TrialLogRecord[]): Layer1Metrics {
   const regeneratedCount = logs.filter(log => log.regenerated).length;
   const RGR = regeneratedCount / total;
 
+  // W2WR_SR: W2WR DSL生成成功率 = w2wr_errors=null の割合
+  const w2wrSuccessCount = logs.filter(log => log.w2wrErrors === null).length;
+  const W2WR_SR = w2wrSuccessCount / total;
+
+  // RC_SR: Reactコンポーネント変換成功率 = react_component_errors=null の割合
+  const rcSuccessCount = logs.filter(log => log.reactComponentErrors === null).length;
+  const RC_SR = rcSuccessCount / total;
+
+  // JA_SR: Jotai atom変換成功率 = jotai_atom_errors=null の割合
+  const jaSuccessCount = logs.filter(log => log.jotaiAtomErrors === null).length;
+  const JA_SR = jaSuccessCount / total;
+
   return {
     VR: Math.round(VR * 10000) / 10000,
     TCR: Math.round(TCR * 10000) / 10000,
     RRR: Math.round(RRR * 10000) / 10000,
     CDR: Math.round(CDR * 10000) / 10000,
     RGR: Math.round(RGR * 10000) / 10000,
+    W2WR_SR: Math.round(W2WR_SR * 10000) / 10000,
+    RC_SR: Math.round(RC_SR * 10000) / 10000,
+    JA_SR: Math.round(JA_SR * 10000) / 10000,
   };
 }
 

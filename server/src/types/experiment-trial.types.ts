@@ -46,6 +46,9 @@ export interface TrialLogEntry {
 
   dsl_errors: string[] | null;
   render_errors: string[] | null;
+  w2wr_errors: string[] | null;
+  react_component_errors: string[] | null;
+  jotai_atom_errors: string[] | null;
   type_error_count: number;
   reference_error_count: number;
   cycle_detected: boolean;
@@ -73,6 +76,15 @@ export interface BatchExecutionConfig {
   maxTrials?: number;
 }
 
+/** 並列実行中のタスク情報 */
+export interface RunningTask {
+  workerId: number;
+  modelConfig: ModelConfigId;
+  inputId: string;
+  stage: number;
+  startedAt: string; // ISO 8601
+}
+
 /** バッチ実行進捗 */
 export interface BatchProgress {
   batchId: string;
@@ -80,13 +92,17 @@ export interface BatchProgress {
   totalTrials: number;
   completedTrials: number;
   failedTrials: number;
+  /** ステージ単位の進捗（試行×3） */
+  totalStages: number;
+  completedStages: number;
+  /** 並列実行中の全タスク */
+  runningTasks: RunningTask[];
+  elapsedMs?: number;
+  // 後方互換性のために残す（deprecated）
   currentModelConfig?: ModelConfigId;
   currentInputIndex?: number;
-  /** 現在実行中のステージ (1, 2, 3) */
   currentStage?: number;
-  /** 現在の入力ID */
   currentInputId?: string;
-  elapsedMs?: number;
 }
 
 // ========================================
@@ -124,6 +140,9 @@ export interface InputCorpus {
  * - RRR: 参照整合率
  * - CDR: 循環依存率
  * - RGR: 再生成率
+ * - W2WR_SR: W2WR DSL生成成功率
+ * - RC_SR: Reactコンポーネント変換成功率
+ * - JA_SR: Jotai atom変換成功率
  */
 export interface Layer1Metrics {
   /** DSL妥当率: dsl_errors=null && render_errors=null の割合 */
@@ -136,6 +155,12 @@ export interface Layer1Metrics {
   CDR: number;
   /** 再生成率: regenerated=true の割合 */
   RGR: number;
+  /** W2WR DSL生成成功率: w2wr_errors=null の割合 */
+  W2WR_SR: number;
+  /** Reactコンポーネント変換成功率: react_component_errors=null の割合 */
+  RC_SR: number;
+  /** Jotai atom変換成功率: jotai_atom_errors=null の割合 */
+  JA_SR: number;
 }
 
 // ========================================
@@ -209,6 +234,14 @@ export const DSL_ERROR_TYPES = [
   'MISSING_REQUIRED_FIELD',
   'INVALID_BINDING',
   'TYPE_MISMATCH',
+  'COMPLEXITY_VIOLATION',
+  'INVALID_VERSION',
+  'NO_WIDGETS',
+  'DUPLICATE_WIDGET',
+  'SELF_REFERENCE',
+  'INVALID_RELATIONSHIP',
+  'INVALID_UISPEC',
+  'INVALID_UISPEC_STRUCTURE',
 ] as const;
 
 export type DSLErrorType = typeof DSL_ERROR_TYPES[number];
@@ -225,6 +258,39 @@ export const RENDER_ERROR_TYPES = [
 ] as const;
 
 export type RenderErrorType = typeof RENDER_ERROR_TYPES[number];
+
+// ========================================
+// W2WR/React/Jotaiエラータイプ
+// ========================================
+
+/** W2WRエラータイプ一覧（バックエンド検出） */
+export const W2WR_ERROR_TYPES = [
+  'CIRCULAR_DEPENDENCY',
+  'SELF_REFERENCE',
+  'INVALID_BINDING',
+  'UNKNOWN_SOURCE_WIDGET',
+  'UNKNOWN_TARGET_WIDGET',
+] as const;
+
+export type W2WRErrorType = typeof W2WR_ERROR_TYPES[number];
+
+/** Reactコンポーネントエラータイプ一覧（フロントエンド検出） */
+export const REACT_COMPONENT_ERROR_TYPES = [
+  'UNKNOWN_WIDGET',
+  'INVALID_PROPS',
+  'RENDER_EXCEPTION',
+] as const;
+
+export type ReactComponentErrorType = typeof REACT_COMPONENT_ERROR_TYPES[number];
+
+/** Jotai atomエラータイプ一覧（フロントエンド検出） */
+export const JOTAI_ATOM_ERROR_TYPES = [
+  'ATOM_CREATION_FAILED',
+  'MISSING_WIDGET_ID',
+  'DUPLICATE_ATOM',
+] as const;
+
+export type JotaiAtomErrorType = typeof JOTAI_ATOM_ERROR_TYPES[number];
 
 // ========================================
 // API リクエスト/レスポンス型

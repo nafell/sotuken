@@ -9,7 +9,7 @@
 
 import type { ORS, Entity, Attribute, StageType } from '../../types/v4/ors.types';
 import type { DependencyGraph, DataDependency } from '../../types/v4/dependency-graph.types';
-import type { UISpec, WidgetSpec, DataBindingSpec } from '../../types/v4/ui-spec.types';
+import type { UISpec, WidgetSpec, DataBindingSpec, PlanUISpec } from '../../types/v4/ui-spec.types';
 import type { ReactiveBindingSpec, ReactiveBinding } from '../../types/v4/reactive-binding.types';
 import type { WidgetSelectionResult, StageSelection, SelectedWidget } from '../../types/v4/widget-selection.types';
 import { parseEntityAttributePath } from '../../types/v4/ors.types';
@@ -386,6 +386,25 @@ export class ValidationService {
     const warnings: ValidationError[] = [];
     const info: ValidationError[] = [];
 
+    // null/undefinedチェック
+    if (!uiSpec || typeof uiSpec !== 'object') {
+      errors.push(this.createError('INVALID_UISPEC', 'UISpec is null or not an object', 'root'));
+      return this.buildResult(errors, warnings, info);
+    }
+
+    // v5.0 PlanUISpec判定 → 専用メソッドへルーティング
+    if ('sections' in uiSpec) {
+      return this.validatePlanUISpec(uiSpec as unknown as PlanUISpec, ors);
+    }
+
+    // widgets配列チェック
+    if (!Array.isArray(uiSpec.widgets)) {
+      errors.push(
+        this.createError('INVALID_UISPEC_STRUCTURE', 'UISpec.widgets is missing or not an array', 'widgets')
+      );
+      return this.buildResult(errors, warnings, info);
+    }
+
     // バージョンチェック
     if (uiSpec.version !== '4.0') {
       errors.push(this.createError('INVALID_VERSION', `Invalid version: ${uiSpec.version}, expected 4.0`, 'version'));
@@ -415,6 +434,82 @@ export class ValidationService {
 
     // ReactiveBinding検証
     this.validateReactiveBindings(uiSpec.reactiveBindings, widgetIds, errors, warnings, info);
+
+    return this.buildResult(errors, warnings, info);
+  }
+
+  /**
+   * PlanUISpec (v5.0) を検証
+   */
+  validatePlanUISpec(planUISpec: PlanUISpec, ors?: ORS): ValidationResult {
+    const errors: ValidationError[] = [];
+    const warnings: ValidationError[] = [];
+    const info: ValidationError[] = [];
+
+    // null/undefinedチェック
+    if (!planUISpec || typeof planUISpec !== 'object') {
+      errors.push(this.createError('INVALID_UISPEC', 'PlanUISpec is null or not an object', 'root'));
+      return this.buildResult(errors, warnings, info);
+    }
+
+    // sections構造チェック
+    if (!planUISpec.sections || typeof planUISpec.sections !== 'object') {
+      errors.push(
+        this.createError('INVALID_UISPEC_STRUCTURE', 'PlanUISpec.sections is missing or not an object', 'sections')
+      );
+      return this.buildResult(errors, warnings, info);
+    }
+
+    // バージョンチェック
+    if (planUISpec.version !== '5.0') {
+      errors.push(
+        this.createError('INVALID_VERSION', `Invalid version: ${planUISpec.version}, expected 5.0`, 'version')
+      );
+    }
+
+    // 各セクションのwidgets配列チェック
+    const widgetIds = new Set<string>();
+    for (const sectionName of ['diverge', 'organize', 'converge'] as const) {
+      const section = planUISpec.sections[sectionName];
+      if (!section || !Array.isArray(section.widgets)) {
+        errors.push(
+          this.createError(
+            'INVALID_UISPEC_STRUCTURE',
+            `PlanUISpec.sections.${sectionName}.widgets is missing or not an array`,
+            `sections.${sectionName}.widgets`
+          )
+        );
+        continue;
+      }
+
+      // セクション内の各Widgetを検証
+      for (let i = 0; i < section.widgets.length; i++) {
+        const widget = section.widgets[i];
+        const path = `sections.${sectionName}.widgets[${i}]`;
+
+        // 重複チェック
+        if (widgetIds.has(widget.id)) {
+          errors.push(this.createError('DUPLICATE_WIDGET_ID', `Duplicate widget ID: ${widget.id}`, path));
+        }
+        widgetIds.add(widget.id);
+
+        // Widget定義存在チェック
+        const def = getWidgetDefinitionV4(widget.component);
+        if (!def) {
+          errors.push(
+            this.createError('UNKNOWN_WIDGET', `Unknown widget component: ${widget.component}`, `${path}.component`)
+          );
+        }
+
+        // DataBinding検証
+        this.validateDataBindings(widget, def, ors, path, errors, warnings, info);
+      }
+    }
+
+    // ReactiveBinding検証
+    if (planUISpec.reactiveBindings) {
+      this.validateReactiveBindings(planUISpec.reactiveBindings, widgetIds, errors, warnings, info);
+    }
 
     return this.buildResult(errors, warnings, info);
   }
@@ -721,6 +816,8 @@ export const DSL_ERROR_TYPES = [
   'DUPLICATE_WIDGET',
   'SELF_REFERENCE',
   'INVALID_RELATIONSHIP',
+  'INVALID_UISPEC',
+  'INVALID_UISPEC_STRUCTURE',
 ] as const;
 
 export type DSLErrorType = typeof DSL_ERROR_TYPES[number];

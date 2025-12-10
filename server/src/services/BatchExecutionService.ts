@@ -12,6 +12,10 @@ import { batchExecutions, experimentTrialLogs } from '../database/schema';
 import { eq, and } from 'drizzle-orm';
 import { createExperimentOrchestrator, STAGE_TO_TASK_TYPE } from './ModelConfigurationService';
 import { createValidationService, getErrorSummary } from './v4/ValidationService';
+import { WidgetSelectionService } from './v4/WidgetSelectionService';
+import { ORSGeneratorService } from './v4/ORSGeneratorService';
+import { UISpecGeneratorV4 } from './v4/UISpecGeneratorV4';
+import { LLMOrchestrator } from './v4/LLMOrchestrator';
 import type {
   ModelConfigId,
   BatchExecutionConfig,
@@ -23,6 +27,9 @@ import type {
   RunningTask,
 } from '../types/experiment-trial.types';
 import type { LLMCallMetrics, LLMTaskType } from '../types/v4/llm-task.types';
+import type { WidgetSelectionResult } from '../types/v4/widget-selection.types';
+import type { PlanORS } from '../types/v4/ors.types';
+import type { PlanUISpec } from '../types/v4/ui-spec.types';
 
 // ========================================
 // Types
@@ -334,7 +341,32 @@ export class BatchExecutionService {
   }
 
   /**
+   * モデル構成に応じたv4サービス群を作成
+   */
+  private createV4Services(orchestrator: LLMOrchestrator) {
+    return {
+      widgetSelectionService: new WidgetSelectionService({
+        llmOrchestrator: orchestrator,
+        debug: true,
+      }),
+      orsGeneratorService: new ORSGeneratorService({
+        llmOrchestrator: orchestrator,
+        debug: true,
+        disableFallback: true,  // 実験用：フォールバック無効
+      }),
+      uiSpecGeneratorService: new UISpecGeneratorV4({
+        llmOrchestrator: orchestrator,
+        debug: true,
+        disableFallback: true,  // 実験用：フォールバック無効
+      }),
+    };
+  }
+
+  /**
    * 単一試行を実行
+   *
+   * v4サービス群（WidgetSelectionService, ORSGeneratorService, UISpecGeneratorV4）を使用。
+   * /research-experiment/new と同じ処理パスを使用することで、プロンプト変数の不足を解消。
    */
   private async executeTrial(
     context: TrialContext,
@@ -348,184 +380,329 @@ export class BatchExecutionService {
     // モデル構成に応じたOrchestratorを作成
     const orchestrator = createExperimentOrchestrator(modelConfigId);
 
-    // 3ステージを順番に実行
-    for (const stageNum of [1, 2, 3] as const) {
-      const taskType = STAGE_TO_TASK_TYPE[stageNum];
+    // v4サービス群を作成
+    const services = this.createV4Services(orchestrator);
 
-      // 現在のステージを更新（runningTasksとcurrentStage両方）
-      const state = runningBatches.get(batchId);
-      if (state) {
-        state.progress.currentStage = stageNum;
-        // runningTasks内の該当ワーカーのステージを更新
-        const runningTask = state.progress.runningTasks.find(t => t.workerId === workerId);
-        if (runningTask) {
-          runningTask.stage = stageNum;
-        }
-      }
+    // bottleneckType推定（contextFactors.emotionalStateから）
+    const bottleneckType = this.inferBottleneckType(input.contextFactors);
+    const sessionId = `batch-${batchId}-${trialNumber}`;
 
-      try {
-        const result = await this.executeStage(
-          orchestrator,
-          taskType,
-          stageNum,
-          input,
-          stages
-        );
+    try {
+      // ========================================
+      // Stage 1: Widget Selection
+      // ========================================
+      this.updateStageProgress(batchId, workerId, 1);
 
-        stages.push(result);
+      const stage1Result = await this.executeWidgetSelection(
+        services,
+        input.concernText,
+        bottleneckType,
+        sessionId
+      );
+      stages.push(stage1Result);
+      await this.logTrialStage(context, 1, stage1Result);
 
-        // ステージごとにログを記録
-        await this.logTrialStage(context, stageNum, result);
-
-        // ステージ完了時にcompletedStagesをインクリメント
-        if (state) {
-          state.progress.completedStages++;
-        }
-
-        if (!result.success) {
-          overallSuccess = false;
-        }
-      } catch (error) {
-        console.error(`Stage ${stageNum} error:`, error);
-        runtimeError = true;
+      if (!stage1Result.success) {
         overallSuccess = false;
-
-        // エラーステージをログに記録
-        const errorResult: StageResult = {
-          stage: stageNum,
-          success: false,
-          metrics: {
-            taskType,
-            modelId: 'unknown',
-            latencyMs: 0,
-            success: false,
-            errorMessage: error instanceof Error ? error.message : 'Unknown error',
-            timestamp: Date.now(),
-          },
-          dslErrors: ['RUNTIME_ERROR'],
-          regenerated: false,
-        };
-        stages.push(errorResult);
-        await this.logTrialStage(context, stageNum, errorResult, true);
-
-        // エラー時もステージカウントを進める（試行は終了するが進捗は記録）
-        if (state) {
-          state.progress.completedStages++;
-        }
-
-        break; // 以降のステージはスキップ
+        return this.createTrialResult(trialNumber, inputId, modelConfigId, stages, overallSuccess, runtimeError);
       }
+      this.incrementCompletedStages(batchId);
+
+      const widgetSelectionResult = stage1Result.data as WidgetSelectionResult;
+
+      // ========================================
+      // Stage 2: Plan ORS Generation
+      // ========================================
+      this.updateStageProgress(batchId, workerId, 2);
+
+      const stage2Result = await this.executePlanORSGeneration(
+        services,
+        input.concernText,
+        bottleneckType,
+        widgetSelectionResult,
+        sessionId
+      );
+      stages.push(stage2Result);
+      await this.logTrialStage(context, 2, stage2Result);
+
+      if (!stage2Result.success) {
+        overallSuccess = false;
+        return this.createTrialResult(trialNumber, inputId, modelConfigId, stages, overallSuccess, runtimeError);
+      }
+      this.incrementCompletedStages(batchId);
+
+      const planORS = stage2Result.data as PlanORS;
+
+      // ========================================
+      // Stage 3: Plan UISpec Generation
+      // ========================================
+      this.updateStageProgress(batchId, workerId, 3);
+
+      const stage3Result = await this.executePlanUISpecGeneration(
+        services,
+        input.concernText,
+        widgetSelectionResult,
+        planORS,
+        sessionId
+      );
+      stages.push(stage3Result);
+      await this.logTrialStage(context, 3, stage3Result);
+
+      if (!stage3Result.success) {
+        overallSuccess = false;
+      }
+      this.incrementCompletedStages(batchId);
+
+    } catch (error) {
+      console.error(`Trial ${trialNumber} error:`, error);
+      runtimeError = true;
+      overallSuccess = false;
+
+      // エラーステージをログに記録
+      const currentStage = stages.length + 1;
+      const errorResult = this.createErrorStageResult(currentStage, error);
+      stages.push(errorResult);
+      await this.logTrialStage(context, currentStage, errorResult, true);
+
+      // 残りステージ分のcompletedStagesをインクリメント
+      this.incrementCompletedStages(batchId);
+    }
+
+    return this.createTrialResult(trialNumber, inputId, modelConfigId, stages, overallSuccess, runtimeError);
+  }
+
+  // ========================================
+  // Stage Execution Methods
+  // ========================================
+
+  /**
+   * Stage 1: Widget Selection
+   */
+  private async executeWidgetSelection(
+    services: ReturnType<typeof this.createV4Services>,
+    concernText: string,
+    bottleneckType: string,
+    sessionId: string
+  ): Promise<StageResult> {
+    const result = await services.widgetSelectionService.selectWidgets({
+      concernText,
+      bottleneckType,
+      sessionId,
+    });
+
+    // Widget選定結果の検証
+    let dslErrors: string[] | null = null;
+    if (result.success && result.data) {
+      const validationResult = this.validationService.validateWidgetSelection(result.data);
+      if (!validationResult.valid) {
+        dslErrors = validationResult.errors.map(e => e.type);
+      }
+    } else if (!result.success) {
+      dslErrors = [result.error?.type ?? 'WIDGET_SELECTION_FAILED'];
     }
 
     return {
-      trialNumber,
-      inputId,
-      modelConfigId,
-      stages,
-      success: overallSuccess,
-      runtimeError,
+      stage: 1,
+      success: result.success && dslErrors === null,
+      data: result.data,
+      metrics: result.metrics,
+      dslErrors,
+      w2wrErrors: null,
+      regenerated: (result.metrics.retryCount ?? 0) > 0,
+      promptData: {
+        concernText,
+        bottleneckType,
+      },
     };
   }
 
   /**
-   * 単一ステージを実行
+   * Stage 2: Plan ORS Generation
    */
-  private async executeStage(
-    orchestrator: ReturnType<typeof createExperimentOrchestrator>,
-    taskType: LLMTaskType,
-    stageNum: number,
-    input: ExperimentInput,
-    previousStages: StageResult[]
+  private async executePlanORSGeneration(
+    services: ReturnType<typeof this.createV4Services>,
+    concernText: string,
+    bottleneckType: string,
+    widgetSelectionResult: WidgetSelectionResult,
+    sessionId: string
   ): Promise<StageResult> {
-    // プロンプト変数を構築
-    const variables = this.buildPromptVariables(taskType, input, previousStages);
+    const result = await services.orsGeneratorService.generatePlanORS({
+      concernText,
+      bottleneckType,
+      widgetSelectionResult,
+      sessionId,
+    });
 
-    // LLM呼び出し
-    const result = await orchestrator.execute(taskType, variables);
-
-    // DSL検証
+    // ORS検証
     let dslErrors: string[] | null = null;
-    let w2wrErrors: string[] | null = null;
     if (result.success && result.data) {
-      const validationResult = this.validateStageOutput(stageNum, result.data);
-      const errorSummary = getErrorSummary(validationResult);
-      dslErrors = errorSummary.dslErrors;
-
-      // Stage 3 (UISpec生成) の場合、W2WR関連エラーを抽出
-      if (stageNum === 3) {
-        const w2wrRelatedErrors = validationResult.errors
-          .filter(e => ['CIRCULAR_DEPENDENCY', 'SELF_REFERENCE', 'INVALID_BINDING',
-                        'UNKNOWN_SOURCE_WIDGET', 'UNKNOWN_TARGET_WIDGET'].includes(e.type))
-          .map(e => e.type);
-        w2wrErrors = w2wrRelatedErrors.length > 0 ? w2wrRelatedErrors : null;
+      const validationResult = this.validationService.validateORS(result.data);
+      if (!validationResult.valid) {
+        dslErrors = validationResult.errors.map(e => e.type);
       }
     } else if (!result.success) {
-      dslErrors = [result.error?.type ?? 'UNKNOWN_ERROR'];
+      dslErrors = [result.error?.type ?? 'ORS_GENERATION_FAILED'];
     }
 
     return {
-      stage: stageNum,
+      stage: 2,
+      success: result.success && dslErrors === null,
+      data: result.data,
+      metrics: result.metrics,
+      dslErrors,
+      w2wrErrors: null,
+      regenerated: (result.metrics.retryCount ?? 0) > 0,
+      promptData: {
+        concernText,
+        bottleneckType,
+        widgetSelectionResult: '(omitted)',
+      },
+    };
+  }
+
+  /**
+   * Stage 3: Plan UISpec Generation
+   */
+  private async executePlanUISpecGeneration(
+    services: ReturnType<typeof this.createV4Services>,
+    concernText: string,
+    widgetSelectionResult: WidgetSelectionResult,
+    planORS: PlanORS,
+    sessionId: string,
+    enableReactivity = true
+  ): Promise<StageResult> {
+    const result = await services.uiSpecGeneratorService.generatePlanUISpec({
+      planORS,
+      concernText,
+      widgetSelectionResult,
+      sessionId,
+      enableReactivity,
+    });
+
+    // UISpec検証
+    let dslErrors: string[] | null = null;
+    let w2wrErrors: string[] | null = null;
+
+    if (result.success && result.data) {
+      const validationResult = this.validationService.validateUISpec(result.data, widgetSelectionResult);
+
+      if (!validationResult.valid) {
+        // DSLエラーとW2WRエラーを分離
+        const allErrors = validationResult.errors.map(e => e.type);
+        const w2wrTypes = ['CIRCULAR_DEPENDENCY', 'SELF_REFERENCE', 'INVALID_BINDING',
+                           'UNKNOWN_SOURCE_WIDGET', 'UNKNOWN_TARGET_WIDGET'];
+
+        const w2wrFound = allErrors.filter(e => w2wrTypes.includes(e));
+        const dslFound = allErrors.filter(e => !w2wrTypes.includes(e));
+
+        w2wrErrors = w2wrFound.length > 0 ? w2wrFound : null;
+        dslErrors = dslFound.length > 0 ? dslFound : null;
+      }
+    } else if (!result.success) {
+      dslErrors = [result.error?.type ?? 'UISPEC_GENERATION_FAILED'];
+    }
+
+    return {
+      stage: 3,
       success: result.success && dslErrors === null,
       data: result.data,
       metrics: result.metrics,
       dslErrors,
       w2wrErrors,
       regenerated: (result.metrics.retryCount ?? 0) > 0,
-      promptData: variables,
+      promptData: {
+        concernText,
+        enableReactivity,
+        planORS: '(omitted)',
+        widgetSelectionResult: '(omitted)',
+      },
     };
   }
 
+  // ========================================
+  // Helper Methods for Trial Execution
+  // ========================================
+
   /**
-   * プロンプト変数を構築
+   * ボトルネックタイプ推定
+   * emotionalStateからボトルネックタイプを推定
    */
-  private buildPromptVariables(
-    taskType: LLMTaskType,
-    input: ExperimentInput,
-    previousStages: StageResult[]
-  ): Record<string, unknown> {
-    const base = {
-      concernText: input.concernText,
-      contextFactors: input.contextFactors,
+  private inferBottleneckType(contextFactors: { emotionalState?: string }): string {
+    const mapping: Record<string, string> = {
+      'confused': 'information',
+      'anxious': 'emotional',
+      'overwhelmed': 'planning',
+      'stuck': 'thought',
+      'neutral': 'thought',
     };
+    return mapping[contextFactors.emotionalState ?? 'neutral'] ?? 'thought';
+  }
 
-    switch (taskType) {
-      case 'widget_selection':
-        return base;
-
-      case 'plan_ors_generation':
-        const widgetSelection = previousStages.find(s => s.stage === 1)?.data;
-        return {
-          ...base,
-          widgetSelection,
-        };
-
-      case 'plan_uispec_generation':
-        const ors = previousStages.find(s => s.stage === 2)?.data;
-        return {
-          ...base,
-          ors,
-        };
-
-      default:
-        return base;
+  /**
+   * ステージ進捗更新
+   */
+  private updateStageProgress(batchId: string, workerId: number, stage: number): void {
+    const state = runningBatches.get(batchId);
+    if (state) {
+      state.progress.currentStage = stage;
+      const runningTask = state.progress.runningTasks.find(t => t.workerId === workerId);
+      if (runningTask) {
+        runningTask.stage = stage;
+      }
     }
   }
 
   /**
-   * ステージ出力を検証
+   * 完了ステージ数インクリメント
    */
-  private validateStageOutput(stageNum: number, data: unknown) {
-    // 簡略化した検証（詳細な検証はValidationServiceで行う）
-    switch (stageNum) {
-      case 1:
-        return this.validationService.validateWidgetSelection(data as any);
-      case 2:
-        return this.validationService.validateORS(data as any);
-      case 3:
-        return this.validationService.validateUISpec(data as any, {} as any);
-      default:
-        return { valid: true, errors: [], warnings: [], info: [], validatedAt: Date.now() };
+  private incrementCompletedStages(batchId: string): void {
+    const state = runningBatches.get(batchId);
+    if (state) {
+      state.progress.completedStages++;
     }
+  }
+
+  /**
+   * エラーステージ結果作成
+   */
+  private createErrorStageResult(stageNum: number, error: unknown): StageResult {
+    const taskType = STAGE_TO_TASK_TYPE[stageNum as 1 | 2 | 3] ?? 'widget_selection';
+    return {
+      stage: stageNum,
+      success: false,
+      metrics: {
+        taskType,
+        modelId: 'unknown',
+        latencyMs: 0,
+        success: false,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: Date.now(),
+      },
+      dslErrors: ['RUNTIME_ERROR'],
+      w2wrErrors: null,
+      regenerated: false,
+    };
+  }
+
+  /**
+   * 試行結果作成
+   */
+  private createTrialResult(
+    trialNumber: number,
+    inputId: string,
+    modelConfigId: ModelConfigId,
+    stages: StageResult[],
+    success: boolean,
+    runtimeError: boolean
+  ): TrialResult {
+    return {
+      trialNumber,
+      inputId,
+      modelConfigId,
+      stages,
+      success,
+      runtimeError,
+    };
   }
 
   /**

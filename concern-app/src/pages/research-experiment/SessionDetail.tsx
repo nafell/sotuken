@@ -135,10 +135,14 @@ export default function SessionDetail() {
     totalResponseTokens: generations.reduce((sum, g) => sum + (g.totalResponseTokens || g.responseTokens || 0), 0),
     totalGenerateDuration: generations.reduce((sum, g) => sum + (g.totalGenerateDuration || g.generateDuration || 0), 0),
     totalRenderDuration: generations.reduce((sum, g) => sum + (g.renderDuration || 0), 0),
-    // V4 各段階メトリクス
+    // V4 各段階メトリクス（duration）
     totalWidgetSelectionDuration: generations.reduce((sum, g) => sum + (g.widgetSelectionDuration || 0), 0),
     totalOrsDuration: generations.reduce((sum, g) => sum + (g.orsDuration || 0), 0),
     totalUiSpecDuration: generations.reduce((sum, g) => sum + (g.uiSpecDuration || 0), 0),
+    // V4 各段階メトリクス（tokens）
+    totalWidgetSelectionTokens: generations.reduce((sum, g) => sum + (g.widgetSelectionTokens || 0), 0),
+    totalOrsTokens: generations.reduce((sum, g) => sum + (g.orsTokens || 0), 0),
+    totalUiSpecTokens: generations.reduce((sum, g) => sum + (g.uiSpecTokens || 0), 0),
   };
 
   if (loading) {
@@ -404,7 +408,17 @@ export default function SessionDetail() {
                     <span style={styles.stageName}>{idx + 1}. {stageLabel}</span>
                     <span style={styles.stageMetric}>{tokens} tokens</span>
                     <span style={styles.stageMetric}>{genDuration}ms total</span>
-                    {/* V4: 各段階の内訳 */}
+                    {/* V4: 各段階のトークン内訳 */}
+                    {gen.widgetSelectionTokens !== undefined && gen.widgetSelectionTokens > 0 && (
+                      <span style={styles.stageMetric}>WS:{gen.widgetSelectionTokens}tok</span>
+                    )}
+                    {gen.orsTokens !== undefined && gen.orsTokens > 0 && (
+                      <span style={styles.stageMetric}>ORS:{gen.orsTokens}tok</span>
+                    )}
+                    {gen.uiSpecTokens !== undefined && gen.uiSpecTokens > 0 && (
+                      <span style={styles.stageMetric}>UI:{gen.uiSpecTokens}tok</span>
+                    )}
+                    {/* V4: 各段階のduration内訳 */}
                     {gen.widgetSelectionDuration && !isWidgetSelection && (
                       <span style={styles.stageMetric}>WS:{gen.widgetSelectionDuration}ms</span>
                     )}
@@ -760,7 +774,26 @@ export default function SessionDetail() {
                       )}
 
                       <div style={styles.generationMetrics}>
-                        {/* V4 各段階メトリクス */}
+                        {/* V4 各段階メトリクス（トークン） */}
+                        {gen.widgetSelectionTokens !== undefined && gen.widgetSelectionTokens > 0 && (
+                          <div style={styles.generationMetricItem}>
+                            <span style={styles.generationMetricLabel}>Widget Selection Tokens:</span>
+                            <span style={styles.generationMetricValue}>{gen.widgetSelectionTokens}</span>
+                          </div>
+                        )}
+                        {gen.orsTokens !== undefined && gen.orsTokens > 0 && (
+                          <div style={styles.generationMetricItem}>
+                            <span style={styles.generationMetricLabel}>ORS Tokens:</span>
+                            <span style={styles.generationMetricValue}>{gen.orsTokens}</span>
+                          </div>
+                        )}
+                        {gen.uiSpecTokens !== undefined && gen.uiSpecTokens > 0 && (
+                          <div style={styles.generationMetricItem}>
+                            <span style={styles.generationMetricLabel}>UISpec Tokens:</span>
+                            <span style={styles.generationMetricValue}>{gen.uiSpecTokens}</span>
+                          </div>
+                        )}
+                        {/* V4 各段階メトリクス（duration） */}
                         {gen.widgetSelectionDuration && (
                           <div style={styles.generationMetricItem}>
                             <span style={styles.generationMetricLabel}>Widget Selection:</span>

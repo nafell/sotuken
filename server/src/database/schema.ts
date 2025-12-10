@@ -270,3 +270,97 @@ export type NewExperimentGeneration = typeof experimentGenerations.$inferInsert;
 
 export type WidgetState = typeof widgetStates.$inferSelect;
 export type NewWidgetState = typeof widgetStates.$inferInsert;
+
+// ========================================
+// Layer1/Layer4 自動評価実験テーブル
+// @see specs/system-design/experiment_spec_layer_1_layer_4.md
+// ========================================
+
+/**
+ * バッチ実行管理テーブル
+ * 250試行（50入力 × 5モデル構成）のバッチ実行を管理
+ */
+export const batchExecutions = pgTable('batch_executions', {
+  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+  experimentId: text('experiment_id').notNull(), // 'exp_001'
+
+  // 構成
+  modelConfigs: jsonb('model_configs').notNull(), // ['A','B','C','D','E']
+  inputCorpusId: text('input_corpus_id').notNull(),
+  parallelism: integer('parallelism').notNull().default(1),
+  headlessMode: boolean('headless_mode').notNull().default(true),
+
+  // ステータス
+  status: text('status').notNull().default('queued'), // 'queued' | 'running' | 'completed' | 'failed' | 'stopped'
+
+  // 進捗
+  totalTrials: integer('total_trials').notNull(),
+  completedTrials: integer('completed_trials').notNull().default(0),
+  failedTrials: integer('failed_trials').notNull().default(0),
+
+  // タイミング
+  startedAt: timestamp('started_at', { withTimezone: true }),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+
+  // 結果（完了後集計）
+  layer1Results: jsonb('layer1_results'), // { VR, TCR, RRR, CDR, RGR }
+  layer4Results: jsonb('layer4_results'), // { LAT, COST, FR }
+
+  createdAt: timestamp('created_at', { withTimezone: true }).default(sql`now()`)
+}, (table) => ({
+  batchExperimentIdx: index('idx_batch_experiment').on(table.experimentId),
+  batchStatusIdx: index('idx_batch_status').on(table.status)
+}));
+
+/**
+ * 実験試行ログテーブル
+ * 設計書7章のJSONスキーマに対応
+ * 各試行・各ステージごとに1レコード（1試行 = 3レコード）
+ */
+export const experimentTrialLogs = pgTable('experiment_trial_logs', {
+  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+
+  // 実験識別
+  experimentId: text('experiment_id').notNull(), // 'exp_001'
+  batchId: uuid('batch_id').notNull().references(() => batchExecutions.id),
+  trialNumber: integer('trial_number').notNull(), // 1-250
+  inputId: text('input_id').notNull(), // 入力データID
+
+  // モデル構成
+  modelConfig: text('model_config').notNull(), // 'All-5-Chat', 'Hybrid-5Chat/5mini'等
+  modelRouterSelection: jsonb('model_router_selection'), // string[] | null - Router-basedの場合の選択モデル
+
+  // ステージ情報
+  stage: integer('stage').notNull(), // 1, 2, 3
+
+  // トークンメトリクス
+  inputTokens: integer('input_tokens').notNull().default(0),
+  outputTokens: integer('output_tokens').notNull().default(0),
+
+  // タイミング
+  latencyMs: integer('latency_ms').notNull(),
+
+  // エラー追跡（設計書7章スキーマ）
+  dslErrors: jsonb('dsl_errors'), // string[] | null
+  renderErrors: jsonb('render_errors'), // string[] | null
+  typeErrorCount: integer('type_error_count').notNull().default(0),
+  referenceErrorCount: integer('reference_error_count').notNull().default(0),
+  cycleDetected: boolean('cycle_detected').notNull().default(false),
+  regenerated: boolean('regenerated').notNull().default(false),
+  runtimeError: boolean('runtime_error').notNull().default(false),
+
+  // タイムスタンプ
+  timestamp: timestamp('timestamp', { withTimezone: true }).default(sql`now()`)
+}, (table) => ({
+  trialBatchIdx: index('idx_trial_batch').on(table.batchId),
+  trialExperimentIdx: index('idx_trial_experiment').on(table.experimentId),
+  trialConfigIdx: index('idx_trial_config').on(table.modelConfig),
+  trialStageIdx: index('idx_trial_stage').on(table.batchId, table.trialNumber, table.stage)
+}));
+
+// 型エクスポート
+export type BatchExecution = typeof batchExecutions.$inferSelect;
+export type NewBatchExecution = typeof batchExecutions.$inferInsert;
+
+export type ExperimentTrialLog = typeof experimentTrialLogs.$inferSelect;
+export type NewExperimentTrialLog = typeof experimentTrialLogs.$inferInsert;

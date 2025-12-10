@@ -25,6 +25,10 @@ export interface HeadlessValidationResult {
   success: boolean;
   /** レンダーエラー（Layer1用） */
   renderErrors: string[] | null;
+  /** Reactコンポーネント変換エラー */
+  reactComponentErrors: string[] | null;
+  /** Jotai atom変換エラー */
+  jotaiAtomErrors: string[] | null;
   /** 型エラー数 */
   typeErrorCount: number;
   /** 参照エラー数 */
@@ -227,6 +231,8 @@ export function HeadlessValidator({
   const runValidation = useCallback(() => {
     const startTime = performance.now();
     const errors: string[] = [];
+    const reactComponentErrors: string[] = [];
+    const jotaiAtomErrors: string[] = [];
     let cycleDetected = false;
     let atomCount = 0;
     let bindingCount = 0;
@@ -236,16 +242,26 @@ export function HeadlessValidator({
     try {
       if (!uiSpec) {
         errors.push('MISSING_UISPEC');
+        reactComponentErrors.push('MISSING_UISPEC');
       } else {
         // UISpec検証
         const uiSpecResult = validateUISpec(uiSpec);
         errors.push(...uiSpecResult.errors);
 
-        atomCount = uiSpec.widgets.length;
+        // Reactコンポーネントエラー収集
+        // NO_WIDGETS, DUPLICATE_WIDGET_ID, MISSING_COMPONENTはReact変換に影響
+        for (const err of uiSpecResult.errors) {
+          if (err === 'NO_WIDGETS' || err === 'DUPLICATE_WIDGET_ID' || err.startsWith('MISSING_')) {
+            reactComponentErrors.push(err);
+          }
+        }
+
+        const expectedAtomCount = uiSpec.widgets.length;
+        atomCount = expectedAtomCount;
 
         // ReactiveBindings検証
-        if (uiSpec.reactiveBindings && uiSpec.reactiveBindings.length > 0) {
-          const bindings = uiSpec.reactiveBindings;
+        if (uiSpec.reactiveBindings && uiSpec.reactiveBindings.bindings && uiSpec.reactiveBindings.bindings.length > 0) {
+          const bindings = uiSpec.reactiveBindings.bindings;
           bindingCount = bindings.length;
 
           // 循環依存チェック
@@ -272,12 +288,25 @@ export function HeadlessValidator({
             });
             engine.initialize({ bindings });
           } catch (engineError) {
-            errors.push(`ENGINE_INIT_ERROR: ${engineError instanceof Error ? engineError.message : 'Unknown'}`);
+            const errMsg = `ENGINE_INIT_ERROR: ${engineError instanceof Error ? engineError.message : 'Unknown'}`;
+            errors.push(errMsg);
+            // Jotai atom変換エラーとして記録（エンジン初期化失敗はatom作成に影響）
+            jotaiAtomErrors.push('ATOM_CREATION_FAILED:engine_init');
+          }
+        }
+
+        // Jotai Atom作成検証
+        // ヘッドレスモードでは実際のatom作成はしないが、構造エラーがあればatom作成も失敗すると推定
+        if (uiSpecResult.errors.some(e => e === 'NO_WIDGETS' || e === 'MISSING_WIDGET_ID')) {
+          if (!jotaiAtomErrors.some(e => e.startsWith('ATOM_CREATION_FAILED'))) {
+            jotaiAtomErrors.push('ATOM_CREATION_FAILED:structure_error');
           }
         }
       }
     } catch (error) {
-      errors.push(`VALIDATION_ERROR: ${error instanceof Error ? error.message : 'Unknown'}`);
+      const errMsg = `VALIDATION_ERROR: ${error instanceof Error ? error.message : 'Unknown'}`;
+      errors.push(errMsg);
+      reactComponentErrors.push('RENDER_EXCEPTION');
     }
 
     const endTime = performance.now();
@@ -286,6 +315,8 @@ export function HeadlessValidator({
     const result: HeadlessValidationResult = {
       success: errors.length === 0,
       renderErrors: errors.length > 0 ? [...new Set(errors)] : null,
+      reactComponentErrors: reactComponentErrors.length > 0 ? [...new Set(reactComponentErrors)] : null,
+      jotaiAtomErrors: jotaiAtomErrors.length > 0 ? [...new Set(jotaiAtomErrors)] : null,
       typeErrorCount,
       referenceErrorCount,
       cycleDetected,
@@ -322,6 +353,8 @@ export function validateUISpecHeadless(
 ): HeadlessValidationResult {
   const startTime = performance.now();
   const errors: string[] = [];
+  const reactComponentErrors: string[] = [];
+  const jotaiAtomErrors: string[] = [];
   let cycleDetected = false;
   let atomCount = 0;
   let bindingCount = 0;
@@ -331,16 +364,24 @@ export function validateUISpecHeadless(
   try {
     if (!uiSpec) {
       errors.push('MISSING_UISPEC');
+      reactComponentErrors.push('MISSING_UISPEC');
     } else {
       // UISpec検証
       const uiSpecResult = validateUISpec(uiSpec);
       errors.push(...uiSpecResult.errors);
 
+      // Reactコンポーネントエラー収集
+      for (const err of uiSpecResult.errors) {
+        if (err === 'NO_WIDGETS' || err === 'DUPLICATE_WIDGET_ID' || err.startsWith('MISSING_')) {
+          reactComponentErrors.push(err);
+        }
+      }
+
       atomCount = uiSpec.widgets.length;
 
       // ReactiveBindings検証
-      if (uiSpec.reactiveBindings && uiSpec.reactiveBindings.length > 0) {
-        const bindings = uiSpec.reactiveBindings;
+      if (uiSpec.reactiveBindings && uiSpec.reactiveBindings.bindings && uiSpec.reactiveBindings.bindings.length > 0) {
+        const bindings = uiSpec.reactiveBindings.bindings;
         bindingCount = bindings.length;
 
         // 循環依存チェック
@@ -359,9 +400,16 @@ export function validateUISpecHeadless(
         typeErrorCount = mechResult.errors.length;
         errors.push(...mechResult.errors);
       }
+
+      // Jotai Atom作成検証
+      if (uiSpecResult.errors.some(e => e === 'NO_WIDGETS' || e === 'MISSING_WIDGET_ID')) {
+        jotaiAtomErrors.push('ATOM_CREATION_FAILED:structure_error');
+      }
     }
   } catch (error) {
-    errors.push(`VALIDATION_ERROR: ${error instanceof Error ? error.message : 'Unknown'}`);
+    const errMsg = `VALIDATION_ERROR: ${error instanceof Error ? error.message : 'Unknown'}`;
+    errors.push(errMsg);
+    reactComponentErrors.push('RENDER_EXCEPTION');
   }
 
   const endTime = performance.now();
@@ -369,6 +417,8 @@ export function validateUISpecHeadless(
   return {
     success: errors.length === 0,
     renderErrors: errors.length > 0 ? [...new Set(errors)] : null,
+    reactComponentErrors: reactComponentErrors.length > 0 ? [...new Set(reactComponentErrors)] : null,
+    jotaiAtomErrors: jotaiAtomErrors.length > 0 ? [...new Set(jotaiAtomErrors)] : null,
     typeErrorCount,
     referenceErrorCount,
     cycleDetected,

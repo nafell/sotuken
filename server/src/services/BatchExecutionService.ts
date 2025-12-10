@@ -20,6 +20,7 @@ import type {
   ExperimentInput,
   InputCorpus,
   TrialLogEntry,
+  RunningTask,
 } from '../types/experiment-trial.types';
 import type { LLMCallMetrics, LLMTaskType } from '../types/v4/llm-task.types';
 
@@ -33,6 +34,14 @@ interface TrialContext {
   trialNumber: number;
   inputId: string;
   modelConfigId: ModelConfigId;
+  workerId: number;
+}
+
+/** タスクキュー用のタスク定義 */
+interface TrialTask {
+  trialNumber: number;
+  modelConfigId: ModelConfigId;
+  input: ExperimentInput;
 }
 
 interface StageResult {
@@ -41,6 +50,7 @@ interface StageResult {
   data?: unknown;
   metrics: LLMCallMetrics;
   dslErrors: string[] | null;
+  w2wrErrors: string[] | null; // W2WR DSL生成エラー
   regenerated: boolean;
   promptData?: Record<string, unknown>; // プロンプト変数
 }
@@ -59,6 +69,12 @@ interface BatchExecutionState {
   status: BatchStatus;
   shouldStop: boolean;
   progress: BatchProgress;
+  /** タスクキュー（残りの未実行タスク） */
+  taskQueue: TrialTask[];
+  /** タスクキューのインデックス（次に取得するタスク） */
+  taskQueueIndex: number;
+  /** 並列数 */
+  parallelism: number;
 }
 
 // ========================================
@@ -108,6 +124,16 @@ export class BatchExecutionService {
 
     const batchId = batch.id;
 
+    // タスクキューを作成
+    const taskQueue: TrialTask[] = [];
+    let trialNumber = 0;
+    for (const modelConfigId of config.modelConfigs) {
+      for (const input of limitedInputs) {
+        trialNumber++;
+        taskQueue.push({ trialNumber, modelConfigId, input });
+      }
+    }
+
     // 実行状態を初期化
     runningBatches.set(batchId, {
       status: 'queued',
@@ -118,7 +144,13 @@ export class BatchExecutionService {
         totalTrials,
         completedTrials: 0,
         failedTrials: 0,
+        totalStages: totalTrials * 3, // 各試行は3ステージ
+        completedStages: 0,
+        runningTasks: [],
       },
+      taskQueue,
+      taskQueueIndex: 0,
+      parallelism: config.parallelism,
     });
 
     // 非同期でバッチ実行を開始
@@ -179,67 +211,17 @@ export class BatchExecutionService {
     state.status = 'running';
     state.progress.status = 'running';
 
-    let trialNumber = 0;
-    const results: TrialResult[] = [];
+    console.log(`Batch ${batchId} starting with parallelism=${state.parallelism}, totalTrials=${state.progress.totalTrials}`);
 
-    // モデル構成ごとに実行
-    for (const modelConfigId of config.modelConfigs) {
-      if (state.shouldStop) break;
+    // 並列ワーカーを起動
+    const workers = Array(state.parallelism)
+      .fill(null)
+      .map((_, workerIndex) =>
+        this.processTaskQueue(batchId, config.experimentId, workerIndex)
+      );
 
-      state.progress.currentModelConfig = modelConfigId;
-
-      // 入力ごとに実行
-      for (let inputIndex = 0; inputIndex < corpus.inputs.length; inputIndex++) {
-        if (state.shouldStop) break;
-
-        trialNumber++;
-        const input = corpus.inputs[inputIndex];
-        state.progress.currentInputIndex = inputIndex;
-        state.progress.currentInputId = input.inputId;
-
-        const context: TrialContext = {
-          batchId,
-          experimentId: config.experimentId,
-          trialNumber,
-          inputId: input.inputId,
-          modelConfigId,
-        };
-
-        try {
-          const result = await this.executeTrial(context, input);
-          results.push(result);
-
-          if (result.success) {
-            state.progress.completedTrials++;
-          } else {
-            state.progress.failedTrials++;
-          }
-        } catch (error) {
-          console.error(`Trial ${trialNumber} failed:`, error);
-          state.progress.failedTrials++;
-
-          // エラー時もログを記録
-          results.push({
-            trialNumber,
-            inputId: input.inputId,
-            modelConfigId,
-            stages: [],
-            success: false,
-            runtimeError: true,
-            errorMessage: error instanceof Error ? error.message : 'Unknown error',
-          });
-        }
-
-        // 進捗をDBに更新
-        await db
-          .update(batchExecutions)
-          .set({
-            completedTrials: state.progress.completedTrials,
-            failedTrials: state.progress.failedTrials,
-          })
-          .where(eq(batchExecutions.id, batchId));
-      }
-    }
+    // 全ワーカーの完了を待機
+    await Promise.all(workers);
 
     // バッチ完了
     const finalStatus: BatchStatus = state.shouldStop ? 'stopped' : 'completed';
@@ -257,13 +239,108 @@ export class BatchExecutionService {
   }
 
   /**
+   * ワーカーがタスクキューからタスクを取得して実行
+   */
+  private async processTaskQueue(
+    batchId: string,
+    experimentId: string,
+    workerId: number
+  ): Promise<void> {
+    const state = runningBatches.get(batchId);
+    if (!state) return;
+
+    console.log(`Worker ${workerId} started for batch ${batchId}`);
+
+    while (!state.shouldStop) {
+      // タスクを取得（排他制御）
+      const task = this.getNextTask(batchId);
+      if (!task) {
+        // タスクがなくなったら終了
+        break;
+      }
+
+      const { trialNumber, modelConfigId, input } = task;
+
+      // runningTasksに追加
+      const runningTask: RunningTask = {
+        workerId,
+        modelConfig: modelConfigId,
+        inputId: input.inputId,
+        stage: 1,
+        startedAt: new Date().toISOString(),
+      };
+      state.progress.runningTasks.push(runningTask);
+
+      // 後方互換性のために単一タスク情報も更新
+      state.progress.currentModelConfig = modelConfigId;
+      state.progress.currentInputId = input.inputId;
+      state.progress.currentStage = 1;
+
+      const context: TrialContext = {
+        batchId,
+        experimentId,
+        trialNumber,
+        inputId: input.inputId,
+        modelConfigId,
+        workerId,
+      };
+
+      try {
+        const result = await this.executeTrial(context, input);
+
+        if (result.success) {
+          state.progress.completedTrials++;
+        } else {
+          state.progress.failedTrials++;
+        }
+      } catch (error) {
+        console.error(`Worker ${workerId}: Trial ${trialNumber} failed:`, error);
+        state.progress.failedTrials++;
+      }
+
+      // runningTasksから削除
+      const taskIndex = state.progress.runningTasks.findIndex(t => t.workerId === workerId);
+      if (taskIndex !== -1) {
+        state.progress.runningTasks.splice(taskIndex, 1);
+      }
+
+      // 進捗をDBに更新
+      await db
+        .update(batchExecutions)
+        .set({
+          completedTrials: state.progress.completedTrials,
+          failedTrials: state.progress.failedTrials,
+        })
+        .where(eq(batchExecutions.id, batchId));
+    }
+
+    console.log(`Worker ${workerId} finished for batch ${batchId}`);
+  }
+
+  /**
+   * タスクキューから次のタスクを取得（排他制御）
+   */
+  private getNextTask(batchId: string): TrialTask | null {
+    const state = runningBatches.get(batchId);
+    if (!state) return null;
+
+    if (state.taskQueueIndex >= state.taskQueue.length) {
+      return null;
+    }
+
+    const task = state.taskQueue[state.taskQueueIndex];
+    state.taskQueueIndex++;
+    return task;
+  }
+
+  /**
    * 単一試行を実行
    */
   private async executeTrial(
     context: TrialContext,
     input: ExperimentInput
   ): Promise<TrialResult> {
-    const { batchId, experimentId, trialNumber, inputId, modelConfigId } = context;
+    const { batchId, experimentId, trialNumber, inputId, modelConfigId, workerId } = context;
     const stages: StageResult[] = [];
     let overallSuccess = true;
     let runtimeError = false;
@@ -275,10 +352,15 @@ export class BatchExecutionService {
     for (const stageNum of [1, 2, 3] as const) {
       const taskType = STAGE_TO_TASK_TYPE[stageNum];
 
-      // 現在のステージを更新
+      // 現在のステージを更新（runningTasksとcurrentStage両方）
       const state = runningBatches.get(batchId);
       if (state) {
         state.progress.currentStage = stageNum;
+        // runningTasks内の該当ワーカーのステージを更新
+        const runningTask = state.progress.runningTasks.find(t => t.workerId === workerId);
+        if (runningTask) {
+          runningTask.stage = stageNum;
+        }
       }
 
       try {
@@ -294,6 +376,11 @@ export class BatchExecutionService {
 
         // ステージごとにログを記録
         await this.logTrialStage(context, stageNum, result);
+
+        // ステージ完了時にcompletedStagesをインクリメント
+        if (state) {
+          state.progress.completedStages++;
+        }
 
         if (!result.success) {
           overallSuccess = false;
@@ -320,6 +407,11 @@ export class BatchExecutionService {
         };
         stages.push(errorResult);
         await this.logTrialStage(context, stageNum, errorResult, true);
+
+        // エラー時もステージカウントを進める（試行は終了するが進捗は記録）
+        if (state) {
+          state.progress.completedStages++;
+        }
 
         break; // 以降のステージはスキップ
       }
@@ -353,10 +445,20 @@ export class BatchExecutionService {
 
     // DSL検証
     let dslErrors: string[] | null = null;
+    let w2wrErrors: string[] | null = null;
     if (result.success && result.data) {
       const validationResult = this.validateStageOutput(stageNum, result.data);
       const errorSummary = getErrorSummary(validationResult);
       dslErrors = errorSummary.dslErrors;
+
+      // Stage 3 (UISpec生成) の場合、W2WR関連エラーを抽出
+      if (stageNum === 3) {
+        const w2wrRelatedErrors = validationResult.errors
+          .filter(e => ['CIRCULAR_DEPENDENCY', 'SELF_REFERENCE', 'INVALID_BINDING',
+                        'UNKNOWN_SOURCE_WIDGET', 'UNKNOWN_TARGET_WIDGET'].includes(e.type))
+          .map(e => e.type);
+        w2wrErrors = w2wrRelatedErrors.length > 0 ? w2wrRelatedErrors : null;
+      }
     } else if (!result.success) {
       dslErrors = [result.error?.type ?? 'UNKNOWN_ERROR'];
     }
@@ -367,6 +469,7 @@ export class BatchExecutionService {
       data: result.data,
       metrics: result.metrics,
       dslErrors,
+      w2wrErrors,
       regenerated: (result.metrics.retryCount ?? 0) > 0,
       promptData: variables,
     };
@@ -451,6 +554,9 @@ export class BatchExecutionService {
       latencyMs: result.metrics.latencyMs,
       dslErrors: result.dslErrors,
       renderErrors: null, // フロントエンドからのフィードバック待ち
+      w2wrErrors: result.w2wrErrors, // W2WR DSL生成エラー
+      reactComponentErrors: null, // フロントエンドからのフィードバック待ち
+      jotaiAtomErrors: null, // フロントエンドからのフィードバック待ち
       typeErrorCount: 0,
       referenceErrorCount: 0,
       cycleDetected: false,

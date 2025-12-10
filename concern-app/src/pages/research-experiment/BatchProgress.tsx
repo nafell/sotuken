@@ -14,6 +14,7 @@ import {
   type BatchProgress as BatchProgressType,
   type BatchStatus,
   type ModelConfiguration,
+  type RunningTask,
 } from '../../services/BatchExperimentApiService';
 
 /** モデル構成定義（フロントエンド用） */
@@ -146,9 +147,11 @@ export default function BatchProgress() {
     }
   };
 
-  // 進捗率計算
+  // 進捗率計算（ステージベースで細かい粒度）
   const progressPercent = progress
-    ? Math.round((progress.completedTrials / progress.totalTrials) * 100)
+    ? progress.totalStages && progress.completedStages !== undefined
+      ? Math.round((progress.completedStages / progress.totalStages) * 100)
+      : Math.round((progress.completedTrials / progress.totalTrials) * 100)
     : 0;
 
   // 経過時間フォーマット
@@ -237,7 +240,10 @@ export default function BatchProgress() {
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
           <span style={{ fontSize: '24px', fontWeight: 'bold' }}>{progressPercent}%</span>
           <span style={{ color: '#666' }}>
-            {progress?.completedTrials ?? 0} / {progress?.totalTrials ?? 0}
+            {progress?.completedStages !== undefined && progress?.totalStages
+              ? `${progress.completedStages} / ${progress.totalStages} stages`
+              : `${progress?.completedTrials ?? 0} / ${progress?.totalTrials ?? 0} trials`
+            }
           </span>
         </div>
         <div style={{
@@ -252,6 +258,10 @@ export default function BatchProgress() {
             backgroundColor: getStatusColor(status),
             transition: 'width 0.3s ease',
           }} />
+        </div>
+        {/* 試行レベルの進捗も表示 */}
+        <div style={{ fontSize: '12px', color: '#666', marginTop: '4px', textAlign: 'right' }}>
+          {progress?.completedTrials ?? 0} / {progress?.totalTrials ?? 0} 試行完了
         </div>
       </section>
 
@@ -310,8 +320,83 @@ export default function BatchProgress() {
         </div>
       </section>
 
-      {/* 現在の実行状態 */}
-      {status === 'running' && progress?.currentModelConfig && (
+      {/* 並列実行状態 */}
+      {status === 'running' && progress?.runningTasks && progress.runningTasks.length > 0 && (
+        <section style={{
+          marginBottom: '24px',
+          padding: '16px',
+          backgroundColor: '#e8f5e9',
+          borderRadius: '4px',
+          border: '1px solid #c8e6c9',
+        }}>
+          <div style={{ fontSize: '12px', color: '#2e7d32', marginBottom: '12px' }}>
+            並列実行状態 ({progress.runningTasks.length} ワーカー稼働中)
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {progress.runningTasks.map((task: RunningTask) => (
+              <div
+                key={task.workerId}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '8px 12px',
+                  backgroundColor: '#c8e6c9',
+                  borderRadius: '4px',
+                }}
+              >
+                {/* ワーカーID */}
+                <div style={{
+                  backgroundColor: '#2e7d32',
+                  color: 'white',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                }}>
+                  W{task.workerId}
+                </div>
+                {/* モデル構成 */}
+                <div style={{
+                  backgroundColor: '#e3f2fd',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  fontWeight: 'bold',
+                  color: '#1565c0',
+                  fontSize: '12px',
+                }}>
+                  {task.modelConfig}
+                </div>
+                {/* ステージ */}
+                <div style={{
+                  backgroundColor: '#f3e5f5',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  color: '#7b1fa2',
+                  fontSize: '12px',
+                }}>
+                  Stage {task.stage}
+                </div>
+                {/* 入力ID */}
+                <div style={{
+                  color: '#1b5e20',
+                  fontFamily: 'monospace',
+                  fontSize: '12px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  flex: 1,
+                }}>
+                  {task.inputId}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 現在の実行状態（後方互換性：runningTasksがない場合） */}
+      {status === 'running' && progress?.currentModelConfig && (!progress.runningTasks || progress.runningTasks.length === 0) && (
         <section style={{
           marginBottom: '24px',
           padding: '16px',
@@ -334,8 +419,8 @@ export default function BatchProgress() {
         </section>
       )}
 
-      {/* 残り時間推定 */}
-      {status === 'running' && progress && progress.completedTrials > 0 && (
+      {/* 残り時間推定（ステージベースでより正確に） */}
+      {status === 'running' && progress && (progress.completedStages ?? progress.completedTrials) > 0 && (
         <section style={{
           marginBottom: '24px',
           padding: '16px',
@@ -345,10 +430,15 @@ export default function BatchProgress() {
           <div style={{ fontSize: '12px', color: '#e65100' }}>残り推定時間</div>
           <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#e65100' }}>
             {formatTime(
-              Math.round(
-                (elapsedSeconds / progress.completedTrials) *
-                (progress.totalTrials - progress.completedTrials)
-              )
+              progress.completedStages !== undefined && progress.totalStages
+                ? Math.round(
+                    (elapsedSeconds / progress.completedStages) *
+                    (progress.totalStages - progress.completedStages)
+                  )
+                : Math.round(
+                    (elapsedSeconds / progress.completedTrials) *
+                    (progress.totalTrials - progress.completedTrials)
+                  )
             )}
           </div>
         </section>

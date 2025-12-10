@@ -565,6 +565,8 @@ experimentRoutes.post('/trials/:trialId/render-feedback', async (c) => {
     const {
       stage,
       renderErrors,
+      reactComponentErrors,
+      jotaiAtomErrors,
       typeErrorCount,
       referenceErrorCount,
       cycleDetected,
@@ -586,6 +588,8 @@ experimentRoutes.post('/trials/:trialId/render-feedback', async (c) => {
       .update(experimentTrialLogs)
       .set({
         renderErrors: renderErrors,
+        reactComponentErrors: reactComponentErrors ?? null,
+        jotaiAtomErrors: jotaiAtomErrors ?? null,
         typeErrorCount: typeErrorCount ?? 0,
         referenceErrorCount: referenceErrorCount ?? 0,
         cycleDetected: cycleDetected ?? false,

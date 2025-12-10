@@ -235,6 +235,36 @@ generationHints.samplesが定義されている場合:
 }
 \`\`\`
 
+## 出力構造の必須要件【重要】
+以下のフィールドは**絶対に省略しないでください**。省略するとシステムエラーになります。
+
+1. **widgets**: 必ず配列として定義してください。Widgetが0件でも空配列 \`"widgets": []\` を出力してください
+2. **reactiveBindings**: 必ずオブジェクトとして定義してください。バインディングが0件でも \`"reactiveBindings": { "bindings": [] }\` を出力してください
+3. **version**: 必ず "4.0" を指定してください
+
+**エラー例（NG - 絶対に避けてください）**:
+\`\`\`json
+{
+  "version": "4.0",
+  "sessionId": "...",
+  "stage": "diverge"
+  // widgets が省略されている - これは無効です！システムエラーになります
+}
+\`\`\`
+
+**正しい例（OK）**:
+\`\`\`json
+{
+  "version": "4.0",
+  "sessionId": "...",
+  "stage": "diverge",
+  "widgets": [],
+  "reactiveBindings": { "bindings": [] },
+  "layout": { "type": "single_column" },
+  "metadata": { "generatedAt": ..., "llmModel": "..." }
+}
+\`\`\`
+
 ## 重要な注意点
 
 ### generatedValue（必須）

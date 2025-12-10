@@ -344,6 +344,9 @@ export const experimentTrialLogs = pgTable('experiment_trial_logs', {
   // エラー追跡（設計書7章スキーマ）
   dslErrors: jsonb('dsl_errors'), // string[] | null
   renderErrors: jsonb('render_errors'), // string[] | null
+  w2wrErrors: jsonb('w2wr_errors'), // string[] | null - W2WR DSL生成エラー
+  reactComponentErrors: jsonb('react_component_errors'), // string[] | null - React変換エラー
+  jotaiAtomErrors: jsonb('jotai_atom_errors'), // string[] | null - Jotai atom変換エラー
   typeErrorCount: integer('type_error_count').notNull().default(0),
   referenceErrorCount: integer('reference_error_count').notNull().default(0),
   cycleDetected: boolean('cycle_detected').notNull().default(false),

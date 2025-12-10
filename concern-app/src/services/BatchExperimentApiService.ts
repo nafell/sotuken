@@ -18,17 +18,30 @@ export interface ModelConfiguration {
   stages: [string, string, string];
 }
 
+/** 並列実行中のタスク情報 */
+export interface RunningTask {
+  workerId: number;
+  modelConfig: ModelConfigId;
+  inputId: string;
+  stage: number;
+  startedAt: string;
+}
+
 export interface BatchProgress {
   batchId: string;
   status: BatchStatus;
   totalTrials: number;
   completedTrials: number;
   failedTrials: number;
+  /** ステージ単位の進捗（試行×3） */
+  totalStages?: number;
+  completedStages?: number;
+  /** 並列実行中の全タスク */
+  runningTasks?: RunningTask[];
+  // 後方互換性のために残す
   currentModelConfig?: ModelConfigId;
   currentInputIndex?: number;
-  /** 現在実行中のステージ (1, 2, 3) */
   currentStage?: number;
-  /** 現在の入力ID */
   currentInputId?: string;
 }
 
@@ -38,6 +51,9 @@ export interface Layer1Metrics {
   RRR: number;
   CDR: number;
   RGR: number;
+  W2WR_SR: number;
+  RC_SR: number;
+  JA_SR: number;
 }
 
 export interface Layer4Metrics {
@@ -107,6 +123,9 @@ export interface TrialLog {
   latencyMs: number;
   dslErrors: string[] | null;
   renderErrors: string[] | null;
+  w2wrErrors: string[] | null;
+  reactComponentErrors: string[] | null;
+  jotaiAtomErrors: string[] | null;
   typeErrorCount: number;
   referenceErrorCount: number;
   cycleDetected: boolean;

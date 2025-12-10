@@ -112,7 +112,7 @@ export interface TrialLog {
 export class BatchExperimentApiService {
   private baseUrl: string;
 
-  constructor(baseUrl = 'http://localhost:3000') {
+  constructor(baseUrl = 'http://localhost:8000') {
     this.baseUrl = baseUrl;
   }
 
@@ -296,7 +296,7 @@ let apiInstance: BatchExperimentApiService | null = null;
 
 export function getBatchExperimentApi(): BatchExperimentApiService {
   if (!apiInstance) {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
+    const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
     apiInstance = new BatchExperimentApiService(baseUrl);
   }
   return apiInstance;

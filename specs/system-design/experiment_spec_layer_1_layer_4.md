@@ -10,6 +10,45 @@
 
 ---
 
+## 開発者追記 重要な要件と設計:
+
+### データ作成
+現在postgresqlに正規化しながらデータ保存している．最終的な統計データJSONはカラムが若干異なるため，今の実験試行のテーブルに新たなJSONのカラムを作成して，
+本書7章のJSONを丸ごと記録
+データの被りが多少あるがこれでよし
+
+### エラー検知
+DSL生成結果の各種検証，rule-based-renderingやw2wrのjotai atom作成結果の検証が必要
+実験結果にエラー題目(エラー名)をstring[] | nullで記録
+エラー検出，検証機構が必要，既存に実装されているものもあるのでどう仕様適合できるか調査
+例外処理ハンドリングもそれに伴い再確認
+DSL検証はLLMを呼び出しているapiサーバ側，render系はフロントエンド側で検証するので，データをフィードバックする必要あり
+現在,metricsのrender所要時間のDB保管で似たようなことをしているのでそれを利用できるか調査
+
+### 実験環境
+実験はヘッドレス環境で行えることが好ましい．統計的に有用なデータ数をとるために試行回数が250回と大変多いため，自動でサクサク回す必要がある．
+よってwidget生成結果のユーザへの表示は省略できる．react componentの実際の描画などはいらない．ただしrule-based rendererのreactコンポーネント / Jotai atomの変換実行は各種計測のため実行される必要がある
+実験用UIのフロントエンドは以下があれば良い:
+- 実験実行操作
+- asynchronousな状況確認
+- バッチ実験結果のサマリー
+
+apiサーバ(/server)とフロントエンド(/concern-app)の両方の改修必要
+
+自動実行に関しては3つの実験モードの技術検証モードがなんとなくで実装されているため，どのように改修するか検討/もしくは別ページで新たに作成するべきか?
+実験結果確認はすでにdata viewerなどが綺麗に実装されているのでこちらと親和できるように
+
+### バッチ実行の並列化
+- 1試行回数あたりの所要時間がそれなりにあり60秒~250秒かかっている
+- 並列処理化が望ましい
+
+### 段階的に大規模並列実行
+- いきなり250試行を全て一気に試すのはAPIコストとシステム堅牢性に不安
+- どこまで耐えられるか/現実的な時短を探す
+- 並列*直列数を様子見ながら段階的に上げていく
+
+---
+
 ## 1. 実験対象モデル構成
 
 以下の5構成を比較対象とする。
@@ -21,6 +60,8 @@
 | C | Hybrid-5Chat/4.1 | GPT-5-Chat | GPT-4.1 | GPT-4.1 |
 | D | Hybrid-5Chat/5mini | GPT-5-Chat | GPT-5-mini | GPT-5-mini |
 | E | Router-based | model-router | model-router | model-router |
+
+開発者補足: model-routerはAzure OpenAIサービスがプロンプトに合わせてモデルリストの中から最適なものを自動選択してくれるAPIエンドポイントである
 
 ---
 
@@ -43,7 +84,7 @@
 
 | 記号 | 指標名 | 定義 |
 |------|--------|------|
-| VR | DSL妥当率 | JSONパースおよびスキーマ検証に成功した割合 |
+| VR | DSL妥当率 | JSONパースおよびスキーマ検証およびrule-basedレンダリングに成功した割合 |
 | TCR | 型整合率 | TypeScriptおよびZod検証で型エラーが0の割合 |
 | RRR | 参照整合率 | PNTR・dataBindings等の参照解決が全て成功した割合 |
 | CDR | 循環依存率 | DependencyGraphにおいて循環が検出された割合 |
@@ -85,8 +126,10 @@
 ## 6. 実験総試行数
 
 ```
-総試行数 = 入力数 × モデル構成数 × ステージ数
-         = 50 × 5 × 3 = 750 リクエスト以上
+総試行数 = 入力数 × モデル構成数
+        = 50 × 5 = 250
+
+LLMリクエスト回数 = 総試行回数 ×　
 ```
 
 ---
@@ -104,19 +147,21 @@
   "output_tokens": 2011,
   "latency_ms": 1840,
 
-  "errors": null,
+  "dsl_errors": null,
+  "render_errors": null,
   
   "type_error_count": 0,
   "reference_error_count": 0,
   "cycle_detected": false,
   "regenerated": false,
+  
   "runtime_error": false,
 
   "timestamp": "2025-12-10T16:21:33Z"
 }
 ```
 
-### 7.2 errors フィールド仕様（調整反映）
+### 7.2 dsl_errors, render_errors フィールド仕様（調整反映）
 
 - 型: `string[] | null`
 - `null`：エラーなし
@@ -125,11 +170,11 @@
 #### 例
 
 ```json
-"errors": null
+"dsl_errors": null
 ```
 
 ```json
-"errors": ["JSON_PARSE_ERROR", "ZOD_SCHEMA_MISMATCH"]
+"dsl_errors": ["JSON_PARSE_ERROR", "ZOD_SCHEMA_MISMATCH"]
 ```
 
 目的：
@@ -143,7 +188,7 @@
 
 | 指標 | 算出方法 |
 |------|----------|
-| VR | `errors` が null の割合 |
+| VR | `dsl_errors`,`render_errors` が null の割合 |
 | TCR | `type_error_count == 0` の割合 |
 | RRR | `reference_error_count == 0` の割合 |
 | CDR | `cycle_detected == true` の割合 |
@@ -218,4 +263,3 @@
 ---
 
 以上が、Layer1 & Layer4 に特化した **自動評価実験の正式な要求仕様および設計仕様** である。
-

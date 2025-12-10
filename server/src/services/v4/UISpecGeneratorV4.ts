@@ -90,6 +90,8 @@ export interface UISpecGeneratorServiceConfig {
   llmOrchestrator: LLMOrchestrator;
   /** デバッグモード */
   debug?: boolean;
+  /** フォールバック無効化（実験用：エラーをそのまま返す） */
+  disableFallback?: boolean;
 }
 
 // =============================================================================
@@ -106,10 +108,12 @@ export interface UISpecGeneratorServiceConfig {
 export class UISpecGeneratorV4 {
   private llmOrchestrator: LLMOrchestrator;
   private debug: boolean;
+  private disableFallback: boolean;
 
   constructor(config: UISpecGeneratorServiceConfig) {
     this.llmOrchestrator = config.llmOrchestrator;
     this.debug = config.debug ?? false;
+    this.disableFallback = config.disableFallback ?? false;
   }
 
   /**
@@ -223,6 +227,13 @@ export class UISpecGeneratorV4 {
     });
 
     if (!result.success || !result.data) {
+      if (this.disableFallback) {
+        // フォールバック無効時：エラーをそのまま返す（実験失敗として記録可能）
+        if (this.debug) {
+          console.log(`[UISpecGeneratorV4] Plan UISpec generation failed, fallback disabled - returning error`);
+        }
+        return result;
+      }
       // フォールバック
       if (this.debug) {
         console.log(`[UISpecGeneratorV4] Plan UISpec generation failed, using fallback`);

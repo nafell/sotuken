@@ -89,6 +89,8 @@ export interface ORSGeneratorServiceConfig {
   llmOrchestrator: LLMOrchestrator;
   /** デバッグモード */
   debug?: boolean;
+  /** フォールバック無効化（実験用：エラーをそのまま返す） */
+  disableFallback?: boolean;
 }
 
 // =============================================================================
@@ -105,10 +107,12 @@ export interface ORSGeneratorServiceConfig {
 export class ORSGeneratorService {
   private llmOrchestrator: LLMOrchestrator;
   private debug: boolean;
+  private disableFallback: boolean;
 
   constructor(config: ORSGeneratorServiceConfig) {
     this.llmOrchestrator = config.llmOrchestrator;
     this.debug = config.debug ?? false;
+    this.disableFallback = config.disableFallback ?? false;
   }
 
   /**
@@ -195,6 +199,13 @@ export class ORSGeneratorService {
     });
 
     if (!result.success || !result.data) {
+      if (this.disableFallback) {
+        // フォールバック無効時：エラーをそのまま返す（実験失敗として記録可能）
+        if (this.debug) {
+          console.log(`[ORSGeneratorService] Plan ORS generation failed, fallback disabled - returning error`);
+        }
+        return result;
+      }
       // フォールバック
       if (this.debug) {
         console.log(`[ORSGeneratorService] Plan ORS generation failed, using fallback`);

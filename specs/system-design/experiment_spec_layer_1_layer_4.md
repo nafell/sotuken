@@ -126,10 +126,11 @@ apiサーバ(/server)とフロントエンド(/concern-app)の両方の改修必
 ## 6. 実験総試行数
 
 ```
-総試行数 = 入力数 × モデル構成数
-        = 50 × 5 = 250
+総試行回数 = 入力数 × モデル構成数
+        = 50 × 5 = 250回
 
-LLMリクエスト回数 = 総試行回数 ×　
+総LLMリクエスト回数 = 総試行回数 ×　3ステージ 
+                = 750回
 ```
 
 ---
@@ -142,6 +143,7 @@ LLMリクエスト回数 = 総試行回数 ×　
 {
   "experiment_id": "exp_001",
   "model_config": "Hybrid-5Chat/5mini",
+  "model_router_selecion": null,
   "stage": 2,
   "input_tokens": 3124,
   "output_tokens": 2011,
@@ -161,7 +163,29 @@ LLMリクエスト回数 = 総試行回数 ×　
 }
 ```
 
-### 7.2 dsl_errors, render_errors フィールド仕様（調整反映）
+### 7.2 model_router_selecion フィールド仕様
+`model_config="Router-based"`の際，model-routerが使用され実行時に各ステップのモデルが決められる
+
+- 型: `string[] | null`
+- `null`：model-router不使用時
+- 配列：3ステップのLLM呼び出しに実際に使用されたモデル名
+
+#### 例
+
+```json
+"model_router_selecion": null
+```
+
+```json
+"model_router_selecion": ["gpt-4.1-mini", "gpt-4.1-mini", "gpt-4.1-mini"]
+```
+
+目的：
+- model-routerの選定モデル記録
+
+開発者追記: 選定model名をレスポンスから取得する処理のコーディング必要
+
+### 7.3 dsl_errors, render_errors フィールド仕様
 
 - 型: `string[] | null`
 - `null`：エラーなし

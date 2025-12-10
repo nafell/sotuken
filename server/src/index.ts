@@ -11,6 +11,7 @@ import { taskRoutes } from './routes/task';
 import admin from './routes/admin';
 import { metricsRoutes } from './routes/metrics';
 import { experimentRoutes } from './routes/experiment';
+import { batchExperimentRoutes } from './routes/batch-experiment';
 
 const app = new Hono();
 
@@ -53,6 +54,7 @@ app.route('/v1/task', taskRoutes);
 app.route('/v1/metrics', metricsRoutes);  // Phase 2 Step 6: メトリクスAPI
 app.route('/admin', admin);  // Phase 2 Step 5: 管理者用API
 app.route('/api/experiment', experimentRoutes);  // Phase 6: 実験API
+app.route('/api/experiment/batch', batchExperimentRoutes);  // Layer1/Layer4: バッチ実験API
 
 // Basic route
 app.get('/', (c) => {

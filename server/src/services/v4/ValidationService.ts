@@ -681,3 +681,111 @@ export class ValidationService {
 export function createValidationService(config?: ValidationServiceConfig): ValidationService {
   return new ValidationService(config);
 }
+
+// =============================================================================
+// Layer1/Layer4 実験用ヘルパー関数
+// =============================================================================
+
+/**
+ * DSLエラータイプ一覧（Layer1/Layer4実験用）
+ * @see specs/system-design/experiment_spec_layer_1_layer_4.md
+ */
+export const DSL_ERROR_TYPES = [
+  'JSON_PARSE_ERROR',
+  'ZOD_SCHEMA_MISMATCH',
+  'UNKNOWN_WIDGET',
+  'UNKNOWN_ENTITY',
+  'UNKNOWN_ATTRIBUTE',
+  'INVALID_PATH',
+  'CIRCULAR_DEPENDENCY',
+  'REFERENCE_ERROR',
+  'DUPLICATE_ID',
+  'MISSING_REQUIRED_FIELD',
+  'INVALID_BINDING',
+  'TYPE_MISMATCH',
+  'COMPLEXITY_VIOLATION',
+  'INVALID_VERSION',
+  'NO_WIDGETS',
+  'DUPLICATE_WIDGET',
+  'SELF_REFERENCE',
+  'INVALID_RELATIONSHIP',
+] as const;
+
+export type DSLErrorType = typeof DSL_ERROR_TYPES[number];
+
+/**
+ * ValidationResultからエラータイプのstring[]を抽出
+ *
+ * Layer1/Layer4実験のdsl_errorsフィールド用
+ *
+ * @param result 検証結果
+ * @returns エラータイプの配列、エラーがなければnull
+ */
+export function getErrorsAsStringArray(result: ValidationResult): string[] | null {
+  if (result.valid && result.errors.length === 0) {
+    return null;
+  }
+
+  // errorsからtypeを抽出してユニークにする
+  const errorTypes = result.errors.map(e => e.type);
+  const uniqueTypes = [...new Set(errorTypes)];
+
+  return uniqueTypes.length > 0 ? uniqueTypes : null;
+}
+
+/**
+ * ValidationResultから型エラー数を取得
+ *
+ * @param result 検証結果
+ * @returns TYPE_MISMATCHまたはZOD_SCHEMA_MISMATCHエラーの数
+ */
+export function countTypeErrors(result: ValidationResult): number {
+  return result.errors.filter(e =>
+    e.type === 'TYPE_MISMATCH' || e.type === 'ZOD_SCHEMA_MISMATCH'
+  ).length;
+}
+
+/**
+ * ValidationResultから参照エラー数を取得
+ *
+ * @param result 検証結果
+ * @returns REFERENCE_ERROR、UNKNOWN_ENTITY、UNKNOWN_ATTRIBUTE、INVALID_PATHエラーの数
+ */
+export function countReferenceErrors(result: ValidationResult): number {
+  return result.errors.filter(e =>
+    e.type === 'REFERENCE_ERROR' ||
+    e.type === 'UNKNOWN_ENTITY' ||
+    e.type === 'UNKNOWN_ATTRIBUTE' ||
+    e.type === 'INVALID_PATH'
+  ).length;
+}
+
+/**
+ * ValidationResultから循環依存が検出されたか判定
+ *
+ * @param result 検証結果
+ * @returns 循環依存エラーが含まれるか
+ */
+export function hasCyclicDependency(result: ValidationResult): boolean {
+  return result.errors.some(e => e.type === 'CIRCULAR_DEPENDENCY');
+}
+
+/**
+ * ValidationResultからエラーサマリーを作成（Layer1/Layer4実験用）
+ *
+ * @param result 検証結果
+ * @returns Layer1メトリクス計算用のサマリー
+ */
+export function getErrorSummary(result: ValidationResult): {
+  dslErrors: string[] | null;
+  typeErrorCount: number;
+  referenceErrorCount: number;
+  cycleDetected: boolean;
+} {
+  return {
+    dslErrors: getErrorsAsStringArray(result),
+    typeErrorCount: countTypeErrors(result),
+    referenceErrorCount: countReferenceErrors(result),
+    cycleDetected: hasCyclicDependency(result),
+  };
+}

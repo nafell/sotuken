@@ -39,6 +39,34 @@ export default function SessionDetail() {
         setSession(sessionData);
         setWidgetStates(statesData);
         setGenerations(generationsData);
+
+        // DEBUG: 生データをコンソールに出力
+        console.log('=== SessionDetail DEBUG ===');
+        console.log('generationsData:', generationsData);
+        generationsData.forEach((gen, idx) => {
+          console.log(`Generation ${idx}:`, {
+            id: gen.id,
+            stage: gen.stage,
+            modelId: gen.modelId,
+            // V4 各段階トークン
+            widgetSelectionTokens: gen.widgetSelectionTokens,
+            orsTokens: gen.orsTokens,
+            uiSpecTokens: gen.uiSpecTokens,
+            // V4 各段階duration
+            widgetSelectionDuration: gen.widgetSelectionDuration,
+            orsDuration: gen.orsDuration,
+            uiSpecDuration: gen.uiSpecDuration,
+            // 合計
+            totalPromptTokens: gen.totalPromptTokens,
+            totalResponseTokens: gen.totalResponseTokens,
+            totalGenerateDuration: gen.totalGenerateDuration,
+            // Legacy
+            promptTokens: gen.promptTokens,
+            responseTokens: gen.responseTokens,
+            generateDuration: gen.generateDuration,
+          });
+        });
+        console.log('=== END DEBUG ===');
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load data');
       } finally {
@@ -127,12 +155,15 @@ export default function SessionDetail() {
   };
 
   // Calculate aggregated metrics from generations (V4対応)
+  // V4: 各段階トークンの合計を優先的に使用
+  const v4TotalTokens = generations.reduce((sum, g) =>
+    sum + (g.widgetSelectionTokens || 0) + (g.orsTokens || 0) + (g.uiSpecTokens || 0), 0);
+  const legacyTotalTokens = generations.reduce((sum, g) =>
+    sum + (g.totalPromptTokens || g.promptTokens || 0) + (g.totalResponseTokens || g.responseTokens || 0), 0);
+
   const aggregatedMetrics = {
-    // V4: totalPromptTokens/totalResponseTokens を優先、なければlegacy フィールドを使用
-    totalTokens: generations.reduce((sum, g) =>
-      sum + (g.totalPromptTokens || g.promptTokens || 0) + (g.totalResponseTokens || g.responseTokens || 0), 0),
-    totalPromptTokens: generations.reduce((sum, g) => sum + (g.totalPromptTokens || g.promptTokens || 0), 0),
-    totalResponseTokens: generations.reduce((sum, g) => sum + (g.totalResponseTokens || g.responseTokens || 0), 0),
+    // V4: 各段階トークンの合計を優先、なければlegacy
+    totalTokens: v4TotalTokens > 0 ? v4TotalTokens : legacyTotalTokens,
     totalGenerateDuration: generations.reduce((sum, g) => sum + (g.totalGenerateDuration || g.generateDuration || 0), 0),
     totalRenderDuration: generations.reduce((sum, g) => sum + (g.renderDuration || 0), 0),
     // V4 各段階メトリクス（duration）
@@ -366,12 +397,16 @@ export default function SessionDetail() {
               <div style={styles.metricLabel}>Total Tokens</div>
             </div>
             <div style={styles.metricCard}>
-              <div style={styles.metricValue}>{aggregatedMetrics.totalPromptTokens.toLocaleString()}</div>
-              <div style={styles.metricLabel}>Prompt Tokens</div>
+              <div style={styles.metricValue}>{aggregatedMetrics.totalWidgetSelectionTokens.toLocaleString()}</div>
+              <div style={styles.metricLabel}>WS Tokens</div>
             </div>
             <div style={styles.metricCard}>
-              <div style={styles.metricValue}>{aggregatedMetrics.totalResponseTokens.toLocaleString()}</div>
-              <div style={styles.metricLabel}>Response Tokens</div>
+              <div style={styles.metricValue}>{aggregatedMetrics.totalOrsTokens.toLocaleString()}</div>
+              <div style={styles.metricLabel}>ORS Tokens</div>
+            </div>
+            <div style={styles.metricCard}>
+              <div style={styles.metricValue}>{aggregatedMetrics.totalUiSpecTokens.toLocaleString()}</div>
+              <div style={styles.metricLabel}>UISpec Tokens</div>
             </div>
             <div style={styles.metricCard}>
               <div style={styles.metricValue}>{aggregatedMetrics.totalGenerateDuration.toLocaleString()}ms</div>
@@ -391,8 +426,12 @@ export default function SessionDetail() {
             <h3 style={styles.cardTitle}>Per-Stage Breakdown (V4)</h3>
             <div style={styles.stageBreakdown}>
               {generations.map((gen, idx) => {
-                // V4フィールドを優先、なければlegacyを使用
-                const tokens = (gen.totalPromptTokens || gen.promptTokens || 0) + (gen.totalResponseTokens || gen.responseTokens || 0);
+                // V4: 各段階トークンの合計を計算
+                const v4Tokens = (gen.widgetSelectionTokens || 0) + (gen.orsTokens || 0) + (gen.uiSpecTokens || 0);
+                // フォールバック
+                const tokens = v4Tokens > 0
+                  ? v4Tokens
+                  : (gen.totalPromptTokens || 0) + (gen.totalResponseTokens || 0) || (gen.promptTokens || 0) + (gen.responseTokens || 0);
                 const genDuration = gen.totalGenerateDuration || gen.generateDuration || 0;
                 // Widget選定フェーズかステージ実行フェーズかを判定
                 const isWidgetSelection = gen.stage === 'widget_selection';
@@ -462,9 +501,12 @@ export default function SessionDetail() {
         <div style={styles.content}>
           {generations.length > 0 ? (
             generations.map((gen) => {
-              // V4フィールドを優先
-              const promptTokens = gen.totalPromptTokens || gen.promptTokens || 0;
-              const responseTokens = gen.totalResponseTokens || gen.responseTokens || 0;
+              // V4: 各段階トークンの合計を計算
+              const v4TotalTokens = (gen.widgetSelectionTokens || 0) + (gen.orsTokens || 0) + (gen.uiSpecTokens || 0);
+              // フォールバック: totalPromptTokens/totalResponseTokens、またはlegacy promptTokens/responseTokens
+              const totalTokens = v4TotalTokens > 0
+                ? v4TotalTokens
+                : (gen.totalPromptTokens || 0) + (gen.totalResponseTokens || 0) || (gen.promptTokens || 0) + (gen.responseTokens || 0);
               const genDuration = gen.totalGenerateDuration || gen.generateDuration || 0;
               // Widget選定フェーズかステージ実行フェーズかを判定
               const isWidgetSelection = gen.stage === 'widget_selection';
@@ -476,6 +518,20 @@ export default function SessionDetail() {
                 : isPlanUnified
                   ? { ...styles.generationStage, backgroundColor: '#0ea5e9', color: 'white' }
                   : styles.generationStage;
+
+              // トークン表示文字列を構築
+              // Widget Selection: widgetSelectionTokens tokens
+              // Plan: totalTokens tokens (orsTokens + uiSpecTokens)
+              // その他: totalTokens tokens
+              let tokenDisplayStr: string;
+              if (isWidgetSelection) {
+                tokenDisplayStr = `${(gen.widgetSelectionTokens || 0).toLocaleString()} tokens`;
+              } else if (isPlanUnified && gen.orsTokens && gen.uiSpecTokens) {
+                tokenDisplayStr = `${totalTokens.toLocaleString()} tokens (${gen.orsTokens.toLocaleString()} + ${gen.uiSpecTokens.toLocaleString()})`;
+              } else {
+                tokenDisplayStr = `${totalTokens.toLocaleString()} tokens`;
+              }
+
               return (
                 <div key={gen.id} style={styles.generationCard}>
                   <div
@@ -493,7 +549,7 @@ export default function SessionDetail() {
                     </div>
                     <div style={styles.generationHeaderRight}>
                       <span style={styles.generationMetric}>
-                        {promptTokens} + {responseTokens} tokens
+                        {tokenDisplayStr}
                       </span>
                       <span style={styles.generationMetric}>
                         {genDuration ? `${genDuration}ms` : '-'}
@@ -813,12 +869,8 @@ export default function SessionDetail() {
                           </div>
                         )}
                         <div style={styles.generationMetricItem}>
-                          <span style={styles.generationMetricLabel}>Total Prompt Tokens:</span>
-                          <span style={styles.generationMetricValue}>{promptTokens || '-'}</span>
-                        </div>
-                        <div style={styles.generationMetricItem}>
-                          <span style={styles.generationMetricLabel}>Total Response Tokens:</span>
-                          <span style={styles.generationMetricValue}>{responseTokens || '-'}</span>
+                          <span style={styles.generationMetricLabel}>Total Tokens:</span>
+                          <span style={styles.generationMetricValue}>{totalTokens.toLocaleString() || '-'}</span>
                         </div>
                         <div style={styles.generationMetricItem}>
                           <span style={styles.generationMetricLabel}>Total Generate Duration:</span>

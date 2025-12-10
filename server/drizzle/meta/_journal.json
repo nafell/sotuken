@@ -29,6 +29,13 @@
       "when": 1765361050567,
       "tag": "0003_uneven_lady_mastermind",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1765394517020,
+      "tag": "0004_light_manta",
+      "breakpoints": true
     }
   ]
 }

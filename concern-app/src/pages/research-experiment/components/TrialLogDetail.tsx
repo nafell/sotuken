@@ -23,7 +23,7 @@ interface TrialLogDetailProps {
   onToggle: () => void;
 }
 
-type TabType = 'overview' | 'metrics' | 'errors';
+type TabType = 'overview' | 'metrics' | 'errors' | 'generated';
 
 export default function TrialLogDetail({ trial, isExpanded, onToggle }: TrialLogDetailProps) {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -119,7 +119,7 @@ export default function TrialLogDetail({ trial, isExpanded, onToggle }: TrialLog
             borderBottom: '1px solid #e0e0e0',
             backgroundColor: '#fafafa',
           }}>
-            {(['overview', 'metrics', 'errors'] as TabType[]).map(tab => (
+            {(['overview', 'metrics', 'errors', 'generated'] as TabType[]).map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -136,6 +136,7 @@ export default function TrialLogDetail({ trial, isExpanded, onToggle }: TrialLog
                 {tab === 'overview' && 'Overview'}
                 {tab === 'metrics' && 'Metrics'}
                 {tab === 'errors' && `Errors ${hasErrors ? '⚠' : ''}`}
+                {tab === 'generated' && 'Generated'}
               </button>
             ))}
           </div>
@@ -378,6 +379,78 @@ export default function TrialLogDetail({ trial, isExpanded, onToggle }: TrialLog
                               • {err}
                             </div>
                           ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'generated' && (
+              <div>
+                {!trial.generatedData && !trial.promptData ? (
+                  <div style={{
+                    padding: '24px',
+                    textAlign: 'center',
+                    color: '#666',
+                    backgroundColor: '#f5f5f5',
+                    borderRadius: '4px',
+                  }}>
+                    No generated data available
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {/* Prompt Data */}
+                    {trial.promptData !== undefined && trial.promptData !== null && (
+                      <div>
+                        <div style={{
+                          fontSize: '12px',
+                          color: '#1565c0',
+                          marginBottom: '4px',
+                          fontWeight: 'bold',
+                        }}>
+                          Prompt Data (Input Variables)
+                        </div>
+                        <div style={{
+                          padding: '12px',
+                          backgroundColor: '#e3f2fd',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontFamily: 'monospace',
+                          maxHeight: '200px',
+                          overflowY: 'auto',
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word',
+                        }}>
+                          {JSON.stringify(trial.promptData, null, 2)}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Generated Data */}
+                    {trial.generatedData !== undefined && trial.generatedData !== null && (
+                      <div>
+                        <div style={{
+                          fontSize: '12px',
+                          color: '#2e7d32',
+                          marginBottom: '4px',
+                          fontWeight: 'bold',
+                        }}>
+                          Generated Data (LLM Output)
+                        </div>
+                        <div style={{
+                          padding: '12px',
+                          backgroundColor: '#e8f5e9',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontFamily: 'monospace',
+                          maxHeight: '400px',
+                          overflowY: 'auto',
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word',
+                        }}>
+                          {JSON.stringify(trial.generatedData, null, 2)}
                         </div>
                       </div>
                     )}

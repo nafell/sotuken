@@ -32,6 +32,12 @@ export default function BatchResults() {
     completedTrials: number;
     failedTrials: number;
     byModel: ModelStatistics[];
+    // 設定情報
+    modelConfigs?: string[];
+    inputCorpusId?: string;
+    parallelism?: number;
+    maxTrials?: number | null;
+    // タイミング
     startedAt: string;
     completedAt: string;
     totalDurationMs: number;
@@ -199,6 +205,35 @@ export default function BatchResults() {
               <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#d32f2f' }}>
                 {summary?.failedTrials ?? 0}
               </div>
+            </div>
+          </div>
+
+          {/* 設定情報 */}
+          <h3 style={{ fontSize: '16px', marginTop: '24px', marginBottom: '12px' }}>実行設定</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+            <div>
+              <div style={{ fontSize: '12px', color: '#666' }}>開始時刻</div>
+              <div>{summary?.startedAt ? new Date(summary.startedAt).toLocaleString('ja-JP') : '-'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: '#666' }}>完了時刻</div>
+              <div>{summary?.completedAt ? new Date(summary.completedAt).toLocaleString('ja-JP') : '-'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: '#666' }}>コーパス</div>
+              <div>{summary?.inputCorpusId ?? '-'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: '#666' }}>モデル構成</div>
+              <div>{summary?.modelConfigs?.join(', ') ?? '-'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: '#666' }}>並列数</div>
+              <div>{summary?.parallelism ?? '-'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: '#666' }}>直列数上限</div>
+              <div>{summary?.maxTrials ?? '無制限'}</div>
             </div>
           </div>
         </section>

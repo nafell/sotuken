@@ -17,7 +17,15 @@ import {
   stopBatch,
   getBatchProgress,
 } from '../services/BatchExecutionService';
-import { MODEL_CONFIGURATIONS, type ModelConfigId } from '../types/experiment-trial.types';
+import {
+  MODEL_CONFIGURATIONS,
+  TOKEN_PRICES,
+  USD_TO_JPY,
+  type ModelConfigId,
+  type Layer1Metrics,
+  type Layer4Metrics,
+  type ModelStatistics,
+} from '../types/experiment-trial.types';
 
 const batchExperimentRoutes = new Hono();
 
@@ -193,7 +201,7 @@ batchExperimentRoutes.get('/:batchId/progress', async (c) => {
   const batchId = c.req.param('batchId');
 
   return streamSSE(c, async (stream) => {
-    let lastCompleted = -1;
+    let lastProgressJson = '';
     let iterations = 0;
     const maxIterations = 3600; // 最大1時間（1秒間隔）
 
@@ -222,13 +230,14 @@ batchExperimentRoutes.get('/:batchId/progress', async (c) => {
         break;
       }
 
-      // 進捗が更新された場合のみ送信
-      if (progress.completedTrials !== lastCompleted) {
-        lastCompleted = progress.completedTrials;
+      // 進捗が更新された場合のみ送信（JSON全体を比較）
+      const progressJson = JSON.stringify(progress);
+      if (progressJson !== lastProgressJson) {
+        lastProgressJson = progressJson;
 
         await stream.writeSSE({
           event: 'progress',
-          data: JSON.stringify(progress),
+          data: progressJson,
         });
       }
 
@@ -236,7 +245,7 @@ batchExperimentRoutes.get('/:batchId/progress', async (c) => {
       if (progress.status === 'completed' || progress.status === 'failed' || progress.status === 'stopped') {
         await stream.writeSSE({
           event: 'complete',
-          data: JSON.stringify(progress),
+          data: progressJson,
         });
         break;
       }
@@ -246,6 +255,63 @@ batchExperimentRoutes.get('/:batchId/progress', async (c) => {
     }
   });
 });
+
+/**
+ * Layer1/Layer4統計を計算するヘルパー関数
+ */
+function calculateStatistics(logs: typeof experimentTrialLogs.$inferSelect[]): {
+  layer1: Layer1Metrics;
+  layer4: Layer4Metrics;
+} {
+  if (logs.length === 0) {
+    return {
+      layer1: { VR: 0, TCR: 0, RRR: 0, CDR: 0, RGR: 0 },
+      layer4: { LAT: 0, COST: 0, FR: 0 },
+    };
+  }
+
+  const total = logs.length;
+
+  // Layer1計算
+  const validCount = logs.filter(
+    log => (log.dslErrors === null || (Array.isArray(log.dslErrors) && log.dslErrors.length === 0)) &&
+           (log.renderErrors === null || (Array.isArray(log.renderErrors) && log.renderErrors.length === 0))
+  ).length;
+  const typeOkCount = logs.filter(log => log.typeErrorCount === 0).length;
+  const refOkCount = logs.filter(log => log.referenceErrorCount === 0).length;
+  const cycleCount = logs.filter(log => log.cycleDetected).length;
+  const regenCount = logs.filter(log => log.regenerated).length;
+
+  // Layer4計算
+  const totalLatency = logs.reduce((sum, log) => sum + log.latencyMs, 0);
+  const runtimeErrorCount = logs.filter(log => log.runtimeError).length;
+
+  // コスト計算（概算）
+  let totalCostUsd = 0;
+  for (const log of logs) {
+    // ステージのモデルを推定（modelConfigから取得は複雑なので、デフォルト価格を使用）
+    const inputPricePerK = 0.010; // 平均的な価格
+    const outputPricePerK = 0.030;
+    const inputCost = (log.inputTokens / 1000) * inputPricePerK;
+    const outputCost = (log.outputTokens / 1000) * outputPricePerK;
+    totalCostUsd += inputCost + outputCost;
+  }
+
+  return {
+    layer1: {
+      VR: validCount / total,
+      TCR: typeOkCount / total,
+      RRR: refOkCount / total,
+      CDR: cycleCount / total,
+      RGR: regenCount / total,
+    },
+    layer4: {
+      LAT: totalLatency / total,
+      COST: totalCostUsd * USD_TO_JPY,
+      FR: runtimeErrorCount / total,
+    },
+  };
+}
 
 /**
  * GET /api/experiment/batch/:batchId/results
@@ -274,7 +340,36 @@ batchExperimentRoutes.get('/:batchId/results', async (c) => {
       .from(experimentTrialLogs)
       .where(eq(experimentTrialLogs.batchId, batchId));
 
-    // 基本的な集計
+    // モデル構成別にグループ化
+    const logsByModel = new Map<string, typeof trialLogs>();
+    for (const log of trialLogs) {
+      const existing = logsByModel.get(log.modelConfig) ?? [];
+      existing.push(log);
+      logsByModel.set(log.modelConfig, existing);
+    }
+
+    // モデル別統計を計算
+    const byModel: ModelStatistics[] = [];
+    for (const [modelConfig, logs] of logsByModel.entries()) {
+      const stats = calculateStatistics(logs);
+      byModel.push({
+        modelConfig,
+        trialCount: logs.length,
+        layer1: stats.layer1,
+        layer4: stats.layer4,
+      });
+    }
+
+    // 全体統計を計算
+    const overallStats = calculateStatistics(trialLogs);
+
+    // 実行時間を計算
+    let totalDurationMs = 0;
+    if (batch.startedAt && batch.completedAt) {
+      totalDurationMs = new Date(batch.completedAt).getTime() - new Date(batch.startedAt).getTime();
+    }
+
+    // 完全なサマリーを構築
     const summary = {
       batchId,
       experimentId: batch.experimentId,
@@ -282,17 +377,24 @@ batchExperimentRoutes.get('/:batchId/results', async (c) => {
       totalTrials: batch.totalTrials,
       completedTrials: batch.completedTrials,
       failedTrials: batch.failedTrials,
-      trialLogCount: trialLogs.length,
+      byModel,
+      overall: overallStats,
+      // 設定情報
+      modelConfigs: batch.modelConfigs,
+      inputCorpusId: batch.inputCorpusId,
+      parallelism: batch.parallelism,
+      maxTrials: batch.maxTrials,
+      // タイミング
       startedAt: batch.startedAt,
       completedAt: batch.completedAt,
+      totalDurationMs,
     };
 
     return c.json({
       success: true,
       summary,
-      // 詳細な統計はExperimentStatisticsServiceで計算（Phase 5）
-      layer1Results: batch.layer1Results,
-      layer4Results: batch.layer4Results,
+      layer1Results: overallStats.layer1,
+      layer4Results: overallStats.layer4,
     });
   } catch (error) {
     console.error('Failed to get batch results:', error);

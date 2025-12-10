@@ -107,4 +107,5 @@ console.log(`📊 Database health: http://localhost:${port}/health/database`);
 export default {
   port,
   fetch: app.fetch,
+  idleTimeout: 120, // SSE接続用に120秒のアイドルタイムアウトを設定
 };

@@ -211,9 +211,21 @@ export class ValidationService {
     const warnings: ValidationError[] = [];
     const info: ValidationError[] = [];
 
+    // null/undefinedチェック
+    if (!ors || typeof ors !== 'object') {
+      errors.push(this.createError('INVALID_ORS', 'ORS is null or not an object', 'root'));
+      return this.buildResult(errors, warnings, info);
+    }
+
     // バージョンチェック
     if (ors.version !== '4.0') {
       errors.push(this.createError('INVALID_VERSION', `Invalid version: ${ors.version}, expected 4.0`, 'version'));
+    }
+
+    // entitiesが配列であることを確認
+    if (!Array.isArray(ors.entities)) {
+      errors.push(this.createError('INVALID_ENTITIES', 'ORS entities is not an array', 'entities'));
+      return this.buildResult(errors, warnings, info);
     }
 
     // Entity検証

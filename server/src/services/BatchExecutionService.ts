@@ -80,7 +80,15 @@ export class BatchExecutionService {
   async startBatch(config: BatchExecutionConfig): Promise<{ batchId: string; totalTrials: number }> {
     // 入力コーパスを読み込み
     const corpus = await this.loadInputCorpus(config.inputCorpusId);
-    const totalTrials = corpus.inputs.length * config.modelConfigs.length;
+
+    // maxTrialsで入力件数を制限
+    const effectiveInputCount = config.maxTrials
+      ? Math.min(corpus.inputs.length, config.maxTrials)
+      : corpus.inputs.length;
+    const limitedInputs = corpus.inputs.slice(0, effectiveInputCount);
+    const limitedCorpus = { ...corpus, inputs: limitedInputs };
+
+    const totalTrials = limitedInputs.length * config.modelConfigs.length;
 
     // バッチレコードを作成
     const [batch] = await db
@@ -112,7 +120,7 @@ export class BatchExecutionService {
     });
 
     // 非同期でバッチ実行を開始
-    this.executeBatch(batchId, config, corpus).catch(err => {
+    this.executeBatch(batchId, config, limitedCorpus).catch(err => {
       console.error(`Batch ${batchId} failed:`, err);
       this.updateBatchStatus(batchId, 'failed');
     });
@@ -185,6 +193,7 @@ export class BatchExecutionService {
         trialNumber++;
         const input = corpus.inputs[inputIndex];
         state.progress.currentInputIndex = inputIndex;
+        state.progress.currentInputId = input.inputId;
 
         const context: TrialContext = {
           batchId,
@@ -263,6 +272,12 @@ export class BatchExecutionService {
     // 3ステージを順番に実行
     for (const stageNum of [1, 2, 3] as const) {
       const taskType = STAGE_TO_TASK_TYPE[stageNum];
+
+      // 現在のステージを更新
+      const state = runningBatches.get(batchId);
+      if (state) {
+        state.progress.currentStage = stageNum;
+      }
 
       try {
         const result = await this.executeStage(

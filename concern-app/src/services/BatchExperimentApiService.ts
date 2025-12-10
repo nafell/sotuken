@@ -26,6 +26,10 @@ export interface BatchProgress {
   failedTrials: number;
   currentModelConfig?: ModelConfigId;
   currentInputIndex?: number;
+  /** 現在実行中のステージ (1, 2, 3) */
+  currentStage?: number;
+  /** 現在の入力ID */
+  currentInputId?: string;
 }
 
 export interface Layer1Metrics {
@@ -105,6 +109,12 @@ export interface TrialLog {
   timestamp: string;
 }
 
+export interface CorpusInfo {
+  corpusId: string;
+  description: string;
+  inputCount: number;
+}
+
 // ========================================
 // API Service
 // ========================================
@@ -129,6 +139,18 @@ export class BatchExperimentApiService {
   }
 
   /**
+   * 利用可能なコーパス一覧を取得
+   */
+  async getCorpuses(): Promise<CorpusInfo[]> {
+    const response = await fetch(`${this.baseUrl}/api/experiment/batch/corpuses`);
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.error ?? 'Failed to get corpuses');
+    }
+    return data.corpuses;
+  }
+
+  /**
    * バッチ実行を開始
    */
   async startBatch(params: {
@@ -137,6 +159,7 @@ export class BatchExperimentApiService {
     inputCorpusId: string;
     parallelism?: number;
     headlessMode?: boolean;
+    maxTrials?: number;
   }): Promise<{ batchId: string; totalTrials: number }> {
     const response = await fetch(`${this.baseUrl}/api/experiment/batch/start`, {
       method: 'POST',

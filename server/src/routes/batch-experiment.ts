@@ -38,6 +38,7 @@ batchExperimentRoutes.post('/start', async (c) => {
       inputCorpusId,
       parallelism = 1,
       headlessMode = true,
+      maxTrials,
     } = body;
 
     // バリデーション
@@ -78,6 +79,7 @@ batchExperimentRoutes.post('/start', async (c) => {
     console.log(`  Input corpus: ${inputCorpusId}`);
     console.log(`  Parallelism: ${parallelism}`);
     console.log(`  Headless mode: ${headlessMode}`);
+    console.log(`  Max trials: ${maxTrials ?? 'unlimited'}`);
 
     const result = await startBatch({
       experimentId,
@@ -85,6 +87,7 @@ batchExperimentRoutes.post('/start', async (c) => {
       inputCorpusId,
       parallelism,
       headlessMode,
+      maxTrials,
     });
 
     return c.json({
@@ -464,6 +467,58 @@ batchExperimentRoutes.get('/configs', async (c) => {
       stages: config.stages,
     })),
   });
+});
+
+/**
+ * GET /api/experiment/batch/corpuses
+ * 利用可能な入力コーパス一覧を取得
+ */
+batchExperimentRoutes.get('/corpuses', async (c) => {
+  try {
+    const fs = await import('fs/promises');
+    const path = await import('path');
+
+    const corpuses: Array<{ corpusId: string; description: string; inputCount: number }> = [];
+
+    // 1. test_cases コーパス（config/test-cases/*.json）
+    try {
+      const testCasesDir = path.join(process.cwd(), '..', 'config', 'test-cases');
+      const files = await fs.readdir(testCasesDir);
+      const jsonFiles = files.filter(f => f.endsWith('.json'));
+      corpuses.push({
+        corpusId: 'test_cases',
+        description: 'Expert評価用テストケース',
+        inputCount: jsonFiles.length,
+      });
+    } catch {
+      // test-casesディレクトリが存在しない場合はスキップ
+    }
+
+    // 2. experiment-input-corpus.json があれば読み込み
+    try {
+      const corpusPath = path.join(process.cwd(), '..', 'config', 'experiment-input-corpus.json');
+      const content = await fs.readFile(corpusPath, 'utf-8');
+      const corpus = JSON.parse(content);
+      corpuses.push({
+        corpusId: corpus.corpusId || 'default',
+        description: corpus.description || '入力コーパス',
+        inputCount: corpus.inputs?.length ?? 0,
+      });
+    } catch {
+      // ファイルが存在しない場合はスキップ
+    }
+
+    return c.json({
+      success: true,
+      corpuses,
+    });
+  } catch (error) {
+    console.error('Failed to list corpuses:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
 });
 
 export { batchExperimentRoutes };

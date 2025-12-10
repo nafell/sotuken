@@ -1,0 +1,276 @@
+<-- POST /v1/events/batch
+📊 Received 2 events, 0 valid, 2 errors
+--> POST /v1/events/batch 200 0ms
+<-- POST /api/experiment/batch/start
+🚀 Starting batch experiment: exp_1765383822656
+  Model configs: E
+  Input corpus: test_cases
+  Parallelism: 1
+  Headless mode: true
+Loaded 6 test cases as input corpus
+--> POST /api/experiment/batch/start 200 48ms
+🔧 AzureOpenAIService initialization:
+   Model ID: model-router
+   Deployment Name: model-router
+   Base URL: https://yamaz-mix3u836-eastus2.cognitiveservices.azure.com/openai/deployments/model-router
+   API Version: 2025-03-01-preview
+   Use Responses API: false
+🌐 AzureOpenAI generateJSON request:
+   Expected URL: https://yamaz-mix3u836-eastus2.cognitiveservices.azure.com/openai/deployments/model-router/chat/completions?api-version=2025-03-01-preview
+   Model: model-router
+   Deployment: model-router
+   Using Chat Completions API
+<-- GET /api/experiment/batch/bbdd6e6f-ceeb-4043-b080-625ec98868c1/status
+--> GET /api/experiment/batch/bbdd6e6f-ceeb-4043-b080-625ec98868c1/status 200 4ms
+<-- GET /api/experiment/batch/bbdd6e6f-ceeb-4043-b080-625ec98868c1/status
+--> GET /api/experiment/batch/bbdd6e6f-ceeb-4043-b080-625ec98868c1/status 200 4ms
+<-- GET /api/experiment/batch/bbdd6e6f-ceeb-4043-b080-625ec98868c1/progress
+--> GET /api/experiment/batch/bbdd6e6f-ceeb-4043-b080-625ec98868c1/progress 200 7ms
+[Bun.serve]: request timed out after 10 seconds. Pass `idleTimeout` to configure.
+📊 AzureOpenAIService metrics: {
+  promptTokens: 864,
+  responseTokens: 1045,
+  totalTokens: 1909,
+  processingTimeMs: 18369,
+}
+🌐 AzureOpenAI generateText request:
+   Expected URL: https://yamaz-mix3u836-eastus2.cognitiveservices.azure.com/openai/deployments/model-router/chat/completions?api-version=2025-03-01-preview
+   Model: model-router
+   Deployment: model-router
+   Using Chat Completions API
+📊 AzureOpenAIService metrics (text): {
+  promptTokens: 909,
+  responseTokens: 566,
+  totalTokens: 1475,
+  processingTimeMs: 11148,
+}
+Stage 2 error: 216 |       errors.push(this.createError('INVALID_VERSION', `Invalid version: ${ors.version}, expected 4.0`, 'version'));
+217 |     }
+218 | 
+219 |     // Entity検証
+220 |     const entityIds = new Set<string>();
+221 |     for (let i = 0; i < ors.entities.length; i++) {
+                                  ^
+TypeError: undefined is not an object (evaluating 'ors.entities.length')
+      at validateORS (/home/nafell/source/sotuken/server/src/services/v4/ValidationService.ts:221:29)
+      at executeStage (/home/nafell/source/sotuken/server/src/services/BatchExecutionService.ts:340:37)
+      at async executeTrial (/home/nafell/source/sotuken/server/src/services/BatchExecutionService.ts:268:35)
+      at async executeBatch (/home/nafell/source/sotuken/server/src/services/BatchExecutionService.ts:198:37)
+
+🔧 AzureOpenAIService initialization:
+   Model ID: model-router
+   Deployment Name: model-router
+   Base URL: https://yamaz-mix3u836-eastus2.cognitiveservices.azure.com/openai/deployments/model-router
+   API Version: 2025-03-01-preview
+   Use Responses API: false
+🌐 AzureOpenAI generateJSON request:
+   Expected URL: https://yamaz-mix3u836-eastus2.cognitiveservices.azure.com/openai/deployments/model-router/chat/completions?api-version=2025-03-01-preview
+   Model: model-router
+   Deployment: model-router
+   Using Chat Completions API
+📊 AzureOpenAIService metrics: {
+  promptTokens: 849,
+  responseTokens: 955,
+  totalTokens: 1804,
+  processingTimeMs: 15792,
+}
+🌐 AzureOpenAI generateText request:
+   Expected URL: https://yamaz-mix3u836-eastus2.cognitiveservices.azure.com/openai/deployments/model-router/chat/completions?api-version=2025-03-01-preview
+   Model: model-router
+   Deployment: model-router
+   Using Chat Completions API
+📊 AzureOpenAIService metrics (text): {
+  promptTokens: 879,
+  responseTokens: 587,
+  totalTokens: 1466,
+  processingTimeMs: 9275,
+}
+Stage 2 error: 216 |       errors.push(this.createError('INVALID_VERSION', `Invalid version: ${ors.version}, expected 4.0`, 'version'));
+217 |     }
+218 | 
+219 |     // Entity検証
+220 |     const entityIds = new Set<string>();
+221 |     for (let i = 0; i < ors.entities.length; i++) {
+                                  ^
+TypeError: undefined is not an object (evaluating 'ors.entities.length')
+      at validateORS (/home/nafell/source/sotuken/server/src/services/v4/ValidationService.ts:221:29)
+      at executeStage (/home/nafell/source/sotuken/server/src/services/BatchExecutionService.ts:340:37)
+      at async executeTrial (/home/nafell/source/sotuken/server/src/services/BatchExecutionService.ts:268:35)
+      at async executeBatch (/home/nafell/source/sotuken/server/src/services/BatchExecutionService.ts:198:37)
+
+🔧 AzureOpenAIService initialization:
+   Model ID: model-router
+   Deployment Name: model-router
+   Base URL: https://yamaz-mix3u836-eastus2.cognitiveservices.azure.com/openai/deployments/model-router
+   API Version: 2025-03-01-preview
+   Use Responses API: false
+🌐 AzureOpenAI generateJSON request:
+   Expected URL: https://yamaz-mix3u836-eastus2.cognitiveservices.azure.com/openai/deployments/model-router/chat/completions?api-version=2025-03-01-preview
+   Model: model-router
+   Deployment: model-router
+   Using Chat Completions API
+📊 AzureOpenAIService metrics: {
+  promptTokens: 860,
+  responseTokens: 1279,
+  totalTokens: 2139,
+  processingTimeMs: 12738,
+}
+🌐 AzureOpenAI generateText request:
+   Expected URL: https://yamaz-mix3u836-eastus2.cognitiveservices.azure.com/openai/deployments/model-router/chat/completions?api-version=2025-03-01-preview
+   Model: model-router
+   Deployment: model-router
+   Using Chat Completions API
+📊 AzureOpenAIService metrics (text): {
+  promptTokens: 901,
+  responseTokens: 501,
+  totalTokens: 1402,
+  processingTimeMs: 7907,
+}
+Stage 2 error: 216 |       errors.push(this.createError('INVALID_VERSION', `Invalid version: ${ors.version}, expected 4.0`, 'version'));
+217 |     }
+218 | 
+219 |     // Entity検証
+220 |     const entityIds = new Set<string>();
+221 |     for (let i = 0; i < ors.entities.length; i++) {
+                                  ^
+TypeError: undefined is not an object (evaluating 'ors.entities.length')
+      at validateORS (/home/nafell/source/sotuken/server/src/services/v4/ValidationService.ts:221:29)
+      at executeStage (/home/nafell/source/sotuken/server/src/services/BatchExecutionService.ts:340:37)
+      at async executeTrial (/home/nafell/source/sotuken/server/src/services/BatchExecutionService.ts:268:35)
+      at async executeBatch (/home/nafell/source/sotuken/server/src/services/BatchExecutionService.ts:198:37)
+
+🔧 AzureOpenAIService initialization:
+   Model ID: model-router
+   Deployment Name: model-router
+   Base URL: https://yamaz-mix3u836-eastus2.cognitiveservices.azure.com/openai/deployments/model-router
+   API Version: 2025-03-01-preview
+   Use Responses API: false
+🌐 AzureOpenAI generateJSON request:
+   Expected URL: https://yamaz-mix3u836-eastus2.cognitiveservices.azure.com/openai/deployments/model-router/chat/completions?api-version=2025-03-01-preview
+   Model: model-router
+   Deployment: model-router
+   Using Chat Completions API
+📊 AzureOpenAIService metrics: {
+  promptTokens: 859,
+  responseTokens: 931,
+  totalTokens: 1790,
+  processingTimeMs: 11606,
+}
+🌐 AzureOpenAI generateText request:
+   Expected URL: https://yamaz-mix3u836-eastus2.cognitiveservices.azure.com/openai/deployments/model-router/chat/completions?api-version=2025-03-01-preview
+   Model: model-router
+   Deployment: model-router
+   Using Chat Completions API
+📊 AzureOpenAIService metrics (text): {
+  promptTokens: 899,
+  responseTokens: 545,
+  totalTokens: 1444,
+  processingTimeMs: 11600,
+}
+Stage 2 error: 216 |       errors.push(this.createError('INVALID_VERSION', `Invalid version: ${ors.version}, expected 4.0`, 'version'));
+217 |     }
+218 | 
+219 |     // Entity検証
+220 |     const entityIds = new Set<string>();
+221 |     for (let i = 0; i < ors.entities.length; i++) {
+                                  ^
+TypeError: undefined is not an object (evaluating 'ors.entities.length')
+      at validateORS (/home/nafell/source/sotuken/server/src/services/v4/ValidationService.ts:221:29)
+      at executeStage (/home/nafell/source/sotuken/server/src/services/BatchExecutionService.ts:340:37)
+      at async executeTrial (/home/nafell/source/sotuken/server/src/services/BatchExecutionService.ts:268:35)
+      at async executeBatch (/home/nafell/source/sotuken/server/src/services/BatchExecutionService.ts:198:37)
+
+🔧 AzureOpenAIService initialization:
+   Model ID: model-router
+   Deployment Name: model-router
+   Base URL: https://yamaz-mix3u836-eastus2.cognitiveservices.azure.com/openai/deployments/model-router
+   API Version: 2025-03-01-preview
+   Use Responses API: false
+🌐 AzureOpenAI generateJSON request:
+   Expected URL: https://yamaz-mix3u836-eastus2.cognitiveservices.azure.com/openai/deployments/model-router/chat/completions?api-version=2025-03-01-preview
+   Model: model-router
+   Deployment: model-router
+   Using Chat Completions API
+📊 AzureOpenAIService metrics: {
+  promptTokens: 864,
+  responseTokens: 1126,
+  totalTokens: 1990,
+  processingTimeMs: 18103,
+}
+🌐 AzureOpenAI generateText request:
+   Expected URL: https://yamaz-mix3u836-eastus2.cognitiveservices.azure.com/openai/deployments/model-router/chat/completions?api-version=2025-03-01-preview
+   Model: model-router
+   Deployment: model-router
+   Using Chat Completions API
+📊 AzureOpenAIService metrics (text): {
+  promptTokens: 909,
+  responseTokens: 566,
+  totalTokens: 1475,
+  processingTimeMs: 6696,
+}
+Stage 2 error: 216 |       errors.push(this.createError('INVALID_VERSION', `Invalid version: ${ors.version}, expected 4.0`, 'version'));
+217 |     }
+218 | 
+219 |     // Entity検証
+220 |     const entityIds = new Set<string>();
+221 |     for (let i = 0; i < ors.entities.length; i++) {
+                                  ^
+TypeError: undefined is not an object (evaluating 'ors.entities.length')
+      at validateORS (/home/nafell/source/sotuken/server/src/services/v4/ValidationService.ts:221:29)
+      at executeStage (/home/nafell/source/sotuken/server/src/services/BatchExecutionService.ts:340:37)
+      at async executeTrial (/home/nafell/source/sotuken/server/src/services/BatchExecutionService.ts:268:35)
+      at async executeBatch (/home/nafell/source/sotuken/server/src/services/BatchExecutionService.ts:198:37)
+
+🔧 AzureOpenAIService initialization:
+   Model ID: model-router
+   Deployment Name: model-router
+   Base URL: https://yamaz-mix3u836-eastus2.cognitiveservices.azure.com/openai/deployments/model-router
+   API Version: 2025-03-01-preview
+   Use Responses API: false
+🌐 AzureOpenAI generateJSON request:
+   Expected URL: https://yamaz-mix3u836-eastus2.cognitiveservices.azure.com/openai/deployments/model-router/chat/completions?api-version=2025-03-01-preview
+   Model: model-router
+   Deployment: model-router
+   Using Chat Completions API
+🌐 AzureOpenAI generateJSON request:
+   Expected URL: https://yamaz-mix3u836-eastus2.cognitiveservices.azure.com/openai/deployments/model-router/chat/completions?api-version=2025-03-01-preview
+   Model: model-router
+   Deployment: model-router
+   Using Chat Completions API
+📊 AzureOpenAIService metrics: {
+  promptTokens: 855,
+  responseTokens: 1208,
+  totalTokens: 2063,
+  processingTimeMs: 49133,
+}
+📊 AzureOpenAIService metrics: {
+  promptTokens: 855,
+  responseTokens: 954,
+  totalTokens: 1809,
+  processingTimeMs: 16206,
+}
+🌐 AzureOpenAI generateText request:
+   Expected URL: https://yamaz-mix3u836-eastus2.cognitiveservices.azure.com/openai/deployments/model-router/chat/completions?api-version=2025-03-01-preview
+   Model: model-router
+   Deployment: model-router
+   Using Chat Completions API
+📊 AzureOpenAIService metrics (text): {
+  promptTokens: 891,
+  responseTokens: 600,
+  totalTokens: 1491,
+  processingTimeMs: 10041,
+}
+Stage 2 error: 216 |       errors.push(this.createError('INVALID_VERSION', `Invalid version: ${ors.version}, expected 4.0`, 'version'));
+217 |     }
+218 | 
+219 |     // Entity検証
+220 |     const entityIds = new Set<string>();
+221 |     for (let i = 0; i < ors.entities.length; i++) {
+                                  ^
+TypeError: undefined is not an object (evaluating 'ors.entities.length')
+      at validateORS (/home/nafell/source/sotuken/server/src/services/v4/ValidationService.ts:221:29)
+      at executeStage (/home/nafell/source/sotuken/server/src/services/BatchExecutionService.ts:340:37)
+      at async executeTrial (/home/nafell/source/sotuken/server/src/services/BatchExecutionService.ts:268:35)
+      at async executeBatch (/home/nafell/source/sotuken/server/src/services/BatchExecutionService.ts:198:37)
+
+Batch bbdd6e6f-ceeb-4043-b080-625ec98868c1 completed: 0/6 completed

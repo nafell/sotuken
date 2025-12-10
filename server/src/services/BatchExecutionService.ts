@@ -42,6 +42,7 @@ interface StageResult {
   metrics: LLMCallMetrics;
   dslErrors: string[] | null;
   regenerated: boolean;
+  promptData?: Record<string, unknown>; // プロンプト変数
 }
 
 interface TrialResult {
@@ -99,6 +100,7 @@ export class BatchExecutionService {
         inputCorpusId: config.inputCorpusId,
         parallelism: config.parallelism,
         headlessMode: config.headlessMode,
+        maxTrials: config.maxTrials ?? null,
         totalTrials,
         status: 'queued',
       })
@@ -366,6 +368,7 @@ export class BatchExecutionService {
       metrics: result.metrics,
       dslErrors,
       regenerated: (result.metrics.retryCount ?? 0) > 0,
+      promptData: variables,
     };
   }
 
@@ -453,6 +456,8 @@ export class BatchExecutionService {
       cycleDetected: false,
       regenerated: result.regenerated,
       runtimeError: isRuntimeError,
+      generatedData: result.data ?? null,
+      promptData: result.promptData ?? null,
     });
   }
 

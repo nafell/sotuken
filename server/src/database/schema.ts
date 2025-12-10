@@ -289,6 +289,7 @@ export const batchExecutions = pgTable('batch_executions', {
   inputCorpusId: text('input_corpus_id').notNull(),
   parallelism: integer('parallelism').notNull().default(1),
   headlessMode: boolean('headless_mode').notNull().default(true),
+  maxTrials: integer('max_trials'), // 入力件数の上限（nullの場合は全件実行）
 
   // ステータス
   status: text('status').notNull().default('queued'), // 'queued' | 'running' | 'completed' | 'failed' | 'stopped'
@@ -348,6 +349,10 @@ export const experimentTrialLogs = pgTable('experiment_trial_logs', {
   cycleDetected: boolean('cycle_detected').notNull().default(false),
   regenerated: boolean('regenerated').notNull().default(false),
   runtimeError: boolean('runtime_error').notNull().default(false),
+
+  // 生成データ（DSL参照用）
+  generatedData: jsonb('generated_data'), // Stage1-3の生成結果
+  promptData: jsonb('prompt_data'), // 各Stageで使用したプロンプト変数
 
   // タイムスタンプ
   timestamp: timestamp('timestamp', { withTimezone: true }).default(sql`now()`)

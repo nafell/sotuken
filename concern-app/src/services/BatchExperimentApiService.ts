@@ -64,6 +64,12 @@ export interface BatchResultsSummary {
     layer1: Layer1Metrics;
     layer4: Layer4Metrics;
   };
+  // 設定情報
+  modelConfigs?: ModelConfigId[];
+  inputCorpusId?: string;
+  parallelism?: number;
+  maxTrials?: number | null;
+  // タイミング
   startedAt: string;
   completedAt: string;
   totalDurationMs: number;
@@ -107,6 +113,9 @@ export interface TrialLog {
   regenerated: boolean;
   runtimeError: boolean;
   timestamp: string;
+  // 生成データ（DSL参照用）
+  generatedData?: unknown;
+  promptData?: Record<string, unknown>;
 }
 
 export interface CorpusInfo {

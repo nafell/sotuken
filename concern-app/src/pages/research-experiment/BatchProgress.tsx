@@ -30,15 +30,27 @@ export default function BatchProgress() {
   const navigate = useNavigate();
   const api = getBatchExperimentApi();
 
+  // タスク履歴ログ用の型
+  interface TaskLogEntry {
+    id: string;
+    timestamp: Date;
+    modelConfig: string;
+    inputId: string;
+    stage: number;
+    status: 'running' | 'completed';
+  }
+
   // State
   const [progress, setProgress] = useState<BatchProgressType | null>(null);
   const [status, setStatus] = useState<BatchStatus>('queued');
   const [startedAt, setStartedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [taskHistory, setTaskHistory] = useState<TaskLogEntry[]>([]);
 
   const cleanupRef = useRef<(() => void) | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastTaskIdRef = useRef<string | null>(null);
 
   // SSE接続
   useEffect(() => {
@@ -58,10 +70,40 @@ export default function BatchProgress() {
       onProgress: (p) => {
         setProgress(p);
         setStatus(p.status);
+
+        // タスク履歴の更新
+        if (p.currentModelConfig && p.currentInputId && p.currentStage) {
+          const taskId = `${p.currentModelConfig}-${p.currentInputId}-${p.currentStage}`;
+          if (taskId !== lastTaskIdRef.current) {
+            // 新しいタスクを検出
+            setTaskHistory(prev => {
+              // 前のタスクをcompletedに更新
+              const updated = prev.map(entry =>
+                entry.status === 'running' ? { ...entry, status: 'completed' as const } : entry
+              );
+              // 新しいタスクを先頭に追加
+              return [{
+                id: taskId,
+                timestamp: new Date(),
+                modelConfig: p.currentModelConfig!,
+                inputId: p.currentInputId!,
+                stage: p.currentStage!,
+                status: 'running',
+              }, ...updated];
+            });
+            lastTaskIdRef.current = taskId;
+          }
+        }
       },
       onComplete: (p) => {
         setProgress(p);
         setStatus(p.status);
+        // 完了時に残っているrunningタスクをcompletedに
+        setTaskHistory(prev =>
+          prev.map(entry =>
+            entry.status === 'running' ? { ...entry, status: 'completed' as const } : entry
+          )
+        );
       },
       onError: (err) => {
         setError(err.message);
@@ -308,6 +350,95 @@ export default function BatchProgress() {
                 (progress.totalTrials - progress.completedTrials)
               )
             )}
+          </div>
+        </section>
+      )}
+
+      {/* タスク履歴ログ */}
+      {taskHistory.length > 0 && (
+        <section style={{
+          marginBottom: '24px',
+        }}>
+          <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
+            タスク履歴
+          </div>
+          <div style={{
+            maxHeight: '300px',
+            overflowY: 'auto',
+            backgroundColor: '#fafafa',
+            borderRadius: '4px',
+            border: '1px solid #e0e0e0',
+          }}>
+            {taskHistory.map((task) => (
+              <div
+                key={task.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '10px 12px',
+                  borderBottom: '1px solid #eee',
+                  fontSize: '13px',
+                }}
+              >
+                {/* ステータスインジケータ */}
+                <div style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: task.status === 'running' ? '#1976d2' : '#388e3c',
+                  flexShrink: 0,
+                }} />
+                {/* 時刻 */}
+                <div style={{ color: '#666', fontFamily: 'monospace', fontSize: '12px', width: '70px', flexShrink: 0 }}>
+                  {task.timestamp.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </div>
+                {/* モデル構成 */}
+                <div style={{
+                  backgroundColor: '#e3f2fd',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  fontWeight: 'bold',
+                  color: '#1565c0',
+                  fontSize: '12px',
+                  flexShrink: 0,
+                }}>
+                  {task.modelConfig}
+                </div>
+                {/* ステージ */}
+                <div style={{
+                  backgroundColor: '#f3e5f5',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  color: '#7b1fa2',
+                  fontSize: '12px',
+                  flexShrink: 0,
+                }}>
+                  S{task.stage}
+                </div>
+                {/* 入力ID */}
+                <div style={{
+                  color: '#333',
+                  fontFamily: 'monospace',
+                  fontSize: '12px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}>
+                  {task.inputId}
+                </div>
+                {/* ステータスラベル */}
+                <div style={{
+                  marginLeft: 'auto',
+                  fontSize: '11px',
+                  color: task.status === 'running' ? '#1976d2' : '#388e3c',
+                  fontWeight: task.status === 'running' ? 'bold' : 'normal',
+                  flexShrink: 0,
+                }}>
+                  {task.status === 'running' ? '実行中' : '完了'}
+                </div>
+              </div>
+            ))}
           </div>
         </section>
       )}

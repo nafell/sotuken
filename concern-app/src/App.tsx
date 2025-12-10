@@ -45,6 +45,7 @@ const ReplayView = lazy(() => import('./pages/research-experiment/ReplayView'));
 const BatchExperiment = lazy(() => import('./pages/research-experiment/BatchExperiment'));
 const BatchProgress = lazy(() => import('./pages/research-experiment/BatchProgress'));
 const BatchResults = lazy(() => import('./pages/research-experiment/BatchResults'));
+const BatchList = lazy(() => import('./pages/research-experiment/BatchList'));
 
 function App() {
   const [condition, setCondition] = useState<ExperimentCondition>(null);
@@ -248,6 +249,22 @@ function App() {
             element={
               <Suspense fallback={<div style={{ padding: '20px' }}>Loading Batch Results...</div>}>
                 <BatchResults />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/research-experiment/batch/list"
+            element={
+              <Suspense fallback={<div style={{ padding: '20px' }}>Loading Batch List...</div>}>
+                <BatchList />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/research-experiment/sessions"
+            element={
+              <Suspense fallback={<div style={{ padding: '20px' }}>Loading Session List...</div>}>
+                <SessionList />
               </Suspense>
             }
           />

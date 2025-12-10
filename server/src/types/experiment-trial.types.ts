@@ -69,6 +69,8 @@ export interface BatchExecutionConfig {
   inputCorpusId: string;
   parallelism: number;
   headlessMode: boolean;
+  /** 実行する入力データの最大件数 */
+  maxTrials?: number;
 }
 
 /** バッチ実行進捗 */
@@ -80,6 +82,10 @@ export interface BatchProgress {
   failedTrials: number;
   currentModelConfig?: ModelConfigId;
   currentInputIndex?: number;
+  /** 現在実行中のステージ (1, 2, 3) */
+  currentStage?: number;
+  /** 現在の入力ID */
+  currentInputId?: string;
   elapsedMs?: number;
 }
 

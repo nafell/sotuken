@@ -13,7 +13,17 @@ import {
   getBatchExperimentApi,
   type BatchProgress as BatchProgressType,
   type BatchStatus,
+  type ModelConfiguration,
 } from '../../services/BatchExperimentApiService';
+
+/** モデル構成定義（フロントエンド用） */
+const MODEL_CONFIGURATIONS: Record<string, ModelConfiguration> = {
+  'A': { id: 'A', name: 'All-5-Chat', stages: ['gpt-5-chat', 'gpt-5-chat', 'gpt-5-chat'] },
+  'B': { id: 'B', name: 'All-5-mini', stages: ['gpt-5-mini', 'gpt-5-mini', 'gpt-5-mini'] },
+  'C': { id: 'C', name: 'Hybrid-5Chat/4.1', stages: ['gpt-5-chat', 'gpt-4.1', 'gpt-4.1'] },
+  'D': { id: 'D', name: 'Hybrid-5Chat/5mini', stages: ['gpt-5-chat', 'gpt-5-mini', 'gpt-5-mini'] },
+  'E': { id: 'E', name: 'Router-based', stages: ['model-router', 'model-router', 'model-router'] },
+};
 
 export default function BatchProgress() {
   const { batchId } = useParams<{ batchId: string }>();
@@ -157,7 +167,7 @@ export default function BatchProgress() {
         backgroundColor: '#f5f5f5',
         borderRadius: '4px',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <div>
             <div style={{ fontSize: '12px', color: '#666' }}>Batch ID</div>
             <div style={{ fontSize: '14px', fontFamily: 'monospace' }}>{batchId}</div>
@@ -173,6 +183,11 @@ export default function BatchProgress() {
             {getStatusLabel(status)}
           </div>
         </div>
+        {startedAt && (
+          <div style={{ fontSize: '12px', color: '#666' }}>
+            開始時刻: {new Date(startedAt).toLocaleString('ja-JP')}
+          </div>
+        )}
       </section>
 
       {/* プログレスバー */}
@@ -228,11 +243,54 @@ export default function BatchProgress() {
 
         <div style={{ padding: '16px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
           <div style={{ fontSize: '12px', color: '#666' }}>現在の構成</div>
-          <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
-            {progress?.currentModelConfig ?? '-'}
-          </div>
+          {progress?.currentModelConfig ? (
+            <>
+              <div style={{ fontSize: '20px', fontWeight: 'bold' }}>
+                {progress.currentModelConfig}: {MODEL_CONFIGURATIONS[progress.currentModelConfig]?.name ?? ''}
+              </div>
+              <div style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
+                {MODEL_CONFIGURATIONS[progress.currentModelConfig]?.stages.map((stage, i) => (
+                  <span key={i}>
+                    {i > 0 && ' → '}
+                    <span style={{
+                      fontWeight: progress.currentStage === i + 1 ? 'bold' : 'normal',
+                      color: progress.currentStage === i + 1 ? '#1976d2' : '#666',
+                    }}>
+                      S{i + 1}:{stage}
+                    </span>
+                  </span>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div style={{ fontSize: '24px', fontWeight: 'bold' }}>-</div>
+          )}
         </div>
       </section>
+
+      {/* 現在の実行状態 */}
+      {status === 'running' && progress?.currentModelConfig && (
+        <section style={{
+          marginBottom: '24px',
+          padding: '16px',
+          backgroundColor: '#e8f5e9',
+          borderRadius: '4px',
+          border: '1px solid #c8e6c9',
+        }}>
+          <div style={{ fontSize: '12px', color: '#2e7d32', marginBottom: '4px' }}>現在の実行状態</div>
+          <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1b5e20' }}>
+            Stage {progress.currentStage ?? '?'} 実行中
+            {progress.currentInputId && (
+              <span style={{ fontWeight: 'normal', color: '#388e3c' }}>
+                {' '}/ Input: {progress.currentInputId}
+              </span>
+            )}
+          </div>
+          <div style={{ fontSize: '12px', color: '#4caf50', marginTop: '4px' }}>
+            入力 {(progress.currentInputIndex ?? 0) + 1} / {progress.totalTrials / 5} 件目
+          </div>
+        </section>
+      )}
 
       {/* 残り時間推定 */}
       {status === 'running' && progress && progress.completedTrials > 0 && (

@@ -11,6 +11,7 @@ import {
   getBatchExperimentApi,
   type ModelConfigId,
   type ModelConfiguration,
+  type CorpusInfo,
 } from '../../services/BatchExperimentApiService';
 
 export default function BatchExperiment() {
@@ -19,18 +20,35 @@ export default function BatchExperiment() {
 
   // State
   const [configs, setConfigs] = useState<ModelConfiguration[]>([]);
+  const [corpuses, setCorpuses] = useState<CorpusInfo[]>([]);
   const [selectedConfigs, setSelectedConfigs] = useState<ModelConfigId[]>(['A', 'B', 'C', 'D', 'E']);
   const [experimentId, setExperimentId] = useState(`exp_${Date.now()}`);
-  const [inputCorpusId, setInputCorpusId] = useState('default');
+  const [inputCorpusId, setInputCorpusId] = useState('');
+  const [maxTrials, setMaxTrials] = useState(50);
   const [parallelism, setParallelism] = useState(1);
   const [headlessMode, setHeadlessMode] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // モデル構成を読み込み
+  // 選択中のコーパスの入力件数
+  const selectedCorpus = corpuses.find(c => c.corpusId === inputCorpusId);
+  const corpusInputCount = selectedCorpus?.inputCount ?? 0;
+  const effectiveInputCount = Math.min(corpusInputCount, maxTrials);
+
+  // モデル構成とコーパスを読み込み
   useEffect(() => {
-    api.getConfigs()
-      .then(setConfigs)
+    Promise.all([
+      api.getConfigs(),
+      api.getCorpuses(),
+    ])
+      .then(([configsData, corpusesData]) => {
+        setConfigs(configsData);
+        setCorpuses(corpusesData);
+        // デフォルトで最初のコーパスを選択
+        if (corpusesData.length > 0 && !inputCorpusId) {
+          setInputCorpusId(corpusesData[0].corpusId);
+        }
+      })
       .catch(err => setError(err.message));
   }, []);
 
@@ -69,6 +87,7 @@ export default function BatchExperiment() {
         inputCorpusId,
         parallelism,
         headlessMode,
+        maxTrials: effectiveInputCount,
       });
 
       // 進捗ページに遷移
@@ -164,21 +183,54 @@ export default function BatchExperiment() {
       {/* 入力コーパス */}
       <section style={{ marginBottom: '24px' }}>
         <h2 style={{ fontSize: '18px', marginBottom: '12px' }}>入力コーパス</h2>
-        <input
-          type="text"
+        <select
           value={inputCorpusId}
           onChange={(e) => setInputCorpusId(e.target.value)}
-          placeholder="コーパスID"
           style={{
             width: '100%',
             padding: '8px 12px',
             fontSize: '14px',
             border: '1px solid #ccc',
             borderRadius: '4px',
+            backgroundColor: 'white',
           }}
+        >
+          {corpuses.length === 0 && (
+            <option value="">コーパスを読み込み中...</option>
+          )}
+          {corpuses.map(corpus => (
+            <option key={corpus.corpusId} value={corpus.corpusId}>
+              {corpus.corpusId} - {corpus.description} ({corpus.inputCount}件)
+            </option>
+          ))}
+        </select>
+        {selectedCorpus && (
+          <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+            選択中: {selectedCorpus.description} ({selectedCorpus.inputCount}件の入力データ)
+          </p>
+        )}
+      </section>
+
+      {/* 直列数制限 */}
+      <section style={{ marginBottom: '24px' }}>
+        <h2 style={{ fontSize: '18px', marginBottom: '12px' }}>
+          直列数制限: {maxTrials}
+          {corpusInputCount > 0 && maxTrials < corpusInputCount && (
+            <span style={{ fontSize: '14px', color: '#666', fontWeight: 'normal' }}>
+              {' '}(コーパス {corpusInputCount}件中)
+            </span>
+          )}
+        </h2>
+        <input
+          type="range"
+          min="1"
+          max="50"
+          value={maxTrials}
+          onChange={(e) => setMaxTrials(parseInt(e.target.value, 10))}
+          style={{ width: '100%' }}
         />
         <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-          50件の入力テストデータのコーパスIDを指定
+          実行する入力データ件数の上限 (1-50)
         </p>
       </section>
 
@@ -194,7 +246,7 @@ export default function BatchExperiment() {
           style={{ width: '100%' }}
         />
         <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-          APIレート制限を考慮して段階的にスケールアップ推奨
+          ※現在は直列実行のみサポート
         </p>
       </section>
 
@@ -220,15 +272,25 @@ export default function BatchExperiment() {
       <section style={{
         marginBottom: '24px',
         padding: '16px',
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#e3f2fd',
         borderRadius: '4px',
+        border: '1px solid #90caf9',
       }}>
         <h3 style={{ fontSize: '16px', marginBottom: '8px' }}>実行予定</h3>
-        <div style={{ fontSize: '14px' }}>
-          <div>選択構成数: {selectedConfigs.length}</div>
-          <div>想定入力数: 50</div>
-          <div>総試行数: {selectedConfigs.length * 50}</div>
-          <div>LLMリクエスト数: {selectedConfigs.length * 50 * 3}</div>
+        <div style={{ fontSize: '14px', display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px' }}>
+          <div>選択構成数:</div>
+          <div style={{ fontWeight: 'bold' }}>{selectedConfigs.length}</div>
+          <div>実行入力数:</div>
+          <div style={{ fontWeight: 'bold' }}>
+            {effectiveInputCount}
+            {corpusInputCount > 0 && effectiveInputCount < corpusInputCount && (
+              <span style={{ fontWeight: 'normal', color: '#666' }}> (コーパス {corpusInputCount}件中)</span>
+            )}
+          </div>
+          <div>総試行数:</div>
+          <div style={{ fontWeight: 'bold' }}>{selectedConfigs.length * effectiveInputCount}</div>
+          <div>LLMリクエスト数:</div>
+          <div style={{ fontWeight: 'bold' }}>{selectedConfigs.length * effectiveInputCount * 3}</div>
         </div>
       </section>
 

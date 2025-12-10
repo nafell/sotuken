@@ -21,15 +21,29 @@ export interface AzureOpenAIResponse {
   metrics?: GeminiResponseMetrics;
 }
 
-/** デフォルトAPIバージョン */
+/** デフォルトAPIバージョン（GPT-4.1系） */
 export const DEFAULT_API_VERSION = "2024-12-01-preview";
 
-/** GPT-5系モデル用APIバージョン（Responses API） */
-export const GPT5_API_VERSION = "2025-04-01-preview";
+/** GPT-5-chat用APIバージョン（Responses API） */
+export const GPT5_RESPONSES_API_VERSION = "2025-04-01-preview";
 
-/** GPT-5系モデルかどうかを判定 */
-function isGpt5Model(modelId: string): boolean {
-  return modelId.startsWith("gpt-5");
+/** GPT-5-mini用APIバージョン（Chat Completions API + reasoning_effort） */
+export const GPT5_MINI_API_VERSION = "2025-03-01-preview";
+
+/**
+ * Responses APIを使用するモデルかどうかを判定
+ * GPT-5-chatのみResponses APIを使用（推論機能を活用）
+ */
+function useResponsesApi(modelId: string): boolean {
+  return modelId === "gpt-5-chat";
+}
+
+/**
+ * GPT-5-miniかどうかを判定
+ * Chat Completions API + reasoning_effort="minimal" を使用
+ */
+function isGpt5Mini(modelId: string): boolean {
+  return modelId === "gpt-5-mini";
 }
 
 /** 利用可能なモデルID一覧 */
@@ -82,6 +96,9 @@ function getAzureConfig(modelId: string): { endpoint: string; apiKey: string; de
     throw new Error(`${deploymentEnvKey} environment variable is not set`);
   }
 
+  // デバッグ: モデルIDと環境変数の対応を出力
+  console.log(`🔍 getAzureConfig: modelId="${modelId}" -> envKey="${deploymentEnvKey}" -> deploymentName="${deploymentName}"`);
+
   return { endpoint, apiKey, deploymentName };
 }
 
@@ -96,6 +113,7 @@ export class AzureOpenAIService {
   private baseURL: string;
   private apiVersion: string;
   private useResponsesApi: boolean;
+  private isGpt5Mini: boolean;
 
   /**
    * コンストラクタ
@@ -125,11 +143,23 @@ export class AzureOpenAIService {
     this.modelId = modelId;
     this.deploymentName = deploymentName;
 
-    // GPT-5系モデルはResponses APIを使用
-    this.useResponsesApi = isGpt5Model(modelId);
+    // モデル種別を判定
+    this.useResponsesApi = useResponsesApi(modelId);  // GPT-5-chatのみtrue
+    this.isGpt5Mini = isGpt5Mini(modelId);            // GPT-5-miniのみtrue
 
-    // APIバージョンを決定（GPT-5系は専用バージョン）
-    this.apiVersion = apiVersion || (this.useResponsesApi ? GPT5_API_VERSION : DEFAULT_API_VERSION);
+    // APIバージョンを決定
+    // - GPT-5-chat: Responses API用バージョン
+    // - GPT-5-mini: Chat Completions API + reasoning_effort用バージョン
+    // - その他: デフォルトバージョン
+    if (apiVersion) {
+      this.apiVersion = apiVersion;
+    } else if (this.useResponsesApi) {
+      this.apiVersion = GPT5_RESPONSES_API_VERSION;
+    } else if (this.isGpt5Mini) {
+      this.apiVersion = GPT5_MINI_API_VERSION;
+    } else {
+      this.apiVersion = DEFAULT_API_VERSION;
+    }
 
     // エンドポイントのベースを正規化（末尾のスラッシュを除去）
     const normalizedEndpoint = endpoint.replace(/\/$/, '');
@@ -150,6 +180,7 @@ export class AzureOpenAIService {
     console.log(`   Base URL: ${this.baseURL}`);
     console.log(`   API Version: ${this.apiVersion}`);
     console.log(`   Use Responses API: ${this.useResponsesApi}`);
+    console.log(`   Is GPT-5-mini: ${this.isGpt5Mini}`);
 
     // OpenAI SDKをAzure用に設定
     this.client = new OpenAI({
@@ -184,8 +215,9 @@ export class AzureOpenAIService {
       let result: OpenAI.Chat.Completions.ChatCompletion;
 
       if (this.useResponsesApi) {
-        // GPT-5系: Responses API を使用
-        console.log('   Using Responses API for GPT-5 model');
+        // GPT-5-chat: Responses API を使用
+        // 注意: Azure OpenAI Responses APIでは reasoning パラメータは非対応
+        console.log('   Using Responses API for GPT-5-chat model');
         const responsesResult = await (this.client as any).responses.create({
           model: this.deploymentName,
           input: fullPrompt,
@@ -223,8 +255,23 @@ export class AzureOpenAIService {
             total_tokens: responsesUsage.total_tokens || 0
           }
         };
+      } else if (this.isGpt5Mini) {
+        // GPT-5-mini: Chat Completions API + reasoning_effort="minimal"
+        console.log('   Using Chat Completions API for GPT-5-mini (reasoning_effort: minimal)');
+        result = await this.client.chat.completions.create({
+          model: this.deploymentName,
+          messages: [
+            {
+              role: "user",
+              content: fullPrompt,
+            },
+          ],
+          response_format: { type: "json_object" },
+          reasoning_effort: "minimal",     // 推論を最小化
+          max_completion_tokens: 4096,     // 推論モデル用パラメータ
+        } as any);  // reasoning_effortの型定義がない場合のため
       } else {
-        // その他: Chat Completions API を使用
+        // GPT-4.1系など: Chat Completions API を使用
         console.log('   Using Chat Completions API');
         result = await this.client.chat.completions.create({
           model: this.deploymentName,
@@ -336,8 +383,9 @@ export class AzureOpenAIService {
       let result: OpenAI.Chat.Completions.ChatCompletion;
 
       if (this.useResponsesApi) {
-        // GPT-5系: Responses API を使用
-        console.log('   Using Responses API for GPT-5 model');
+        // GPT-5-chat: Responses API を使用
+        // 注意: Azure OpenAI Responses APIでは reasoning パラメータは非対応
+        console.log('   Using Responses API for GPT-5-chat model');
         const responsesResult = await (this.client as any).responses.create({
           model: this.deploymentName,
           input: prompt,
@@ -372,8 +420,22 @@ export class AzureOpenAIService {
             total_tokens: responsesUsage.total_tokens || 0
           }
         };
+      } else if (this.isGpt5Mini) {
+        // GPT-5-mini: Chat Completions API + reasoning_effort="minimal"
+        console.log('   Using Chat Completions API for GPT-5-mini (reasoning_effort: minimal)');
+        result = await this.client.chat.completions.create({
+          model: this.deploymentName,
+          messages: [
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          reasoning_effort: "minimal",     // 推論を最小化
+          max_completion_tokens: 4096,     // 推論モデル用パラメータ
+        } as any);  // reasoning_effortの型定義がない場合のため
       } else {
-        // その他: Chat Completions API を使用
+        // GPT-4.1系など: Chat Completions API を使用
         console.log('   Using Chat Completions API');
         result = await this.client.chat.completions.create({
           model: this.deploymentName,

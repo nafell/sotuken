@@ -24,6 +24,14 @@ export interface AzureOpenAIResponse {
 /** デフォルトAPIバージョン */
 export const DEFAULT_API_VERSION = "2024-12-01-preview";
 
+/** GPT-5系モデル用APIバージョン（Responses API） */
+export const GPT5_API_VERSION = "2025-04-01-preview";
+
+/** GPT-5系モデルかどうかを判定 */
+function isGpt5Model(modelId: string): boolean {
+  return modelId.startsWith("gpt-5");
+}
+
 /** 利用可能なモデルID一覧 */
 export const AZURE_AVAILABLE_MODELS = [
   "gpt-4.1",
@@ -85,6 +93,9 @@ export class AzureOpenAIService {
   private client: OpenAI;
   private deploymentName: string;
   private modelId: string;
+  private baseURL: string;
+  private apiVersion: string;
+  private useResponsesApi: boolean;
 
   /**
    * コンストラクタ
@@ -114,11 +125,37 @@ export class AzureOpenAIService {
     this.modelId = modelId;
     this.deploymentName = deploymentName;
 
+    // GPT-5系モデルはResponses APIを使用
+    this.useResponsesApi = isGpt5Model(modelId);
+
+    // APIバージョンを決定（GPT-5系は専用バージョン）
+    this.apiVersion = apiVersion || (this.useResponsesApi ? GPT5_API_VERSION : DEFAULT_API_VERSION);
+
+    // エンドポイントのベースを正規化（末尾のスラッシュを除去）
+    const normalizedEndpoint = endpoint.replace(/\/$/, '');
+
+    // URLを構築
+    // GPT-5系: /openai/responses エンドポイントを使用
+    // その他: /openai/deployments/{deploymentName} エンドポイントを使用
+    if (this.useResponsesApi) {
+      this.baseURL = `${normalizedEndpoint}/openai`;
+    } else {
+      this.baseURL = `${normalizedEndpoint}/openai/deployments/${this.deploymentName}`;
+    }
+
+    // デバッグログ出力
+    console.log('🔧 AzureOpenAIService initialization:');
+    console.log(`   Model ID: ${this.modelId}`);
+    console.log(`   Deployment Name: ${this.deploymentName}`);
+    console.log(`   Base URL: ${this.baseURL}`);
+    console.log(`   API Version: ${this.apiVersion}`);
+    console.log(`   Use Responses API: ${this.useResponsesApi}`);
+
     // OpenAI SDKをAzure用に設定
     this.client = new OpenAI({
       apiKey,
-      baseURL: `${endpoint.replace(/\/$/, '')}/openai/deployments/${this.deploymentName}`,
-      defaultQuery: { 'api-version': apiVersion || DEFAULT_API_VERSION },
+      baseURL: this.baseURL,
+      defaultQuery: { 'api-version': this.apiVersion },
       defaultHeaders: { 'api-key': apiKey },
     });
   }
@@ -131,20 +168,69 @@ export class AzureOpenAIService {
   async generateJSON(prompt: string): Promise<AzureOpenAIResponse> {
     const startTime = Date.now();
 
+    // リクエスト情報をログ出力
+    const expectedUrl = this.useResponsesApi
+      ? `${this.baseURL}/responses?api-version=${this.apiVersion}`
+      : `${this.baseURL}/chat/completions?api-version=${this.apiVersion}`;
+    console.log('🌐 AzureOpenAI generateJSON request:');
+    console.log(`   Expected URL: ${expectedUrl}`);
+    console.log(`   Model: ${this.modelId}`);
+    console.log(`   Deployment: ${this.deploymentName}`);
+
     try {
       // JSON形式での応答を要求
       const fullPrompt = `${prompt}\n\nIMPORTANT: Respond ONLY with valid JSON. Do not include any markdown formatting, explanations, or text outside the JSON structure.`;
 
-      const result = await this.client.chat.completions.create({
-        model: this.deploymentName,
-        messages: [
-          {
-            role: "user",
-            content: fullPrompt,
-          },
-        ],
-        response_format: { type: "json_object" },
-      });
+      let result: OpenAI.Chat.Completions.ChatCompletion;
+
+      if (this.useResponsesApi) {
+        // GPT-5系: Responses API を使用
+        console.log('   Using Responses API for GPT-5 model');
+        const responsesResult = await (this.client as any).responses.create({
+          model: this.deploymentName,
+          input: fullPrompt,
+          text: {
+            format: { type: "json_object" }
+          }
+        });
+
+        // Responses API の結果を Chat Completions 形式に変換
+        const outputText = responsesResult.output_text || "";
+        result = {
+          id: responsesResult.id || "",
+          object: "chat.completion",
+          created: Date.now(),
+          model: this.deploymentName,
+          choices: [{
+            index: 0,
+            message: {
+              role: "assistant",
+              content: outputText,
+              refusal: null
+            },
+            finish_reason: "stop",
+            logprobs: null
+          }],
+          usage: responsesResult.usage || {
+            prompt_tokens: 0,
+            completion_tokens: 0,
+            total_tokens: 0
+          }
+        };
+      } else {
+        // その他: Chat Completions API を使用
+        console.log('   Using Chat Completions API');
+        result = await this.client.chat.completions.create({
+          model: this.deploymentName,
+          messages: [
+            {
+              role: "user",
+              content: fullPrompt,
+            },
+          ],
+          response_format: { type: "json_object" },
+        });
+      }
 
       const endTime = Date.now();
 
@@ -177,7 +263,18 @@ export class AzureOpenAIService {
       };
     } catch (error) {
       const endTime = Date.now();
-      console.error("Azure OpenAI API error:", error);
+      console.error("❌ Azure OpenAI API error:", error);
+      // エラーの詳細をログ出力
+      if (error instanceof Error) {
+        console.error(`   Error name: ${error.name}`);
+        console.error(`   Error message: ${error.message}`);
+        if ('status' in error) {
+          console.error(`   HTTP Status: ${(error as any).status}`);
+        }
+        if ('response' in error) {
+          console.error(`   Response:`, (error as any).response);
+        }
+      }
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
@@ -220,16 +317,62 @@ export class AzureOpenAIService {
   async generateText(prompt: string): Promise<AzureOpenAIResponse> {
     const startTime = Date.now();
 
+    // リクエスト情報をログ出力
+    const expectedUrl = this.useResponsesApi
+      ? `${this.baseURL}/responses?api-version=${this.apiVersion}`
+      : `${this.baseURL}/chat/completions?api-version=${this.apiVersion}`;
+    console.log('🌐 AzureOpenAI generateText request:');
+    console.log(`   Expected URL: ${expectedUrl}`);
+    console.log(`   Model: ${this.modelId}`);
+    console.log(`   Deployment: ${this.deploymentName}`);
+
     try {
-      const result = await this.client.chat.completions.create({
-        model: this.deploymentName,
-        messages: [
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-      });
+      let result: OpenAI.Chat.Completions.ChatCompletion;
+
+      if (this.useResponsesApi) {
+        // GPT-5系: Responses API を使用
+        console.log('   Using Responses API for GPT-5 model');
+        const responsesResult = await (this.client as any).responses.create({
+          model: this.deploymentName,
+          input: prompt,
+        });
+
+        // Responses API の結果を Chat Completions 形式に変換
+        const outputText = responsesResult.output_text || "";
+        result = {
+          id: responsesResult.id || "",
+          object: "chat.completion",
+          created: Date.now(),
+          model: this.deploymentName,
+          choices: [{
+            index: 0,
+            message: {
+              role: "assistant",
+              content: outputText,
+              refusal: null
+            },
+            finish_reason: "stop",
+            logprobs: null
+          }],
+          usage: responsesResult.usage || {
+            prompt_tokens: 0,
+            completion_tokens: 0,
+            total_tokens: 0
+          }
+        };
+      } else {
+        // その他: Chat Completions API を使用
+        console.log('   Using Chat Completions API');
+        result = await this.client.chat.completions.create({
+          model: this.deploymentName,
+          messages: [
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+        });
+      }
 
       const endTime = Date.now();
 
@@ -246,7 +389,18 @@ export class AzureOpenAIService {
       };
     } catch (error) {
       const endTime = Date.now();
-      console.error("Azure OpenAI API error:", error);
+      console.error("❌ Azure OpenAI API error (text):", error);
+      // エラーの詳細をログ出力
+      if (error instanceof Error) {
+        console.error(`   Error name: ${error.name}`);
+        console.error(`   Error message: ${error.message}`);
+        if ('status' in error) {
+          console.error(`   HTTP Status: ${(error as any).status}`);
+        }
+        if ('response' in error) {
+          console.error(`   Response:`, (error as any).response);
+        }
+      }
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",

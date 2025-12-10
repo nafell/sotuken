@@ -85,8 +85,9 @@ function getV4Services(provider: LLMProvider = 'gemini', modelId?: string): V4Se
     }
 
     const widgetSelectionService = createWidgetSelectionService({ llmOrchestrator, debug: true });
-    const orsGeneratorService = createORSGeneratorService({ llmOrchestrator });
-    const uiSpecGeneratorV4 = createUISpecGeneratorV4({ llmOrchestrator });
+    // disableFallback: true - LLM呼び出し失敗時にフォールバックUIを返さず、エラーをそのまま返す（実験失敗として記録可能）
+    const orsGeneratorService = createORSGeneratorService({ llmOrchestrator, debug: true, disableFallback: true });
+    const uiSpecGeneratorV4 = createUISpecGeneratorV4({ llmOrchestrator, debug: true, disableFallback: true });
 
     const services: V4ServicesType = {
       llmOrchestrator,

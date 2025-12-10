@@ -194,8 +194,13 @@ export class AzureOpenAIService {
           }
         });
 
+        // デバッグ: Responses APIの生レスポンスをログ出力
+        console.log('   📊 Responses API raw usage:', JSON.stringify(responsesResult.usage, null, 2));
+
         // Responses API の結果を Chat Completions 形式に変換
+        // 注意: Responses APIは input_tokens/output_tokens を返す（Chat Completions APIは prompt_tokens/completion_tokens）
         const outputText = responsesResult.output_text || "";
+        const responsesUsage = responsesResult.usage || {};
         result = {
           id: responsesResult.id || "",
           object: "chat.completion",
@@ -211,10 +216,11 @@ export class AzureOpenAIService {
             finish_reason: "stop",
             logprobs: null
           }],
-          usage: responsesResult.usage || {
-            prompt_tokens: 0,
-            completion_tokens: 0,
-            total_tokens: 0
+          // Responses APIのフィールド名をChat Completions形式に変換
+          usage: {
+            prompt_tokens: responsesUsage.input_tokens || 0,
+            completion_tokens: responsesUsage.output_tokens || 0,
+            total_tokens: responsesUsage.total_tokens || 0
           }
         };
       } else {
@@ -337,8 +343,13 @@ export class AzureOpenAIService {
           input: prompt,
         });
 
+        // デバッグ: Responses APIの生レスポンスをログ出力
+        console.log('   📊 Responses API raw usage (text):', JSON.stringify(responsesResult.usage, null, 2));
+
         // Responses API の結果を Chat Completions 形式に変換
+        // 注意: Responses APIは input_tokens/output_tokens を返す（Chat Completions APIは prompt_tokens/completion_tokens）
         const outputText = responsesResult.output_text || "";
+        const responsesUsage = responsesResult.usage || {};
         result = {
           id: responsesResult.id || "",
           object: "chat.completion",
@@ -354,10 +365,11 @@ export class AzureOpenAIService {
             finish_reason: "stop",
             logprobs: null
           }],
-          usage: responsesResult.usage || {
-            prompt_tokens: 0,
-            completion_tokens: 0,
-            total_tokens: 0
+          // Responses APIのフィールド名をChat Completions形式に変換
+          usage: {
+            prompt_tokens: responsesUsage.input_tokens || 0,
+            completion_tokens: responsesUsage.output_tokens || 0,
+            total_tokens: responsesUsage.total_tokens || 0
           }
         };
       } else {

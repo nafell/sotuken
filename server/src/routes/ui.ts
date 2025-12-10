@@ -637,15 +637,18 @@ uiRoutes.post('/generate-v4', async (c) => {
           generatedOrs: ors,
           generatedUiSpec: uiSpec,
           // V4 各段階メトリクス
-          widgetSelectionTokens: widgetSelectionResult.result.metrics?.inputTokens,
+          widgetSelectionTokens: (widgetSelectionResult.result.metrics?.inputTokens || 0) +
+                                 (widgetSelectionResult.result.metrics?.outputTokens || 0),
           widgetSelectionDuration: widgetSelectionMetrics.latencyMs,
           orsTokens: (orsLLMResult.metrics?.inputTokens || 0) + (orsLLMResult.metrics?.outputTokens || 0),
           orsDuration: orsMetrics.latencyMs,
           uiSpecTokens: (uispecLLMResult.metrics?.inputTokens || 0) + (uispecLLMResult.metrics?.outputTokens || 0),
           uiSpecDuration: uispecMetrics.latencyMs,
-          // 合計メトリクス
-          totalPromptTokens: (orsLLMResult.metrics?.inputTokens || 0) + (uispecLLMResult.metrics?.inputTokens || 0),
-          totalResponseTokens: (orsLLMResult.metrics?.outputTokens || 0) + (uispecLLMResult.metrics?.outputTokens || 0),
+          // 合計メトリクス（widget_selection + ors + uispec）
+          totalPromptTokens: (widgetSelectionResult.result.metrics?.inputTokens || 0) +
+                             (orsLLMResult.metrics?.inputTokens || 0) + (uispecLLMResult.metrics?.inputTokens || 0),
+          totalResponseTokens: (widgetSelectionResult.result.metrics?.outputTokens || 0) +
+                               (orsLLMResult.metrics?.outputTokens || 0) + (uispecLLMResult.metrics?.outputTokens || 0),
           totalGenerateDuration: totalLatency,
         }).returning({ id: experimentGenerations.id });
 

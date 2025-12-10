@@ -465,29 +465,52 @@ export class BatchExecutionService {
 
   /**
    * 入力コーパスを読み込み
-   * TODO: 実際のコーパスファイル読み込み実装
    */
   private async loadInputCorpus(corpusId: string): Promise<InputCorpus> {
-    // 仮実装：config/experiment-input-corpus.json から読み込む予定
-    // 現時点ではダミーデータを返す
-    console.warn(`Loading corpus ${corpusId} - using placeholder data`);
+    const fs = await import('fs/promises');
+    const path = await import('path');
 
-    return {
-      corpusId,
-      description: 'Placeholder corpus',
-      inputs: [
-        {
-          inputId: 'input_001',
-          concernText: 'テスト用の悩みテキストです。',
+    // test_cases コーパスの場合、config/test-cases/*.json を読み込む
+    if (corpusId === 'test_cases') {
+      // server/ から実行されるので、親ディレクトリの config/ を参照
+      const testCasesDir = path.join(process.cwd(), '..', 'config', 'test-cases');
+      const files = await fs.readdir(testCasesDir);
+      const jsonFiles = files.filter(f => f.endsWith('.json')).sort();
+
+      const inputs: ExperimentInput[] = [];
+      for (const file of jsonFiles) {
+        const content = await fs.readFile(path.join(testCasesDir, file), 'utf-8');
+        const testCase = JSON.parse(content);
+        inputs.push({
+          inputId: testCase.caseId,
+          concernText: testCase.concernText,
           contextFactors: {
-            category: 'work',
-            urgency: 'medium',
-            emotionalState: 'neutral',
-            timeAvailable: '30min',
+            category: testCase.contextFactors.category,
+            urgency: testCase.contextFactors.urgency,
+            emotionalState: testCase.contextFactors.emotionalState,
+            timeAvailable: String(testCase.contextFactors.timeAvailable),
           },
-        },
-      ],
-    };
+        });
+      }
+
+      console.log(`Loaded ${inputs.length} test cases as input corpus`);
+      return {
+        corpusId: 'test_cases',
+        description: `${inputs.length} expert evaluation test cases`,
+        inputs,
+      };
+    }
+
+    // その他のコーパスID: config/experiment-input-corpus.json から読み込み
+    const corpusPath = path.join(process.cwd(), '..', 'config', 'experiment-input-corpus.json');
+    try {
+      const content = await fs.readFile(corpusPath, 'utf-8');
+      const corpus = JSON.parse(content) as InputCorpus;
+      console.log(`Loaded corpus '${corpusId}' with ${corpus.inputs.length} inputs`);
+      return corpus;
+    } catch (err) {
+      throw new Error(`Corpus not found: ${corpusId}. Create config/experiment-input-corpus.json or use 'test_cases' as corpusId.`);
+    }
   }
 }
 

@@ -265,7 +265,7 @@ function calculateStatistics(logs: typeof experimentTrialLogs.$inferSelect[]): {
 } {
   if (logs.length === 0) {
     return {
-      layer1: { VR: 0, TCR: 0, RRR: 0, CDR: 0, RGR: 0 },
+      layer1: { VR: 0, TCR: 0, RRR: 0, CDR: 0, RGR: 0, W2WR_SR: 0, RC_SR: 0, JA_SR: 0 },
       layer4: { LAT: 0, COST: 0, FR: 0 },
     };
   }
@@ -281,6 +281,11 @@ function calculateStatistics(logs: typeof experimentTrialLogs.$inferSelect[]): {
   const refOkCount = logs.filter(log => log.referenceErrorCount === 0).length;
   const cycleCount = logs.filter(log => log.cycleDetected).length;
   const regenCount = logs.filter(log => log.regenerated).length;
+
+  // W2WR/RC/JA 成功率計算
+  const w2wrSuccessCount = logs.filter(log => log.w2wrErrors === null).length;
+  const rcSuccessCount = logs.filter(log => log.reactComponentErrors === null).length;
+  const jaSuccessCount = logs.filter(log => log.jotaiAtomErrors === null).length;
 
   // Layer4計算
   const totalLatency = logs.reduce((sum, log) => sum + log.latencyMs, 0);
@@ -304,6 +309,9 @@ function calculateStatistics(logs: typeof experimentTrialLogs.$inferSelect[]): {
       RRR: refOkCount / total,
       CDR: cycleCount / total,
       RGR: regenCount / total,
+      W2WR_SR: w2wrSuccessCount / total,
+      RC_SR: rcSuccessCount / total,
+      JA_SR: jaSuccessCount / total,
     },
     layer4: {
       LAT: totalLatency / total,

@@ -535,10 +535,10 @@ export class BatchExecutionService {
       sessionId,
     });
 
-    // ORS検証
+    // PlanORS検証（v5.0）
     let dslErrors: string[] | null = null;
     if (result.success && result.data) {
-      const validationResult = this.validationService.validateORS(result.data);
+      const validationResult = this.validationService.validatePlanORS(result.data);
       if (!validationResult.valid) {
         dslErrors = validationResult.errors.map(e => e.type);
       }
@@ -696,7 +696,7 @@ export class BatchExecutionService {
     inputId: string,
     modelConfigId: ModelConfigId,
     stages: StageResult[],
-    success: boolean,
+    _success: boolean, // DSLエラーベースの成功判定は無視
     runtimeError: boolean
   ): TrialResult {
     return {
@@ -704,7 +704,7 @@ export class BatchExecutionService {
       inputId,
       modelConfigId,
       stages,
-      success,
+      success: !runtimeError, // 実行時エラーがなければ成功
       runtimeError,
     };
   }

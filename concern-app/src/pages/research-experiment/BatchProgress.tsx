@@ -7,7 +7,7 @@
  * @see specs/system-design/experiment_spec_layer_1_layer_4.md
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   getBatchExperimentApi,
@@ -17,7 +17,7 @@ import {
   type RunningTask,
   type TrialLog,
 } from '../../services/BatchExperimentApiService';
-import TrialLogDetail from './components/TrialLogDetail';
+import TrialWithStagesDetail, { type TrialWithStages } from './components/TrialWithStagesDetail';
 import { validateUISpecHeadless } from '../../components/experiment/HeadlessValidator';
 import type { UISpec } from '../../types/v4/ui-spec.types';
 
@@ -52,14 +52,59 @@ export default function BatchProgress() {
   const [error, setError] = useState<string | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [taskHistory, setTaskHistory] = useState<TaskLogEntry[]>([]);
-  // 完了タスクの詳細表示用
-  const [completedTrials, setCompletedTrials] = useState<TrialLog[]>([]);
+  // 完了タスクの詳細表示用（Trial > Stage階層構造）
+  const [completedTrials, setCompletedTrials] = useState<Map<string, TrialWithStages>>(new Map());
   const [expandedTrialId, setExpandedTrialId] = useState<string | null>(null);
 
   const cleanupRef = useRef<(() => void) | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastTaskIdRef = useRef<string | null>(null);
   const previousRunningTasksRef = useRef<RunningTask[]>([]);
+  // ステージ追跡用ref
+  const previousTaskStagesRef = useRef<Map<string, number>>(new Map());
+
+  // ステージログ追加関数
+  const addCompletedStageLog = useCallback((log: TrialLog) => {
+    setCompletedTrials(prev => {
+      const key = `${log.modelConfig}-${log.inputId}`;
+      const newMap = new Map(prev);
+      const existing = newMap.get(key);
+
+      if (existing) {
+        existing.stages.set(log.stage, log);
+        newMap.set(key, { ...existing, stages: new Map(existing.stages) });
+      } else {
+        newMap.set(key, {
+          trialKey: key,
+          modelConfig: log.modelConfig,
+          inputId: log.inputId,
+          trialNumber: log.trialNumber,
+          stages: new Map([[log.stage, log]]),
+        });
+      }
+      return newMap;
+    });
+
+    // Stage 3のフロントエンド検証
+    if (log.stage === 3 && log.generatedData) {
+      try {
+        const uiSpec = log.generatedData as UISpec;
+        const validationResult = validateUISpecHeadless(uiSpec);
+
+        api.sendRenderFeedback(log.id, {
+          stage: 3,
+          renderErrors: validationResult.renderErrors,
+          reactComponentErrors: validationResult.reactComponentErrors,
+          jotaiAtomErrors: validationResult.jotaiAtomErrors,
+          typeErrorCount: validationResult.typeErrorCount,
+          referenceErrorCount: validationResult.referenceErrorCount,
+          cycleDetected: validationResult.cycleDetected,
+        }).catch(err => console.error('Failed to send validation feedback:', err));
+      } catch (err) {
+        console.error('Failed to validate UISpec:', err);
+      }
+    }
+  }, [api]);
 
   // SSE接続
   useEffect(() => {
@@ -80,47 +125,41 @@ export default function BatchProgress() {
         setProgress(p);
         setStatus(p.status);
 
-        // runningTasksから完了したタスクを検出
+        // runningTasksからステージ完了を検出
         if (p.runningTasks) {
-          const currentIds = new Set(p.runningTasks.map(t => `${t.modelConfig}-${t.inputId}`));
-          const completedTasks = previousRunningTasksRef.current
-            .filter(t => !currentIds.has(`${t.modelConfig}-${t.inputId}`));
+          const completedStages: Array<{modelConfig: string; inputId: string; completedStage: number}> = [];
+          const currentTaskKeys = new Set(p.runningTasks.map(t => `${t.modelConfig}-${t.inputId}`));
 
-          // 完了したタスクの試行ログを取得
-          for (const task of completedTasks) {
-            api.getTrialLogs(batchId, { modelConfig: task.modelConfig })
-              .then(trials => {
-                const trial = trials.find(t => t.inputId === task.inputId);
-                if (trial) {
-                  setCompletedTrials(prev => {
-                    // 重複チェック
-                    if (prev.some(ct => ct.id === trial.id)) return prev;
-                    return [trial, ...prev];
-                  });
+          // 1. タスクが消えた場合 = 残りステージ全て完了
+          for (const prev of previousRunningTasksRef.current) {
+            const key = `${prev.modelConfig}-${prev.inputId}`;
+            if (!currentTaskKeys.has(key)) {
+              const prevStage = previousTaskStagesRef.current.get(key) ?? prev.stage;
+              for (let s = prevStage; s <= 3; s++) {
+                completedStages.push({ modelConfig: prev.modelConfig, inputId: prev.inputId, completedStage: s });
+              }
+              previousTaskStagesRef.current.delete(key);
+            }
+          }
 
-                  // Stage 3 (UISpec生成) の場合のみフロントエンド検証を実行
-                  if (trial.stage === 3 && trial.generatedData) {
-                    try {
-                      const uiSpec = trial.generatedData as UISpec;
-                      const validationResult = validateUISpecHeadless(uiSpec);
+          // 2. ステージが進んだ場合 = 前ステージ完了
+          for (const task of p.runningTasks) {
+            const key = `${task.modelConfig}-${task.inputId}`;
+            const prevStage = previousTaskStagesRef.current.get(key);
+            if (prevStage !== undefined && task.stage > prevStage) {
+              completedStages.push({ modelConfig: task.modelConfig, inputId: task.inputId, completedStage: prevStage });
+            }
+            previousTaskStagesRef.current.set(key, task.stage);
+          }
 
-                      // 検証結果をAPIに送信
-                      api.sendRenderFeedback(trial.id, {
-                        stage: 3,
-                        renderErrors: validationResult.renderErrors,
-                        reactComponentErrors: validationResult.reactComponentErrors,
-                        jotaiAtomErrors: validationResult.jotaiAtomErrors,
-                        typeErrorCount: validationResult.typeErrorCount,
-                        referenceErrorCount: validationResult.referenceErrorCount,
-                        cycleDetected: validationResult.cycleDetected,
-                      }).catch(err => console.error('Failed to send validation feedback:', err));
-                    } catch (err) {
-                      console.error('Failed to validate UISpec:', err);
-                    }
-                  }
-                }
+          // 3. 完了したステージのログを取得
+          for (const completed of completedStages) {
+            api.getTrialLogs(batchId, { modelConfig: completed.modelConfig, stage: completed.completedStage })
+              .then(logs => {
+                const log = logs.find(l => l.inputId === completed.inputId);
+                if (log) addCompletedStageLog(log);
               })
-              .catch(err => console.error('Failed to fetch trial log:', err));
+              .catch(err => console.error('Failed to fetch stage log:', err));
           }
 
           previousRunningTasksRef.current = [...p.runningTasks];
@@ -168,7 +207,7 @@ export default function BatchProgress() {
     return () => {
       cleanupRef.current?.();
     };
-  }, [batchId]);
+  }, [batchId, addCompletedStageLog]);
 
   // 経過時間カウンター
   useEffect(() => {
@@ -282,11 +321,37 @@ export default function BatchProgress() {
             {getStatusLabel(status)}
           </div>
         </div>
-        {startedAt && (
-          <div style={{ fontSize: '12px', color: '#666' }}>
-            開始時刻: {new Date(startedAt).toLocaleString('ja-JP')}
+        {/* 時間情報を3カラムで配置 */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginTop: '12px' }}>
+          <div>
+            <div style={{ fontSize: '12px', color: '#666' }}>開始時刻</div>
+            <div style={{ fontSize: '14px' }}>
+              {startedAt ? new Date(startedAt).toLocaleString('ja-JP') : '-'}
+            </div>
           </div>
-        )}
+          <div>
+            <div style={{ fontSize: '12px', color: '#666' }}>経過時間</div>
+            <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{formatTime(elapsedSeconds)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: '12px', color: '#e65100' }}>残り推定時間</div>
+            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#e65100' }}>
+              {status === 'running' && progress && (progress.completedStages ?? progress.completedTrials) > 0
+                ? formatTime(
+                    progress.completedStages !== undefined && progress.totalStages
+                      ? Math.round(
+                          (elapsedSeconds / progress.completedStages) *
+                          (progress.totalStages - progress.completedStages)
+                        )
+                      : Math.round(
+                          (elapsedSeconds / progress.completedTrials) *
+                          (progress.totalTrials - progress.completedTrials)
+                        )
+                  )
+                : '-'}
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* プログレスバー */}
@@ -322,7 +387,7 @@ export default function BatchProgress() {
       {/* 詳細情報 */}
       <section style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
+        gridTemplateColumns: 'repeat(3, 1fr)',
         gap: '16px',
         marginBottom: '24px',
       }}>
@@ -344,13 +409,6 @@ export default function BatchProgress() {
           <div style={{ fontSize: '12px', color: '#c62828' }}>失敗</div>
           <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#c62828' }}>
             {progress?.failedTrials ?? 0}
-          </div>
-        </div>
-
-        <div style={{ padding: '16px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
-          <div style={{ fontSize: '12px', color: '#666' }}>経過時間</div>
-          <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
-            {formatTime(elapsedSeconds)}
           </div>
         </div>
       </section>
@@ -482,54 +540,32 @@ export default function BatchProgress() {
         </section>
       )}
 
-      {/* 残り時間推定（ステージベースでより正確に） */}
-      {status === 'running' && progress && (progress.completedStages ?? progress.completedTrials) > 0 && (
-        <section style={{
-          marginBottom: '24px',
-          padding: '16px',
-          backgroundColor: '#fff3e0',
-          borderRadius: '4px',
-        }}>
-          <div style={{ fontSize: '12px', color: '#e65100' }}>残り推定時間</div>
-          <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#e65100' }}>
-            {formatTime(
-              progress.completedStages !== undefined && progress.totalStages
-                ? Math.round(
-                    (elapsedSeconds / progress.completedStages) *
-                    (progress.totalStages - progress.completedStages)
-                  )
-                : Math.round(
-                    (elapsedSeconds / progress.completedTrials) *
-                    (progress.totalTrials - progress.completedTrials)
-                  )
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* 完了タスク詳細（TrialLogDetail表示） */}
-      {completedTrials.length > 0 && (
+      {/* 完了タスク詳細（Trial > Stage階層表示） */}
+      {completedTrials.size > 0 && (
         <section style={{ marginBottom: '24px' }}>
           <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
-            完了タスク ({completedTrials.length}件)
+            完了タスク ({completedTrials.size}件)
           </div>
           <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
-            {completedTrials.map(trial => (
-              <TrialLogDetail
-                key={trial.id}
-                trial={trial}
-                isExpanded={expandedTrialId === trial.id}
-                onToggle={() => setExpandedTrialId(
-                  expandedTrialId === trial.id ? null : trial.id
-                )}
-              />
-            ))}
+            {Array.from(completedTrials.values())
+              .sort((a, b) => b.trialNumber - a.trialNumber)
+              .map(trial => (
+                <TrialWithStagesDetail
+                  key={trial.trialKey}
+                  trial={trial}
+                  isExpanded={expandedTrialId === trial.trialKey}
+                  onToggle={() => setExpandedTrialId(
+                    expandedTrialId === trial.trialKey ? null : trial.trialKey
+                  )}
+                />
+              ))
+            }
           </div>
         </section>
       )}
 
       {/* タスク履歴ログ（後方互換性：runningTasksがない場合のフォールバック） */}
-      {taskHistory.length > 0 && completedTrials.length === 0 && (
+      {taskHistory.length > 0 && completedTrials.size === 0 && (
         <section style={{
           marginBottom: '24px',
         }}>

@@ -8,6 +8,48 @@
 import { useState } from 'react';
 import type { TrialLog, ModelConfiguration } from '../../../services/BatchExperimentApiService';
 
+/** コピーボタンコンポーネント */
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      style={{
+        position: 'absolute',
+        top: '8px',
+        right: '8px',
+        padding: '4px 8px',
+        fontSize: '11px',
+        backgroundColor: copied ? '#4caf50' : '#fff',
+        color: copied ? '#fff' : '#666',
+        border: '1px solid #ccc',
+        borderRadius: '4px',
+        cursor: 'pointer',
+      }}
+    >
+      {copied ? 'Copied!' : 'Copy'}
+    </button>
+  );
+}
+
+/** JSON文字列内のエスケープされた改行を実際の改行に変換 */
+function formatJsonWithNewlines(data: unknown): string {
+  const json = JSON.stringify(data, null, 2);
+  // JSON内のエスケープされた改行（\\n）を実際の改行に変換
+  return json.replace(/\\n/g, '\n');
+}
+
 /** モデル構成定義 */
 const MODEL_CONFIGURATIONS: Record<string, ModelConfiguration> = {
   'A': { id: 'A', name: 'All-5-Chat', stages: ['gpt-5-chat', 'gpt-5-chat', 'gpt-5-chat'] },
@@ -389,7 +431,7 @@ export default function TrialLogDetail({ trial, isExpanded, onToggle }: TrialLog
 
             {activeTab === 'generated' && (
               <div>
-                {!trial.generatedData && !trial.promptData ? (
+                {!trial.generatedData && !trial.promptData && !trial.inputVariables ? (
                   <div style={{
                     padding: '24px',
                     textAlign: 'center',
@@ -401,19 +443,50 @@ export default function TrialLogDetail({ trial, isExpanded, onToggle }: TrialLog
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {/* Prompt Data */}
+                    {/* Prompt (LLMに送信されたプロンプト全文) */}
                     {trial.promptData !== undefined && trial.promptData !== null && (
-                      <div>
+                      <div style={{ position: 'relative' }}>
+                        <div style={{
+                          fontSize: '12px',
+                          color: '#7b1fa2',
+                          marginBottom: '4px',
+                          fontWeight: 'bold',
+                        }}>
+                          Prompt (Full Text Sent to LLM)
+                        </div>
+                        <div style={{
+                          padding: '12px',
+                          paddingRight: '60px',
+                          backgroundColor: '#f3e5f5',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontFamily: 'monospace',
+                          maxHeight: '400px',
+                          overflowY: 'auto',
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word',
+                          position: 'relative',
+                        }}>
+                          <CopyButton text={trial.promptData} />
+                          {trial.promptData}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Input Variables (プロンプト変数) */}
+                    {trial.inputVariables !== undefined && trial.inputVariables !== null && (
+                      <div style={{ position: 'relative' }}>
                         <div style={{
                           fontSize: '12px',
                           color: '#1565c0',
                           marginBottom: '4px',
                           fontWeight: 'bold',
                         }}>
-                          Prompt Data (Input Variables)
+                          Input Variables
                         </div>
                         <div style={{
                           padding: '12px',
+                          paddingRight: '60px',
                           backgroundColor: '#e3f2fd',
                           borderRadius: '4px',
                           fontSize: '12px',
@@ -422,15 +495,17 @@ export default function TrialLogDetail({ trial, isExpanded, onToggle }: TrialLog
                           overflowY: 'auto',
                           whiteSpace: 'pre-wrap',
                           wordBreak: 'break-word',
+                          position: 'relative',
                         }}>
-                          {JSON.stringify(trial.promptData, null, 2)}
+                          <CopyButton text={formatJsonWithNewlines(trial.inputVariables)} />
+                          {formatJsonWithNewlines(trial.inputVariables)}
                         </div>
                       </div>
                     )}
 
-                    {/* Generated Data */}
+                    {/* Generated Data (LLM出力) */}
                     {trial.generatedData !== undefined && trial.generatedData !== null && (
-                      <div>
+                      <div style={{ position: 'relative' }}>
                         <div style={{
                           fontSize: '12px',
                           color: '#2e7d32',
@@ -441,6 +516,7 @@ export default function TrialLogDetail({ trial, isExpanded, onToggle }: TrialLog
                         </div>
                         <div style={{
                           padding: '12px',
+                          paddingRight: '60px',
                           backgroundColor: '#e8f5e9',
                           borderRadius: '4px',
                           fontSize: '12px',
@@ -449,8 +525,10 @@ export default function TrialLogDetail({ trial, isExpanded, onToggle }: TrialLog
                           overflowY: 'auto',
                           whiteSpace: 'pre-wrap',
                           wordBreak: 'break-word',
+                          position: 'relative',
                         }}>
-                          {JSON.stringify(trial.generatedData, null, 2)}
+                          <CopyButton text={formatJsonWithNewlines(trial.generatedData)} />
+                          {formatJsonWithNewlines(trial.generatedData)}
                         </div>
                       </div>
                     )}

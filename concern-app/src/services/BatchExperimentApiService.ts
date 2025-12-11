@@ -134,7 +134,8 @@ export interface TrialLog {
   timestamp: string;
   // 生成データ（DSL参照用）
   generatedData?: unknown;
-  promptData?: Record<string, unknown>;
+  promptData?: string; // 実際にLLMに送信されたプロンプト全文
+  inputVariables?: Record<string, unknown>; // プロンプト変数
 }
 
 export interface CorpusInfo {

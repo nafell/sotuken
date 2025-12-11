@@ -7,7 +7,7 @@
  * @since DSL v4.0
  */
 
-import type { ORS, Entity, Attribute, StageType } from '../../types/v4/ors.types';
+import type { ORS, Entity, Attribute, StageType, PlanORS } from '../../types/v4/ors.types';
 import type { DependencyGraph, DataDependency } from '../../types/v4/dependency-graph.types';
 import type { UISpec, WidgetSpec, DataBindingSpec, PlanUISpec } from '../../types/v4/ui-spec.types';
 import type { ReactiveBindingSpec, ReactiveBinding } from '../../types/v4/reactive-binding.types';
@@ -251,6 +251,66 @@ export class ValidationService {
     const hasConcern = ors.entities.some((e) => e.type === 'concern');
     if (!hasConcern) {
       warnings.push(this.createWarning('NO_CONCERN_ENTITY', 'ORS has no concern entity', 'entities'));
+    }
+
+    return this.buildResult(errors, warnings, info);
+  }
+
+  /**
+   * PlanORS (v5.0) を検証
+   */
+  validatePlanORS(planORS: PlanORS): ValidationResult {
+    const errors: ValidationError[] = [];
+    const warnings: ValidationError[] = [];
+    const info: ValidationError[] = [];
+
+    // null/undefinedチェック
+    if (!planORS || typeof planORS !== 'object') {
+      errors.push(this.createError('INVALID_ORS', 'PlanORS is null or not an object', 'root'));
+      return this.buildResult(errors, warnings, info);
+    }
+
+    // バージョンチェック
+    if (planORS.version !== '5.0') {
+      errors.push(this.createError('INVALID_VERSION', `Invalid version: ${planORS.version}, expected 5.0`, 'version'));
+    }
+
+    // planMetadataチェック
+    if (!planORS.planMetadata || typeof planORS.planMetadata !== 'object') {
+      errors.push(this.createError('MISSING_REQUIRED_FIELD', 'PlanORS.planMetadata is missing', 'planMetadata'));
+    }
+
+    // entitiesが配列であることを確認
+    if (!Array.isArray(planORS.entities)) {
+      errors.push(this.createError('INVALID_ENTITIES', 'PlanORS.entities is not an array', 'entities'));
+      return this.buildResult(errors, warnings, info);
+    }
+
+    // Entity検証
+    const entityIds = new Set<string>();
+    for (let i = 0; i < planORS.entities.length; i++) {
+      const entity = planORS.entities[i];
+      const path = `entities[${i}]`;
+
+      // 重複チェック
+      if (entityIds.has(entity.id)) {
+        errors.push(this.createError('DUPLICATE_ENTITY', `Duplicate entity ID: ${entity.id}`, path));
+      }
+      entityIds.add(entity.id);
+
+      // 属性検証
+      this.validateEntityAttributes(entity, path, errors, warnings, info);
+    }
+
+    // DependencyGraph検証
+    if (planORS.dependencyGraph) {
+      this.validateDependencyGraph(planORS.dependencyGraph, entityIds, planORS.entities, errors, warnings, info);
+    }
+
+    // concernエンティティの存在チェック
+    const hasConcern = planORS.entities.some((e) => e.type === 'concern');
+    if (!hasConcern) {
+      warnings.push(this.createWarning('NO_CONCERN_ENTITY', 'PlanORS has no concern entity', 'entities'));
     }
 
     return this.buildResult(errors, warnings, info);

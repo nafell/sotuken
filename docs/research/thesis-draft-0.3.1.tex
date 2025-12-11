@@ -634,9 +634,9 @@ Widget間連動ルール & 固定 & 固定 & \textbf{動的} & 動的 \\
 \end{itemize}
 
 
-\subsubsection{本研究における判断結果}
+\subsubsection{本研究における判断結果と生成パイプライン}
 
-本研究における設計判断を表\ref{tab:design_decision}に整理する。
+前節までの議論を踏まえ、本研究における設計判断を表\ref{tab:design_decision}に整理する。
 
 \begin{table}[tb]
 \caption{設計判断の整理}
@@ -655,18 +655,51 @@ Widget順序 & 動的 & ボトルネックに応じた最適化 \\
 \end{tabular}
 \end{table}
 
+以下、各判断の根拠と、それを実現する生成パイプラインについて述べる。
 
-\subsection{生成パイプライン}
+\textbf{Widget種類の固定}：
+第\ref{sec:jelly-limitation}節で述べたように、汎用的なシステム（Jelly等）ではAtomからUIを動的に組み上げるため、DSLの規則が複雑化しプロンプトが長くなる。
+本研究では、思考整理に有効なUIパターンを13種のWidgetとして事前定義することで、Stage 5の問題（UX品質の不確実性、トークンコスト増大、ドメイン知識の活用困難）を回避する。
+これにより、LLMはWidgetの内部構造を知る必要がなく、「どのWidgetを使うか」の選択に集中できる。
 
-本システムの生成パイプラインは以下の通りである：
+\textbf{フロー構造の半固定}：
+思考整理のドメイン知識として、「発散（Diverge）→整理（Organize）→収束（Converge）→まとめ（Summary）」という4ステージ構造を採用する。
+この構造は認知心理学におけるダブルダイアモンドモデル\cite{design_council2005}に基づいており、各ステージの目的は固定されているが、各ステージ内でどのWidgetを使用するかは動的に決定される。
+
+\textbf{Widget選択・順序の動的生成}：
+ユーザーの悩みとボトルネック診断結果に基づき、LLMが適切なWidgetを選択する。
+例えば、「感情的ブロック」が検出された場合はEmotionPaletteを優先し、「選択肢過多」の場合はCardSortingを優先するといった判断を行う。
+これはStage 3の機能に相当するが、本研究ではこれに加えてWidget間連動の動的生成（Stage 4）を行う点が重要である。
+
+\textbf{コンテンツの動的生成（generatedValue）}：
+Widgetの「枠」は固定だが、その中身（ラベル、サンプルデータ等）はLLMが生成する。
+これにより、空のWidgetから始める認知負荷（Cold Start Problem）を軽減し、ユーザーの思考を促すきっかけを提供する。
+
+\textbf{Widget間連動の動的生成}：
+本研究の中核的な技術的貢献である。
+第3.3.4節で論じたように、Stage 3では連動ルールが事前に固定されているが、Stage 4ではLLMがこのルール自体を生成する。
+例えば、BrainstormCardsの出力をCardSortingの入力に接続し、さらにその分類結果をPrioritySliderGridに渡すといった連動パターンは、ユーザーの悩みの文脈によって異なる。
+この文脈依存の連動を実現するために、Widget-to-Widget Reactivityという機構を導入する。
+
+\textbf{スタイル・配置の固定/半固定}：
+スタイル（色、サイズ等）の動的生成はエンゲージメント向上を目的とした別の研究領域であり、本研究の範囲外とする。
+配置についても、思考整理では上から順に処理するリニアな構造で十分であるため、レイアウトパターンからの選択に留める。
+
+これらの設計判断を実現するため、本システムでは以下の3段階LLM呼び出しパイプラインを採用する：
+
 \begin{enumerate}
-    \item \textbf{Capture Data}（ユーザー入力）
-    \item \textbf{LLM: ボトルネック診断}
-    \item \textbf{LLM: IDDM生成}（Object-Relational Schema + Dependency Graph、Widget-to-Widget Reactivity定義）
-    \item \textbf{LLM: UI Specification生成}（Widgetコンテンツカスタマイズ、連動ルール具体化）
-    \item \textbf{Renderer: UI描画}
-    \item \textbf{ユーザー操作 $\rightarrow$ Reactive更新}（LLM不介在）
+    \item \textbf{Capture \& 診断}：ユーザーが悩みを入力し、LLMがボトルネック（思考の障壁）を診断する
+    \item \textbf{Widget選定}：診断結果に基づき、LLMが4ステージ分のWidgetを一括選定する
+    \item \textbf{IDDM生成}：選定されたWidgetに対して、Object-Relational SchemaとDependency Graph（Widget間連動ルール）を生成する
+    \item \textbf{UISpec生成}：IDDMに基づき、具体的なWidget仕様（コンテンツ、ReactiveBinding）を生成する
+    \item \textbf{Rendering}：生成されたUISpecをルールベースでReact UIに変換する
+    \item \textbf{Reactive更新}：ユーザー操作に応じて、事前定義された連動ルールに基づきWidget間でデータが伝播する（LLM不介在）
 \end{enumerate}
+
+このパイプラインにおいて、LLMは(2)-(4)の3段階で呼び出される。
+重要な点は、(6)のReactive更新時にはLLMが介在しないことである。
+連動ルールはDSLとして事前に生成されており、実際の連動はそのルールに基づいて機械的に実行される。
+これにより、リアルタイムな応答性を確保しつつ、文脈依存の連動パターンを実現する。
 
 
 \section{実装}
@@ -845,6 +878,27 @@ interface WidgetSpec {
 }
 \end{lstlisting}
 
+\subsubsection{DSL v5: Plan統合生成}
+
+実験においてWidget-to-Widget Reactivityの効果を検証するため、DSL v5ではPlan統合生成を導入した。
+v4では4ステージ（diverge, organize, converge, summary）が別ページとして存在し、各ステージでORS/UISpecを個別に生成していたが、v5ではdivergence/organize/convergeの3セクションを1ページに統合し、セクション横断のWidget間連動を可能にした。
+
+\begin{table}[h]
+\caption{DSL v4とv5の比較}
+\label{tab:dsl_v4_v5}
+\centering
+\small
+\begin{tabular}{lll} \toprule
+観点 & v4 & v5 \\ \midrule
+Planフェーズ構造 & 4ステージ別ページ & 3セクション統合1ページ \\
+W2WR動作範囲 & 同一ステージ内 & セクション横断 \\
+LLM呼び出し回数 & 9回 & 5回（44\%削減） \\ \bottomrule
+\end{tabular}
+\end{table}
+
+v5のPlanUISpecは、3セクション分のWidgetを`sections`構造で保持し、セクション間のReactiveBindingを定義する。
+これにより、ユーザーがdivergenceセクションでカードを追加すると、即座にorganize/convergeセクションのWidgetに反映されるリアルタイム連動が実現される。
+
 \subsection{DSL仕様}
 
 \subsubsection{Jellyとの対応}
@@ -974,7 +1028,7 @@ generatedValueは、UIそのものではなく\textbf{UI内のコンテンツ}�
 \subsubsection{生成されたコンテンツの構造}
 生成コンテンツは`isGenerated: true`マーカーで識別され、フロントエンドでは視覚的に区別される。ユーザーは生成された内容に対して「採用」「却下」を選択できる。
 
-\begin{lstlisting}[caption = あああああああああああああああああああああああああああああああああああああああああああ, label = lst:uispec-generatedvalue-instance, language=json]
+\begin{lstlisting}[caption = generatedValueを含むUISpec config例, label = lst:uispec-generatedvalue-instance, language=json]
 {
   "config": {
     "sampleCards": {
@@ -1009,49 +1063,252 @@ UISpec InstanceからReact UIを動的レンダリングする主要コンポー
 これらの実装により、動的UI度Stage 4を実現し、提案手法の技術的実現性を示した。
 
 \section{実験と評価}
+
 \subsection{評価の目的と構成}
+
+本章では、提案システムの技術的実現性と実用性を検証するため、以下の2つの研究課題（RQ）を設定し、対応する実験を行う。
+
 \begin{description}
-    \item[RQ1] Widget-to-Widget Reactivityは適切に生成されるか？
-    \item[RQ2] 生成されるUIフローは思考整理に適切か？
-    \item[RQ3] Widget種類数とコンテキストウィンドウのトレードオフはどうか？
-    \item[RQ4] LLMモデルの違いは生成品質にどう影響するか？
+    \item[RQ1] 提案システムは、入力に応じた動的UIを適切に生成できるか？（単発実行による技術確認）
+    \item[RQ4] LLMモデル構成の違いは、生成品質と実用性にどう影響するか？（バッチ実行による統計分析）
 \end{description}
 
-\subsection{実験設計}
-\subsubsection{実験1: 技術性能評価}
-トークン使用量、生成成功率、レスポンス時間を測定する。
+RQ1は開発者による単発実行を通じて、3段階LLMパイプライン、Widget-to-Widget Reactivity、generatedValueが期待通り機能することを確認する定性的評価である。
+RQ4は250回の自動バッチ実行により、5つのモデル構成間の生成品質を統計的に比較する定量的評価である。
 
-\subsubsection{実験2: Widget数とコンテキストウィンドウのトレードオフ}
-Widget数を変化させ（6/9/12/15個）、生成品質を比較する。
-\begin{itemize}
-    \item 仮説3-1：Widget数が増えるとプロンプトが長くなり、生成成功率が低下する。
-    \item 仮説3-2：閾値を超えると品質が急激に低下する。
-\end{itemize}
+\subsection{評価フレームワーク}
 
-\subsubsection{実験3: モデル比較}
-汎用モデル、コーディング特化モデル、低コストモデルの性能比較を行う。
-表\ref{tab:model_comparison}の4パターンで検証する。
+評価指標は、動的UI生成システムの品質を多面的に測定するため、Layer1（構造健全性）とLayer4（実用性）の2層で構成する。
 
-\begin{table}[tb]
-\caption{モデル比較の検証パターン}
-\label{tab:model_comparison}
+\subsubsection{Layer1: 構造健全性指標}
+
+生成されたDSLの構造的正確性を評価する指標群である。
+
+\begin{table}[h]
+\caption{Layer1 構造健全性指標}
+\label{tab:layer1_metrics}
 \centering
 \small
-\begin{tabular}{c|c|c|c|c} \toprule
-Pt & 診断/選択 & 構造化出力 & まとめ & 狙い \\ \midrule
-A & GPT-5 & GPT-5 & GPT-5 & 品質上限 \\
-B & mini & mini & mini & コスト下限 \\
-C & GPT-5 & Codex & GPT-5 & Codex優位性 \\
-D & GPT-5 & mini & GPT-5 & 構造化mini耐性 \\ \bottomrule
+\begin{tabular}{llp{6cm}} \toprule
+記号 & 指標名 & 定義 \\ \midrule
+VR & DSL妥当率 & JSONパース・Zodスキーマ検証・rule-basedレンダリングに成功した割合 \\
+TCR & 型整合率 & TypeScript/Zod検証で型エラーが0の割合 \\
+RRR & 参照整合率 & dataBindings等の参照解決が全て成功した割合 \\
+CDR & 循環依存率 & DependencyGraphにおいて循環が検出された割合 \\
+RGR & 再生成率 & バリデーション失敗により再生成が発生した割合 \\
+W2WR\_SR & W2WR成功率 & Widget-to-Widget Reactivity検証に成功した割合 \\
+RCR & React変換成功率 & DSLからReactコンポーネントへの変換に成功した割合 \\
+JAR & Jotai生成成功率 & Jotai atom動的生成に成功した割合 \\ \bottomrule
 \end{tabular}
 \end{table}
 
-\subsection{実験4 \& 5: 専門家評価とユーザー検証}
-専門家による10ケースの評価と、5名のユーザーによる検証を行う。
+W2WR\_SR、RCR、JARは本研究で新たに導入した指標であり、DSL生成の成功だけでなく、実際のフロントエンドレンダリングまでの一貫した動作を検証する。
+
+\subsubsection{Layer4: 実用性指標}
+
+実運用における性能を評価する指標群である。
+
+\begin{table}[h]
+\caption{Layer4 実用性指標}
+\label{tab:layer4_metrics}
+\centering
+\small
+\begin{tabular}{llp{6cm}} \toprule
+記号 & 指標名 & 定義 \\ \midrule
+LAT & 平均レイテンシ & 各Stage処理時間および全体処理時間（ms） \\
+COST & 推定APIコスト & 1セッションあたりのトークン使用量に基づく推定コスト（JPY） \\
+FR & 異常終了率 & タイムアウト・JSON破損・API失敗の割合 \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{実験1: 単発実行による技術確認（RQ1）}
+
+\subsubsection{目的}
+3段階LLMパイプラインが入力テキストに応じて適切なDSLを生成し、Widget-to-Widget ReactivityおよびgeneratedValueが期待通り機能することを確認する。
+
+\subsubsection{方法}
+開発者が代表的な入力テキスト（悩みの種類、複雑さが異なる5件程度）を用いて単発実行を行い、以下を目視確認する：
+\begin{enumerate}
+    \item Stage 1: 入力内容に適したWidget種類が選択されているか
+    \item Stage 2: ORSとDependencyGraphが正しく構造化されているか
+    \item Stage 3: UISpecにWidget間連動（ReactiveBinding）が定義されているか
+    \item フロントエンド: Widget間のリアルタイム連動が動作するか
+    \item generatedValue: サンプルデータが適切に生成・表示されているか
+\end{enumerate}
+
+\subsubsection{結果}
+% TODO: 実験実施後に記載
+（実験実施後に記載予定）
+
+\subsection{実験2: バッチ実行による統計分析（RQ4）}
+
+\subsubsection{目的}
+5つのLLMモデル構成間で、生成品質（Layer1）と実用性（Layer4）に統計的有意差があるかを検証する。
+
+\subsubsection{実験対象モデル構成}
+
+Azure OpenAI Serviceで利用可能なモデルを用いて、表\ref{tab:model_configs}の5構成を比較対象とする。
+
+\begin{table}[h]
+\caption{実験対象モデル構成}
+\label{tab:model_configs}
+\centering
+\small
+\begin{tabular}{clccc} \toprule
+ID & 構成名 & Stage 1 & Stage 2 & Stage 3 \\ \midrule
+A & All-5-Chat & GPT-5-Chat & GPT-5-Chat & GPT-5-Chat \\
+B & All-5-mini & GPT-5-mini & GPT-5-mini & GPT-5-mini \\
+C & Hybrid-5Chat/4.1 & GPT-5-Chat & GPT-4.1 & GPT-4.1 \\
+D & Hybrid-5Chat/5mini & GPT-5-Chat & GPT-5-mini & GPT-5-mini \\
+E & Router-based & model-router & model-router & model-router \\ \bottomrule
+\end{tabular}
+\end{table}
+
+構成Eのmodel-routerは、Azure OpenAI Serviceがプロンプト内容に基づいて最適なモデルを自動選択するエンドポイントである。
+
+\subsubsection{実験条件}
+\begin{itemize}
+    \item 入力データ: 50件のユーザー入力テキスト（全構成で同一）
+    \item 総試行回数: 250回（50件 × 5構成）
+    \item LLMパラメータ: temperature=0.0, top\_p=1.0（再現性確保）
+    \item プロンプト: 全構成で完全固定
+\end{itemize}
+
+\subsubsection{自動検証パイプライン}
+各試行において、以下の自動検証が実行される：
+\begin{enumerate}
+    \item \textbf{DSL検証}（サーバサイド）: JSONパース、Zodスキーマ検証、参照整合性チェック、循環依存検出
+    \item \textbf{W2WR検証}（サーバサイド）: Widget-to-Widget Reactivityの定義整合性検証
+    \item \textbf{レンダリング検証}（フロントエンド）: rule-basedレンダラによるReactコンポーネント変換、Jotai atom動的生成
+\end{enumerate}
+
+検証結果は、エラー種別を\texttt{string[] | null}形式で記録し、定量評価（エラー件数）と定性評価（エラー内容分類）の両立を図る。
+
+\subsubsection{統計検定}
+\begin{itemize}
+    \item 成功率系指標（VR, TCR, RRR, CDR, RGR, W2WR\_SR, RCR, JAR, FR）: 2標本比例検定（z検定）、有意水準 $\alpha = 0.05$
+    \item 実数値系指標（LAT, COST）: Mann–Whitney U検定（正規分布を仮定しないノンパラメトリック検定）
+\end{itemize}
+
+\subsubsection{結果}
+% TODO: 実験実施後に記載
+
+\paragraph{Layer1: 構造健全性}
+
+\begin{table}[h]
+\caption{Layer1 構造健全性結果}
+\label{tab:layer1_results}
+\centering
+\small
+\begin{tabular}{lccccccccc} \toprule
+Model & VR & TCR & RRR & CDR & RGR & W2WR\_SR & RCR & JAR \\ \midrule
+All-5-Chat & - & - & - & - & - & - & - & - \\
+All-5-mini & - & - & - & - & - & - & - & - \\
+5Chat/4.1 & - & - & - & - & - & - & - & - \\
+5Chat/5mini & - & - & - & - & - & - & - & - \\
+Router-based & - & - & - & - & - & - & - & - \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Layer4: 実用性}
+
+\begin{table}[h]
+\caption{Layer4 実用性結果}
+\label{tab:layer4_results}
+\centering
+\small
+\begin{tabular}{lccc} \toprule
+Model & LAT (ms) & COST (JPY) & FR \\ \midrule
+All-5-Chat & - & - & - \\
+All-5-mini & - & - & - \\
+5Chat/4.1 & - & - & - \\
+5Chat/5mini & - & - & - \\
+Router-based & - & - & - \\ \bottomrule
+\end{tabular}
+\end{table}
+
+（実験実施後に記載予定）
 
 \section{考察}
-\subsection{設計パラダイムの妥当性}
-Stage 4の選択が適切であったか、Widget-to-Widget Reactivityが「JSON出力で十分」への回答となったかを考察する。
+
+% 実験結果に基づく考察のアウトライン
+% 3つの想定ケースに対する論理展開を準備
+
+\subsection{実験結果の解釈}
+
+実験結果に基づき、以下の観点から考察を行う。
+
+\subsubsection{ケース1: 高性能モデル（All-5-Chat）が全指標で優位な場合}
+
+% 想定される結果パターン
+% - All-5-Chat: VR/TCR/RRR等が90%以上、LAT高め、COST高め
+% - All-5-mini: 各指標が70-80%程度、LAT低め、COST低め
+% - Hybrid構成: 中間的な結果
+
+この結果が得られた場合、以下の論点を展開する：
+\begin{itemize}
+    \item \textbf{品質とコストのトレードオフ}: 高品質モデルはDSL生成において優位性を持つが、実運用ではコスト制約が存在する。品質要求とコストのバランスをどう取るかが設計判断となる。
+    \item \textbf{Hybrid構成の有効性}: Stage 1（Widget選択）のみ高性能モデルを使用し、Stage 2/3は低コストモデルで代替するHybrid構成が、品質を維持しつつコストを抑制できるかを検証する。
+    \item \textbf{構造化出力タスクの特性}: DSL生成は構造化出力タスクであり、汎用的な言語理解能力よりもスキーマ遵守能力が重要である可能性を示唆する。
+\end{itemize}
+
+\subsubsection{ケース2: 低コストモデル（All-5-mini）でも十分な品質が達成される場合}
+
+% 想定される結果パターン
+% - All-5-Chat と All-5-mini の差が統計的に有意でない
+% - または5-miniでも85%以上の成功率
+
+この結果が得られた場合、以下の論点を展開する：
+\begin{itemize}
+    \item \textbf{DSL生成タスクの難易度}: 本研究のDSL設計（Widget種類固定、スキーマ明示）が適切であり、低コストモデルでも十分に対応可能な難易度に設計できていることを示す。
+    \item \textbf{プロンプトエンジニアリングの効果}: few-shot例示、スキーマ定義、制約条件の明示など、プロンプト設計がモデル性能差を吸収している可能性がある。
+    \item \textbf{実用性への示唆}: 実運用においては低コストモデルで十分であり、コスト効率の高いシステム設計が可能であることを意味する。
+\end{itemize}
+
+\subsubsection{ケース3: モデル構成によって得意な指標が異なる場合}
+
+% 想定される結果パターン
+% - 高性能モデル: W2WR_SR, RRR（複雑な参照解決）で優位
+% - 低コストモデル: VR, TCR（基本的なスキーマ遵守）で十分
+% - Router-based: 適応的に良好な結果
+
+この結果が得られた場合、以下の論点を展開する：
+\begin{itemize}
+    \item \textbf{タスク複雑度とモデル選択}: Widget-to-Widget Reactivityのような複雑な参照関係の生成には高性能モデルが必要だが、基本的なDSL構造の生成は低コストモデルで十分である可能性がある。
+    \item \textbf{動的モデル選択の有効性}: Router-based構成がタスク特性に応じてモデルを適応的に選択し、品質とコストの最適バランスを実現できるかを評価する。
+    \item \textbf{段階別最適化の可能性}: 各Stageの特性（Stage 1: 分類タスク、Stage 2: 構造化タスク、Stage 3: 生成タスク）に応じた最適モデル構成の存在を示唆する。
+\end{itemize}
+
+\subsection{設計判断の妥当性}
+
+\subsubsection{動的UI度Stage 4の選択}
+% 実験結果を踏まえ、Stage 4（Widget種類固定 + Reactivity動的）の選択が適切であったかを評価
+% - Stage 5（Widget種類も動的）との比較
+% - 実用性（成功率、レイテンシ）とのバランス
+
+\subsubsection{Widget-to-Widget Reactivityの価値}
+% W2WR_SR, RCR, JARの結果から、Widget間連動機能の実現可能性と価値を評価
+% - 「JSON出力で十分」への回答として機能しているか
+% - リアルタイム連動がユーザー体験にどう寄与するか
+
+\subsubsection{generatedValueの効果}
+% Cold Start Problem解決としてのgeneratedValueの有効性
+% - 追加LLM呼び出しなしでのコンテンツ生成
+% - ユーザーの思考開始点としての価値
+
+\subsection{限界と脅威}
+
+\subsubsection{内的妥当性への脅威}
+\begin{itemize}
+    \item 入力データの多様性: 50件の入力テキストが実際のユーザー使用パターンを十分に代表しているか
+    \item temperature=0.0による決定論的生成: 実運用時のばらつきを反映していない可能性
+\end{itemize}
+
+\subsubsection{外的妥当性への脅威}
+\begin{itemize}
+    \item ドメイン特化: 思考整理ドメインでの結果が他ドメインに一般化できるか
+    \item モデルの進化: 実験時点のモデル性能が将来のモデルに適用できるか
+\end{itemize}
 
 \section{Future Work}
 \begin{itemize}

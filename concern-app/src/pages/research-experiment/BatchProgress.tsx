@@ -18,6 +18,8 @@ import {
   type TrialLog,
 } from '../../services/BatchExperimentApiService';
 import TrialLogDetail from './components/TrialLogDetail';
+import { validateUISpecHeadless } from '../../components/experiment/HeadlessValidator';
+import type { UISpec } from '../../types/v4/ui-spec.types';
 
 /** モデル構成定義（フロントエンド用） */
 const MODEL_CONFIGURATIONS: Record<string, ModelConfiguration> = {
@@ -95,6 +97,27 @@ export default function BatchProgress() {
                     if (prev.some(ct => ct.id === trial.id)) return prev;
                     return [trial, ...prev];
                   });
+
+                  // Stage 3 (UISpec生成) の場合のみフロントエンド検証を実行
+                  if (trial.stage === 3 && trial.generatedData) {
+                    try {
+                      const uiSpec = trial.generatedData as UISpec;
+                      const validationResult = validateUISpecHeadless(uiSpec);
+
+                      // 検証結果をAPIに送信
+                      api.sendRenderFeedback(trial.id, {
+                        stage: 3,
+                        renderErrors: validationResult.renderErrors,
+                        reactComponentErrors: validationResult.reactComponentErrors,
+                        jotaiAtomErrors: validationResult.jotaiAtomErrors,
+                        typeErrorCount: validationResult.typeErrorCount,
+                        referenceErrorCount: validationResult.referenceErrorCount,
+                        cycleDetected: validationResult.cycleDetected,
+                      }).catch(err => console.error('Failed to send validation feedback:', err));
+                    } catch (err) {
+                      console.error('Failed to validate UISpec:', err);
+                    }
+                  }
                 }
               })
               .catch(err => console.error('Failed to fetch trial log:', err));

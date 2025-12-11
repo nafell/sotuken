@@ -8,9 +8,9 @@
  */
 
 import { useEffect, useCallback, useRef } from 'react';
-import type { UISpec, WidgetSpec } from '../../types/v4/ui-spec.types';
+import type { UISpec } from '../../types/v4/ui-spec.types';
 import type { ORS } from '../../types/v4/ors.types';
-import type { ReactiveBindingSpec, ReactiveBinding } from '../../types/v4/reactive-binding.types';
+import type { ReactiveBinding } from '../../types/v4/reactive-binding.types';
 import { ReactiveBindingEngineV4, DEFAULT_ENGINE_CONFIG_V4 } from '../../services/ui/ReactiveBindingEngineV4';
 
 // ========================================
@@ -153,18 +153,19 @@ function validateBindingMechanisms(
   const errors: string[] = [];
 
   for (const binding of bindings) {
-    const { mechanism } = binding.relationship;
+    const rel = binding.relationship;
 
-    if (mechanism === 'javascript' && !binding.relationship.javascript) {
+    // 型ベースの検証
+    if (rel.type === 'javascript' && !rel.javascript) {
       errors.push(`MISSING_JAVASCRIPT: ${binding.id}`);
     }
 
-    if (mechanism === 'transform' && !binding.relationship.transform) {
+    if (rel.type === 'transform' && !rel.transform) {
       errors.push(`MISSING_TRANSFORM: ${binding.id}`);
     }
 
-    if (mechanism === 'llm_rewrite' && !binding.relationship.llmRewrite) {
-      errors.push(`MISSING_LLM_REWRITE: ${binding.id}`);
+    if (rel.type === 'llm' && !rel.llmPrompt) {
+      errors.push(`MISSING_LLM_PROMPT: ${binding.id}`);
     }
   }
 
@@ -220,9 +221,9 @@ function validateUISpec(uiSpec: UISpec): { valid: boolean; errors: string[] } {
  */
 export function HeadlessValidator({
   uiSpec,
-  ors,
-  trialId,
-  stage,
+  ors: _ors,
+  trialId: _trialId,
+  stage: _stage,
   onValidationComplete,
   autoValidate = true,
 }: HeadlessValidatorProps) {
@@ -282,11 +283,10 @@ export function HeadlessValidator({
 
           // ReactiveBindingEngine初期化テスト（エラーキャッチ用）
           try {
-            const engine = new ReactiveBindingEngineV4({
-              ...DEFAULT_ENGINE_CONFIG_V4,
-              debug: false,
-            });
-            engine.initialize({ bindings });
+            new ReactiveBindingEngineV4(
+              { bindings },
+              { ...DEFAULT_ENGINE_CONFIG_V4, debug: false }
+            );
           } catch (engineError) {
             const errMsg = `ENGINE_INIT_ERROR: ${engineError instanceof Error ? engineError.message : 'Unknown'}`;
             errors.push(errMsg);

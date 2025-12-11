@@ -211,6 +211,10 @@ export interface PlanGenerationOptions {
   useMockWidgetSelection?: boolean;
   /** テストケースID（モックモード時必須） */
   caseId?: string;
+  /** LLMプロバイダー */
+  provider?: 'gemini' | 'azure';
+  /** 使用するモデルID */
+  modelId?: string;
 }
 
 /**

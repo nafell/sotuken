@@ -59,7 +59,8 @@ interface StageResult {
   dslErrors: string[] | null;
   w2wrErrors: string[] | null; // W2WR DSL生成エラー
   regenerated: boolean;
-  promptData?: Record<string, unknown>; // プロンプト変数
+  promptData?: string; // 実際にLLMに送信されたプロンプト全文
+  inputVariables?: Record<string, unknown>; // プロンプト変数
 }
 
 interface TrialResult {
@@ -509,7 +510,8 @@ export class BatchExecutionService {
       dslErrors,
       w2wrErrors: null,
       regenerated: (result.metrics.retryCount ?? 0) > 0,
-      promptData: {
+      promptData: result.prompt, // 実際にLLMに送信されたプロンプト全文
+      inputVariables: {
         concernText,
         bottleneckType,
       },
@@ -552,10 +554,11 @@ export class BatchExecutionService {
       dslErrors,
       w2wrErrors: null,
       regenerated: (result.metrics.retryCount ?? 0) > 0,
-      promptData: {
+      promptData: result.prompt, // 実際にLLMに送信されたプロンプト全文
+      inputVariables: {
         concernText,
         bottleneckType,
-        widgetSelectionResult: '(omitted)',
+        widgetSelectionResult: '(omitted for brevity)',
       },
     };
   }
@@ -610,11 +613,12 @@ export class BatchExecutionService {
       dslErrors,
       w2wrErrors,
       regenerated: (result.metrics.retryCount ?? 0) > 0,
-      promptData: {
+      promptData: result.prompt, // 実際にLLMに送信されたプロンプト全文
+      inputVariables: {
         concernText,
         enableReactivity,
-        planORS: '(omitted)',
-        widgetSelectionResult: '(omitted)',
+        planORS: '(omitted for brevity)',
+        widgetSelectionResult: '(omitted for brevity)',
       },
     };
   }
@@ -740,7 +744,8 @@ export class BatchExecutionService {
       regenerated: result.regenerated,
       runtimeError: isRuntimeError,
       generatedData: result.data ?? null,
-      promptData: result.promptData ?? null,
+      promptData: result.promptData ?? null, // 実際にLLMに送信されたプロンプト全文
+      inputVariables: result.inputVariables ?? null, // プロンプト変数
     });
   }
 

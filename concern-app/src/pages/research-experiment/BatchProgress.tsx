@@ -15,7 +15,9 @@ import {
   type BatchStatus,
   type ModelConfiguration,
   type RunningTask,
+  type TrialLog,
 } from '../../services/BatchExperimentApiService';
+import TrialLogDetail from './components/TrialLogDetail';
 
 /** モデル構成定義（フロントエンド用） */
 const MODEL_CONFIGURATIONS: Record<string, ModelConfiguration> = {
@@ -48,10 +50,14 @@ export default function BatchProgress() {
   const [error, setError] = useState<string | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [taskHistory, setTaskHistory] = useState<TaskLogEntry[]>([]);
+  // 完了タスクの詳細表示用
+  const [completedTrials, setCompletedTrials] = useState<TrialLog[]>([]);
+  const [expandedTrialId, setExpandedTrialId] = useState<string | null>(null);
 
   const cleanupRef = useRef<(() => void) | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastTaskIdRef = useRef<string | null>(null);
+  const previousRunningTasksRef = useRef<RunningTask[]>([]);
 
   // SSE接続
   useEffect(() => {
@@ -72,7 +78,32 @@ export default function BatchProgress() {
         setProgress(p);
         setStatus(p.status);
 
-        // タスク履歴の更新
+        // runningTasksから完了したタスクを検出
+        if (p.runningTasks) {
+          const currentIds = new Set(p.runningTasks.map(t => `${t.modelConfig}-${t.inputId}`));
+          const completedTasks = previousRunningTasksRef.current
+            .filter(t => !currentIds.has(`${t.modelConfig}-${t.inputId}`));
+
+          // 完了したタスクの試行ログを取得
+          for (const task of completedTasks) {
+            api.getTrialLogs(batchId, { modelConfig: task.modelConfig })
+              .then(trials => {
+                const trial = trials.find(t => t.inputId === task.inputId);
+                if (trial) {
+                  setCompletedTrials(prev => {
+                    // 重複チェック
+                    if (prev.some(ct => ct.id === trial.id)) return prev;
+                    return [trial, ...prev];
+                  });
+                }
+              })
+              .catch(err => console.error('Failed to fetch trial log:', err));
+          }
+
+          previousRunningTasksRef.current = [...p.runningTasks];
+        }
+
+        // タスク履歴の更新（後方互換性）
         if (p.currentModelConfig && p.currentInputId && p.currentStage) {
           const taskId = `${p.currentModelConfig}-${p.currentInputId}-${p.currentStage}`;
           if (taskId !== lastTaskIdRef.current) {
@@ -268,13 +299,20 @@ export default function BatchProgress() {
       {/* 詳細情報 */}
       <section style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(2, 1fr)',
+        gridTemplateColumns: 'repeat(4, 1fr)',
         gap: '16px',
         marginBottom: '24px',
       }}>
         <div style={{ padding: '16px', backgroundColor: '#e3f2fd', borderRadius: '4px' }}>
           <div style={{ fontSize: '12px', color: '#1565c0' }}>完了</div>
           <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1565c0' }}>
+            {(progress?.completedTrials ?? 0) + (progress?.failedTrials ?? 0)}
+          </div>
+        </div>
+
+        <div style={{ padding: '16px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>
+          <div style={{ fontSize: '12px', color: '#2e7d32' }}>成功</div>
+          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2e7d32' }}>
             {progress?.completedTrials ?? 0}
           </div>
         </div>
@@ -292,33 +330,35 @@ export default function BatchProgress() {
             {formatTime(elapsedSeconds)}
           </div>
         </div>
-
-        <div style={{ padding: '16px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
-          <div style={{ fontSize: '12px', color: '#666' }}>現在の構成</div>
-          {progress?.currentModelConfig ? (
-            <>
-              <div style={{ fontSize: '20px', fontWeight: 'bold' }}>
-                {progress.currentModelConfig}: {MODEL_CONFIGURATIONS[progress.currentModelConfig]?.name ?? ''}
-              </div>
-              <div style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
-                {MODEL_CONFIGURATIONS[progress.currentModelConfig]?.stages.map((stage, i) => (
-                  <span key={i}>
-                    {i > 0 && ' → '}
-                    <span style={{
-                      fontWeight: progress.currentStage === i + 1 ? 'bold' : 'normal',
-                      color: progress.currentStage === i + 1 ? '#1976d2' : '#666',
-                    }}>
-                      S{i + 1}:{stage}
-                    </span>
-                  </span>
-                ))}
-              </div>
-            </>
-          ) : (
-            <div style={{ fontSize: '24px', fontWeight: 'bold' }}>-</div>
-          )}
-        </div>
       </section>
+
+      {/* 現在の構成 */}
+      {progress?.currentModelConfig && (
+        <section style={{
+          marginBottom: '24px',
+          padding: '16px',
+          backgroundColor: '#f5f5f5',
+          borderRadius: '4px',
+        }}>
+          <div style={{ fontSize: '12px', color: '#666' }}>現在の構成</div>
+          <div style={{ fontSize: '20px', fontWeight: 'bold' }}>
+            {progress.currentModelConfig}: {MODEL_CONFIGURATIONS[progress.currentModelConfig]?.name ?? ''}
+          </div>
+          <div style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
+            {MODEL_CONFIGURATIONS[progress.currentModelConfig]?.stages.map((stage, i) => (
+              <span key={i}>
+                {i > 0 && ' → '}
+                <span style={{
+                  fontWeight: progress.currentStage === i + 1 ? 'bold' : 'normal',
+                  color: progress.currentStage === i + 1 ? '#1976d2' : '#666',
+                }}>
+                  S{i + 1}:{stage}
+                </span>
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* 並列実行状態 */}
       {status === 'running' && progress?.runningTasks && progress.runningTasks.length > 0 && (
@@ -444,8 +484,29 @@ export default function BatchProgress() {
         </section>
       )}
 
-      {/* タスク履歴ログ */}
-      {taskHistory.length > 0 && (
+      {/* 完了タスク詳細（TrialLogDetail表示） */}
+      {completedTrials.length > 0 && (
+        <section style={{ marginBottom: '24px' }}>
+          <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
+            完了タスク ({completedTrials.length}件)
+          </div>
+          <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
+            {completedTrials.map(trial => (
+              <TrialLogDetail
+                key={trial.id}
+                trial={trial}
+                isExpanded={expandedTrialId === trial.id}
+                onToggle={() => setExpandedTrialId(
+                  expandedTrialId === trial.id ? null : trial.id
+                )}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* タスク履歴ログ（後方互換性：runningTasksがない場合のフォールバック） */}
+      {taskHistory.length > 0 && completedTrials.length === 0 && (
         <section style={{
           marginBottom: '24px',
         }}>

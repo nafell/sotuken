@@ -355,7 +355,8 @@ export const experimentTrialLogs = pgTable('experiment_trial_logs', {
 
   // 生成データ（DSL参照用）
   generatedData: jsonb('generated_data'), // Stage1-3の生成結果
-  promptData: jsonb('prompt_data'), // 各Stageで使用したプロンプト変数
+  promptData: text('prompt_data'), // 実際にLLMに送信されたプロンプト全文
+  inputVariables: jsonb('input_variables'), // 各Stageで使用したプロンプト変数
 
   // タイムスタンプ
   timestamp: timestamp('timestamp', { withTimezone: true }).default(sql`now()`)

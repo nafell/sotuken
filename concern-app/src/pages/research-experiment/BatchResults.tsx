@@ -214,6 +214,8 @@ export default function BatchResults() {
                 <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #1976d2' }}>RRR</th>
                 <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #1976d2' }}>CDR</th>
                 <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #1976d2' }}>RGR</th>
+                <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #1976d2' }}>RCR</th>
+                <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #1976d2' }}>JAR</th>
               </tr>
             </thead>
             <tbody>
@@ -235,13 +237,19 @@ export default function BatchResults() {
                   <td style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #eee' }}>
                     {formatPercent(model.layer1.RGR)}
                   </td>
+                  <td style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #eee' }}>
+                    {formatPercent(model.layer1.RC_SR)}
+                  </td>
+                  <td style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #eee' }}>
+                    {formatPercent(model.layer1.JA_SR)}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
         <div style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
-          VR: DSL妥当率 / TCR: 型整合率 / RRR: 参照整合率 / CDR: 循環依存率 / RGR: 再生成率
+          VR: DSL妥当率 / TCR: 型整合率 / RRR: 参照整合率 / CDR: 循環依存率 / RGR: 再生成率 / RCR: React変換成功率 / JAR: Jotai Atom変換成功率
         </div>
       </section>
 

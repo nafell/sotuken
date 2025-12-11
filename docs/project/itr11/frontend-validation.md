@@ -122,7 +122,17 @@ POST /api/experiment/trials/:trialId/render-feedback
 }
 ```
 
+## 結果画面での表示
+
+`BatchResults.tsx`のLayer1（構造健全性）テーブルに以下の指標を追加:
+
+| 指標 | 説明 | 計算式 |
+|-----|------|-------|
+| RCR (RC_SR) | React変換成功率 | react_component_errors=null の割合 |
+| JAR (JA_SR) | Jotai Atom変換成功率 | jotai_atom_errors=null の割合 |
+
 ## 関連コミット
 
 - `25e550b` - バッチ実験に`w2wrErrors`, `reactComponentErrors`, `jotaiAtomErrors`フィールド追加
-- 本コミット - フロントエンド検証機能の実装
+- `4aaa145` - フロントエンド検証機能の実装
+- 本コミット - 結果画面にRCR/JAR指標を追加

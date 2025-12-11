@@ -1,0 +1,355 @@
+{
+    "version": "5.0",
+    "sessionId": "{{sessionId}}",
+    "stage": "plan",
+    "sections": {
+      "diverge": {
+        "header": {
+          "title": "発散（アイデア出し）",
+          "description": "副業の可能性を幅広く洗い出します。思いついたアイデアを気兼ねなく入力してください。"
+        },
+        "widgets": [
+          {
+            "id": "brainstorm_cards_0",
+            "component": "brainstorm_cards",
+            "position": 0,
+            "layout": "full",
+            "config": {
+              "sampleCards": {
+                "items": [
+                  {
+                    "id": "sample_1",
+                    "text": "オンラインでの英語レッスンを週数回開き、需要のある時間帯に合わせて生徒を募集する（必要スキル: 英語力、授業準備）",
+                    "isGenerated": true
+                  },
+                  {
+                    "id": "sample_2",
+                    "text": "得意なデザインを活かして、ロゴやSNS用バナーを受注する（必要スキル: デザインソフト、ポートフォリオ作成）",
+                    "isGenerated": true
+                  },
+                  {
+                    "id": "sample_3",
+                    "text": "ブログで専門分野の情報発信をしてアフィリエイトや広告収益を得る（必要スキル: 記事作成、SEOの基礎）",
+                    "isGenerated": true
+                  },
+                  {
+                    "id": "sample_4",
+                    "text": "自作のハンドメイド商品をネットショップ（minne/Creema）で販売する（必要スキル: 製作時間、撮影・出品スキル）",
+                    "isGenerated": true
+                  },
+                  {
+                    "id": "sample_5",
+                    "text": "スキルを活かしたコンサルティングを週1回の枠で提供し、ケーススタディを積み上げる（必要スキル: 専門知識、営業）",
+                    "isGenerated": true
+                  }
+                ],
+                "isGenerated": true
+              },
+              "guidance": "まずは思いつく限り書き出しましょう。後で整理します。"
+            },
+            "dataBindings": [
+              {
+                "portId": "cards",
+                "entityAttribute": "diverge_data.output",
+                "direction": "out"
+              }
+            ],
+            "metadata": {
+              "purpose": "多様な副業アイデアを短時間で多く出す"
+            }
+          },
+          {
+            "id": "emotion_palette_0",
+            "component": "emotion_palette",
+            "position": 1,
+            "layout": "compact",
+            "config": {
+              "emotions": [
+                {
+                  "id": "emotion_1",
+                  "label": "ワクワク",
+                  "color": "#FFD54F",
+                  "category": "positive",
+                  "isGenerated": true
+                },
+                {
+                  "id": "emotion_2",
+                  "label": "不安",
+                  "color": "#FF8A80",
+                  "category": "negative",
+                  "isGenerated": true
+                },
+                {
+                  "id": "emotion_3",
+                  "label": "興味",
+                  "color": "#64B5F6",
+                  "category": "positive",
+                  "isGenerated": true
+                },
+                {
+                  "id": "emotion_4",
+                  "label": "焦り",
+                  "color": "#FF7043",
+                  "category": "negative",
+                  "isGenerated": true
+                }
+              ],
+              "isGenerated": true
+            },
+            "dataBindings": [
+              {
+                "portId": "selectedEmotions",
+                "entityAttribute": "diverge_data.output",
+                "direction": "out"
+              }
+            ],
+            "metadata": {
+              "purpose": "アイデアに対する感情を可視化して優先度のヒントを得る"
+            }
+          }
+        ]
+      },
+      "organize": {
+        "header": {
+          "title": "整理（分類・評価）",
+          "description": "出したアイデアをカテゴリ分けし、実現可能性や収益見込みで評価します。"
+        },
+        "widgets": [
+          {
+            "id": "card_sorting_0",
+            "component": "card_sorting",
+            "position": 0,
+            "layout": "full",
+            "config": {
+              "defaultCategories": {
+                "items": [
+                  {
+                    "id": "cat_1",
+                    "label": "低初期コスト・高時間投資",
+                    "isGenerated": true
+                  },
+                  {
+                    "id": "cat_2",
+                    "label": "中程度コスト・中程度時間",
+                    "isGenerated": true
+                  },
+                  {
+                    "id": "cat_3",
+                    "label": "高初期コスト・低時間投資",
+                    "isGenerated": true
+                  },
+                  {
+                    "id": "cat_4",
+                    "label": "スキル活用型（即開始可）",
+                    "isGenerated": true
+                  }
+                ],
+                "isGenerated": true
+              },
+              "instructions": "アイデアをドラッグして該当するカテゴリに分類し、簡単な評価コメントを付けてください。"
+            },
+            "dataBindings": [
+              {
+                "portId": "cards",
+                "entityAttribute": "diverge_data.output",
+                "direction": "in"
+              },
+              {
+                "portId": "categories",
+                "entityAttribute": "organize_data.output",
+                "direction": "out"
+              }
+            ],
+            "metadata": {
+              "purpose": "アイデアを実行容易性やコスト別に整理する"
+            }
+          },
+          {
+            "id": "priority_matrix_0",
+            "component": "priority_matrix",
+            "position": 1,
+            "layout": "half",
+            "config": {
+              "axes": {
+                "x": "必要時間（週）",
+                "y": "期待収益（月）"
+              },
+              "samplePoints": {
+                "items": [
+                  {
+                    "id": "p1",
+                    "label": "例: 週2h・月¥10,000",
+                    "x": 2,
+                    "y": 10000,
+                    "isGenerated": true
+                  }
+                ],
+                "isGenerated": true
+              }
+            },
+            "dataBindings": [
+              {
+                "portId": "points",
+                "entityAttribute": "organize_data.output",
+                "direction": "in"
+              }
+            ],
+            "metadata": {
+              "purpose": "時間対収益でアイデアを視覚的に比較する"
+            }
+          }
+        ]
+      },
+      "converge": {
+        "header": {
+          "title": "収束（意思決定・行動計画）",
+          "description": "整理した情報を基に、実際に始める副業の優先順位を決め、最初の30日プランを作成します。"
+        },
+        "widgets": [
+          {
+            "id": "priority_slider_grid_0",
+            "component": "priority_slider_grid",
+            "position": 0,
+            "layout": "full",
+            "config": {
+              "items": [
+                {
+                  "id": "item_template_1",
+                  "label": "（ここに整理済みアイデアが入ります）",
+                  "priority": 50,
+                  "isGenerated": true
+                }
+              ],
+              "instructions": "各アイデアの優先度をスライダーで調整し、上位のアイデアに対して30日アクションを作成してください。",
+              "isGenerated": true
+            },
+            "dataBindings": [
+              {
+                "portId": "items",
+                "entityAttribute": "organize_data.output",
+                "direction": "in"
+              },
+              {
+                "portId": "selectedPlan",
+                "entityAttribute": "converge_data.output",
+                "direction": "out"
+              }
+            ],
+            "metadata": {
+              "purpose": "最終的な優先順位づけと手早いアクション設定"
+            }
+          },
+          {
+            "id": "action_plan_creator_0",
+            "component": "action_plan_creator",
+            "position": 1,
+            "layout": "half",
+            "config": {
+              "samplePlans": {
+                "items": [
+                  {
+                    "id": "plan_1",
+                    "selectedIdea": "オンライン英語レッスン",
+                    "priorityRank": 1,
+                    "first30DaysPlan": [
+                      "ターゲット（初心者/ビジネスマン）を決める",
+                      "レッスン構成を3つ作成する",
+                      "SNSで募集を開始し5名を目標に集客する",
+                      "初回レッスンを開催してフィードバックを得る"
+                    ],
+                    "requiredResources": [
+                      "ビデオ通話環境",
+                      "レッスン資料"
+                    ],
+                    "estimatedBreakEvenMonths": 2,
+                    "nextAction": {
+                      "task": "レッスン構成（3パターン）を作る",
+                      "due": "7日後",
+                      "owner": "自分"
+                    },
+                    "isGenerated": true
+                  }
+                ],
+                "isGenerated": true
+              }
+            },
+            "dataBindings": [
+              {
+                "portId": "plans",
+                "entityAttribute": "converge_data.output",
+                "direction": "out"
+              }
+            ],
+            "metadata": {
+              "purpose": "優先アイデアを具体的な30日アクションに落とし込む"
+            }
+          }
+        ]
+      }
+    },
+    "reactiveBindings": {
+      "bindings": [
+        {
+          "id": "rb_diverge_to_organize_cards",
+          "source": "brainstorm_cards_0.cards",
+          "target": "card_sorting_0.cards",
+          "mechanism": "update",
+          "relationship": {
+            "type": "passthrough"
+          },
+          "updateMode": "realtime"
+        },
+        {
+          "id": "rb_organize_to_converge_categories_to_items",
+          "source": "card_sorting_0.categories",
+          "target": "priority_slider_grid_0.items",
+          "mechanism": "update",
+          "relationship": {
+            "type": "javascript",
+            "javascript": "Object.values(source).flat().map((catItem, idx) => ({ id: catItem.id || ('item_'+idx), label: catItem.text || catItem.idea || catItem.label || '無題', priority: 50 }))"
+          },
+          "updateMode": "debounced",
+          "debounceMs": 300
+        },
+        {
+          "id": "rb_priority_to_actionplan",
+          "source": "priority_slider_grid_0.selectedItem",
+          "target": "action_plan_creator_0.input",
+          "mechanism": "update",
+          "relationship": {
+            "type": "javascript",
+            "javascript": "if(!source) return []; const s = Array.isArray(source)? source: [source]; return s.map((it, i) => ({ selectedIdea: it.label||it.text||'無題', priorityRank: 1+i, first30DaysPlan: ['最初のタスクを定義する'], requiredResources: [], estimatedBreakEvenMonths: 3, nextAction: { task: 'まずは情報収集', due: '7日後', owner: '自分' } }));"
+          },
+          "updateMode": "debounced",
+          "debounceMs": 300
+        }
+      ]
+    },
+    "layout": {
+      "type": "sectioned",
+      "sectionGap": 24,
+      "sectionOrder": [
+        "diverge",
+        "organize",
+        "converge"
+      ]
+    },
+    "metadata": {
+      "generatedAt": 1765405890846,
+      "planMetadata": {
+        "concernText": "副業を始めたいが、何から手をつければいいか分からない。アイデアはいくつかあるが整理できていない",
+        "bottleneckType": "{{bottleneckType}}",
+        "sections": [
+          "diverge",
+          "organize",
+          "converge"
+        ],
+        "selectedWidgets": {
+          "diverge": "{{divergeWidgets}}",
+          "organize": "{{organizeWidgets}}",
+          "converge": "{{convergeWidgets}}"
+        }
+      },
+      "widgetPortInfo": "{{widgetPortInfo}}"
+    }
+  }

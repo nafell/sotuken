@@ -238,10 +238,10 @@ export default function BatchResults() {
                     {formatPercent(model.layer1.RGR)}
                   </td>
                   <td style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #eee' }}>
-                    {formatPercent(model.layer1.RC_SR)}
+                    {formatPercent(model.layer1.RC_SR ?? 0)}
                   </td>
                   <td style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #eee' }}>
-                    {formatPercent(model.layer1.JA_SR)}
+                    {formatPercent(model.layer1.JA_SR ?? 0)}
                   </td>
                 </tr>
               ))}

@@ -300,6 +300,35 @@ export class BatchExperimentApiService {
   }
 
   /**
+   * フロントエンド検証結果をサーバーに送信
+   */
+  async sendRenderFeedback(
+    trialId: string,
+    feedback: {
+      stage: number;
+      renderErrors?: string[] | null;
+      reactComponentErrors?: string[] | null;
+      jotaiAtomErrors?: string[] | null;
+      typeErrorCount?: number;
+      referenceErrorCount?: number;
+      cycleDetected?: boolean;
+    }
+  ): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/experiment/trials/${trialId}/render-feedback`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(feedback),
+      }
+    );
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.error ?? 'Failed to send render feedback');
+    }
+  }
+
+  /**
    * SSE進捗ストリームに接続
    */
   subscribeToProgress(

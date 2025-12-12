@@ -32,6 +32,16 @@ import type { PlanUISpec } from '../types/v4/ui-spec.types';
 
 const batchExperimentRoutes = new Hono();
 
+// UUID形式の検証用正規表現
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * batchIdがUUID形式かどうかを検証
+ */
+function isValidUUID(value: string): boolean {
+  return UUID_REGEX.test(value);
+}
+
 // ========================================
 // バッチ実行管理エンドポイント
 // ========================================
@@ -728,6 +738,14 @@ batchExperimentRoutes.get('/:batchId/unvalidated', async (c) => {
   try {
     const batchId = c.req.param('batchId');
 
+    // UUID形式の検証
+    if (!isValidUUID(batchId)) {
+      return c.json({
+        success: false,
+        error: `Invalid batch ID format: "${batchId}". Expected UUID format (e.g., "b845003f-a50f-4f51-a77c-c4256340a20e")`
+      }, 400);
+    }
+
     // Stage 3 かつ serverValidatedAt が null のログを取得
     const unvalidatedLogs = await db
       .select({
@@ -793,6 +811,15 @@ batchExperimentRoutes.get('/:batchId/unvalidated', async (c) => {
 batchExperimentRoutes.post('/:batchId/revalidate', async (c) => {
   try {
     const batchId = c.req.param('batchId');
+
+    // UUID形式の検証
+    if (!isValidUUID(batchId)) {
+      return c.json({
+        success: false,
+        error: `Invalid batch ID format: "${batchId}". Expected UUID format (e.g., "b845003f-a50f-4f51-a77c-c4256340a20e")`
+      }, 400);
+    }
+
     const body = await c.req.json().catch(() => ({}));
     const { logIds, rerunBackendValidation = false } = body as {
       logIds?: string[];

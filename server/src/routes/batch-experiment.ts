@@ -19,8 +19,7 @@ import {
 } from '../services/BatchExecutionService';
 import {
   MODEL_CONFIGURATIONS,
-  TOKEN_PRICES,
-  USD_TO_JPY,
+  TOKEN_PRICES_JPY_PER_MILLION,
   type ModelConfigId,
   type Layer1Metrics,
   type Layer4Metrics,
@@ -293,15 +292,14 @@ function calculateStatistics(logs: typeof experimentTrialLogs.$inferSelect[]): {
   const totalLatency = logs.reduce((sum, log) => sum + log.latencyMs, 0);
   const runtimeErrorCount = logs.filter(log => log.runtimeError).length;
 
-  // コスト計算（概算）
-  let totalCostUsd = 0;
+  // コスト計算 (JPY) - Azure OpenAI料金表より
+  let totalCostJPY = 0;
   for (const log of logs) {
-    // ステージのモデルを推定（modelConfigから取得は複雑なので、デフォルト価格を使用）
-    const inputPricePerK = 0.010; // 平均的な価格
-    const outputPricePerK = 0.030;
-    const inputCost = (log.inputTokens / 1000) * inputPricePerK;
-    const outputCost = (log.outputTokens / 1000) * outputPricePerK;
-    totalCostUsd += inputCost + outputCost;
+    // GPT-4.1相当の価格を使用（modelConfigごとの詳細計算はExperimentStatisticsServiceで行う）
+    const prices = TOKEN_PRICES_JPY_PER_MILLION['gpt-4.1'];
+    const inputCost = (log.inputTokens / 1_000_000) * prices.input;
+    const outputCost = (log.outputTokens / 1_000_000) * prices.output;
+    totalCostJPY += inputCost + outputCost;
   }
 
   return {
@@ -317,7 +315,7 @@ function calculateStatistics(logs: typeof experimentTrialLogs.$inferSelect[]): {
     },
     layer4: {
       LAT: totalLatency / total,
-      COST: totalCostUsd * USD_TO_JPY,
+      COST: totalCostJPY,
       FR: runtimeErrorCount / total,
     },
   };

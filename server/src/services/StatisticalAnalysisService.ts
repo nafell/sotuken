@@ -23,7 +23,7 @@ import type {
   LAYER4_METRICS,
   ALL_MODEL_PAIRS,
 } from '../types/statistics.types';
-import type { Layer1Metrics, Layer4Metrics } from '../types/experiment-trial.types';
+import { TOKEN_PRICES_JPY_PER_MILLION, type Layer1Metrics, type Layer4Metrics } from '../types/experiment-trial.types';
 
 // ========================================
 // 定数
@@ -359,11 +359,13 @@ function extractLayer4Values(
     case 'LAT':
       return logs.map((log) => log.latencyMs);
     case 'COST':
-      // COSTはトークン数から計算（簡易版）
+      // COSTはトークン数から計算（Azure OpenAI料金表）
       return logs.map((log) => {
-        const inputCost = (log.inputTokens / 1000) * 0.01;
-        const outputCost = (log.outputTokens / 1000) * 0.03;
-        return (inputCost + outputCost) * 150; // JPY
+        // GPT-4.1相当の価格を使用
+        const prices = TOKEN_PRICES_JPY_PER_MILLION['gpt-4.1'];
+        const inputCost = (log.inputTokens / 1_000_000) * prices.input;
+        const outputCost = (log.outputTokens / 1_000_000) * prices.output;
+        return inputCost + outputCost; // JPY
       });
     default:
       return [];

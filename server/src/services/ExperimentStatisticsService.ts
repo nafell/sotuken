@@ -15,23 +15,15 @@ import type {
   Layer4Metrics,
   ModelStatistics,
   BatchResultsSummary,
-  TOKEN_PRICES,
-  USD_TO_JPY,
+  TOKEN_PRICES_JPY_PER_MILLION,
 } from '../types/experiment-trial.types';
 
 // ========================================
-// Token Pricing (2025年12月時点の概算)
+// Token Pricing (Azure OpenAI 2025年12月時点)
+// JPY per 1M tokens
 // ========================================
 
-const TOKEN_PRICES_DATA: Record<string, { input: number; output: number }> = {
-  'gpt-5-chat': { input: 0.015, output: 0.060 },
-  'gpt-5-mini': { input: 0.0015, output: 0.006 },
-  'gpt-4.1': { input: 0.010, output: 0.030 },
-  'gpt-4.1-mini': { input: 0.0004, output: 0.0016 },
-  'model-router': { input: 0.010, output: 0.030 },
-};
-
-const USD_TO_JPY_RATE = 150;
+const TOKEN_PRICES_DATA = TOKEN_PRICES_JPY_PER_MILLION;
 
 // ========================================
 // Types
@@ -139,18 +131,18 @@ function calculateLayer4Metrics(
   const totalLatency = logs.reduce((sum, log) => sum + log.latencyMs, 0);
   const LAT = Math.round(totalLatency / total);
 
-  // COST: 推定APIコスト (JPY)
-  let totalCostUSD = 0;
+  // COST: 推定APIコスト (JPY) - Azure OpenAI料金表より計算
+  let totalCostJPY = 0;
   for (const log of logs) {
-    // モデル別の単価を取得
+    // モデル別の単価を取得 (JPY per 1M tokens)
     const modelId = getModelIdFromConfig(modelConfig ?? log.modelConfig, log.stage);
     const prices = TOKEN_PRICES_DATA[modelId] ?? TOKEN_PRICES_DATA['model-router'];
 
-    const inputCost = (log.inputTokens / 1000) * prices.input;
-    const outputCost = (log.outputTokens / 1000) * prices.output;
-    totalCostUSD += inputCost + outputCost;
+    const inputCost = (log.inputTokens / 1_000_000) * prices.input;
+    const outputCost = (log.outputTokens / 1_000_000) * prices.output;
+    totalCostJPY += inputCost + outputCost;
   }
-  const COST = Math.round(totalCostUSD * USD_TO_JPY_RATE * 100) / 100;
+  const COST = Math.round(totalCostJPY * 100) / 100;
 
   // FR: 異常終了率 = runtime_error=true の割合
   const runtimeErrorCount = logs.filter(log => log.runtimeError).length;

@@ -33,6 +33,10 @@ const ALPHA = 0.05;
 const BONFERRONI_COMPARISONS = 10; // 5モデル → C(5,2) = 10ペア
 const ALPHA_CORRECTED = ALPHA / BONFERRONI_COMPARISONS; // 0.005
 
+function applyBonferroniCorrection(pValue: number): number {
+  return Math.min(pValue * BONFERRONI_COMPARISONS, 1);
+}
+
 // Layer1指標（成功率系）
 const LAYER1_METRIC_NAMES = [
   'VR',
@@ -429,7 +433,8 @@ export class StatisticalAnalysisService {
           n2: count2.total,
         });
 
-        const pValueCorrected = Math.min(result.pValue * BONFERRONI_COMPARISONS, 1);
+        const pValueCorrected = applyBonferroniCorrection(result.pValue);
+        const significantCorrected = pValueCorrected < ALPHA;
 
         layer1Comparisons.push({
           metric,
@@ -452,7 +457,7 @@ export class StatisticalAnalysisService {
           significant: result.pValue < ALPHA,
           // Compare the Bonferroni-corrected p-value against the original alpha to
           // avoid applying the correction factor twice (p * m < α instead of p < α / m)
-          significantCorrected: pValueCorrected < ALPHA,
+          significantCorrected,
           effectSize: result.cohensH,
           effectSizeInterpretation: interpretCohensH(result.cohensH),
         });
@@ -470,7 +475,8 @@ export class StatisticalAnalysisService {
 
         const result = performMannWhitneyU({ values1, values2 });
 
-        const pValueCorrected = Math.min(result.pValue * BONFERRONI_COMPARISONS, 1);
+        const pValueCorrected = applyBonferroniCorrection(result.pValue);
+        const significantCorrected = pValueCorrected < ALPHA;
 
         layer4Comparisons.push({
           metric,
@@ -493,7 +499,7 @@ export class StatisticalAnalysisService {
           significant: result.pValue < ALPHA,
           // Compare the Bonferroni-corrected p-value against the original alpha to
           // avoid applying the correction factor twice (p * m < α instead of p < α / m)
-          significantCorrected: pValueCorrected < ALPHA,
+          significantCorrected,
           effectSize: result.rankBiserialR,
           effectSizeInterpretation: interpretRankBiserial(result.rankBiserialR),
         });

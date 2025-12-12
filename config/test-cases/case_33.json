@@ -1,7 +1,7 @@
 {
   "caseId": "case_33",
-  "title": "長文・キャリア（JS単純）",
-  "complexity": "simple",
+  "title": "長文・キャリア（JS複合）",
+  "complexity": "medium",
   "hasReactivity": true,
 
   "concernText": "独立・起業を考えてるんだけど、準備すべきことが多すぎて整理できてない。資金、スキル、人脈、事業計画、いろいろあるけど何から手をつければいいか。時系列で整理して、いつまでに何をすべきか明確にしたい",
@@ -20,8 +20,8 @@
 
   "expectedFlow": {
     "diverge": {
-      "widgets": ["brainstorm_cards"],
-      "purpose": "起業準備タスクを洗い出す"
+      "widgets": ["mind_map"],
+      "purpose": "起業準備タスクを体系的に展開"
     },
     "organize": {
       "widgets": ["timeline_slider"],
@@ -36,20 +36,21 @@
   "expectedW2WR": {
     "bindings": [
       {
-        "source": "brainstorm_cards.cards",
+        "source": "mind_map.nodes",
         "target": "timeline_slider.events",
         "relationship": {
           "type": "javascript",
-          "javascript": "source.map((c, i) => ({id: c.id, label: c.text, position: i * 10}))"
+          "javascript": "source.filter(n => n.depth > 0).map((n, i) => ({id: n.id, label: n.label, position: i * 10}))"
         },
-        "updateMode": "realtime"
+        "updateMode": "debounced",
+        "debounceMs": 300
       }
     ]
   },
 
   "evaluationCriteria": [
-    "起業計画へのtimeline連携",
-    "index活用のposition計算",
-    "長文からの適切なJS生成"
+    "filter + mapの複合JS生成",
+    "mind_map→timeline変換",
+    "debouncedモードの設定"
   ]
 }

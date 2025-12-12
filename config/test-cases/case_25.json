@@ -1,6 +1,6 @@
 {
   "caseId": "case_25",
-  "title": "長文・仕事（Passthrough）",
+  "title": "長文・仕事（JS単純）",
   "complexity": "simple",
   "hasReactivity": true,
 
@@ -24,12 +24,12 @@
       "purpose": "異動に関する考えを全て書き出す"
     },
     "organize": {
-      "widgets": ["card_sorting"],
-      "purpose": "メリット・デメリット・不安に分類"
+      "widgets": ["matrix_placement"],
+      "purpose": "リスク×リターンの2軸で配置"
     },
     "converge": {
-      "widgets": ["tradeoff_balance"],
-      "purpose": "異動する/しないの比較"
+      "widgets": ["priority_slider_grid"],
+      "purpose": "検討優先度を設定"
     }
   },
 
@@ -37,16 +37,19 @@
     "bindings": [
       {
         "source": "brainstorm_cards.cards",
-        "target": "card_sorting.cards",
-        "relationship": { "type": "passthrough" },
+        "target": "matrix_placement.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.map(c => ({id: c.id, text: c.text, x: 50, y: 50}))"
+        },
         "updateMode": "realtime"
       }
     ]
   },
 
   "evaluationCriteria": [
-    "意思決定支援へのpassthrough適用",
-    "メリデメ分類フロー",
-    "複合的悩みへのW2WR連携"
+    "cards→matrix変換のJS生成",
+    "意思決定支援への2軸評価適用",
+    "シンプルなmap変換"
   ]
 }

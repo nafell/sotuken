@@ -344,16 +344,25 @@ export interface RenderFeedbackRequest {
 }
 
 // ========================================
-// APIコスト計算用定数
+// APIコスト計算用定数 (Azure OpenAI 2025年12月時点)
 // ========================================
 
-/** トークン単価 (USD per 1K tokens) - 2025年12月時点の概算 */
+/** トークン単価 (JPY per 1M tokens) - Azure OpenAI Global 料金表 */
+export const TOKEN_PRICES_JPY_PER_MILLION = {
+  'gpt-5-chat': { input: 195.20, output: 1561.55 },
+  'gpt-5-mini': { input: 39.04, output: 312.31 },
+  'gpt-4.1': { input: 312.31, output: 1249.24 },
+  'gpt-4.1-mini': { input: 62.47, output: 249.85 },
+  'model-router': { input: 62.47, output: 249.85 }, // GPT-4.1-mini相当で計算
+} as const;
+
+/** @deprecated Use TOKEN_PRICES_JPY_PER_MILLION instead */
 export const TOKEN_PRICES = {
   'gpt-5-chat': { input: 0.015, output: 0.060 },
   'gpt-5-mini': { input: 0.0015, output: 0.006 },
   'gpt-4.1': { input: 0.010, output: 0.030 },
   'gpt-4.1-mini': { input: 0.0004, output: 0.0016 },
-  'model-router': { input: 0.010, output: 0.030 }, // 保守的にgpt-4.1相当で計算
+  'model-router': { input: 0.010, output: 0.030 },
 } as const;
 
 /** USD to JPY レート */

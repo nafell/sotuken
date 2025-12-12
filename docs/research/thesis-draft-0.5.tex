@@ -1,6 +1,9 @@
 % =============
-% VERSION 0.5.3
-% FIXED: REFINED DSL DEFINITION TERMS, RENAMED UI DEGREE STAGES TO LEVELS
+% VERSION 0.5.4
+% FIXED: TERMINOLOGY UNIFICATION
+% - Dynamic UI Degree: "Level"
+% - App Workflow: "Stage" (Diverge, Organize...)
+% - LLM Pipeline: "Step" (Step 1, Step 2...)
 % =============
 \documentclass[senior,final,11pt]{iputit-thesis}
 %\documentclass[senior,final,11pt]{iputde-thesis}
@@ -219,7 +222,7 @@ LLM が生成する UI 定義を DSL の型制約と実行環境側の制御の�
 本研究の目的は，Jelly UI に代表される汎用的な LLM-Hardened DSL を，
 思考整理支援という特定ドメインに導入する際の設計パラダイムを提案し，
 その技術的実現性とモデル構成に応じた品質・コストのトレードオフを明らかにすることである。
-とくに，3段階の LLM パイプラインと Widget-to-Widget Reactivity を備えた
+とくに，3ステップの LLM パイプラインと Widget-to-Widget Reactivity を備えた
 ドメイン特化型システムを実装し，入力テキストに応じた動的 UI を安定して生成できるかを確認するとともに，
 複数の LLM モデル構成における動作特性を評価する。
 
@@ -402,7 +405,7 @@ Level 4 以降，とくに Widget 間のリアクティブな連動を伴う UI 
         既存研究の多くがフォームレベルやページレベルの UI 生成に留まるのに対し，
         本研究は複合 Widget を基本単位とし，同一画面内の Widget 間連動を伴う
         Level 4 の動的 UI を実装する。
-        3 段階 LLM パイプラインと Widget-to-Widget Reactivity によって，
+        3 ステップ LLM パイプラインと Widget-to-Widget Reactivity によって，
         Level 4 の技術的実現性を検証している。
   \item \textbf{Widget-to-Widget Reactivity}：
         JSON 出力や固定 UI では表現しにくい，セクション間のリアルタイムな値の伝搬・同期を，
@@ -421,7 +424,7 @@ Level 4 以降，とくに Widget 間のリアクティブな連動を伴う UI 
 本研究の主目的は，ドメイン特化型 LLM 動的 UI 生成の設計パラダイムを確立することである。
 とくに，思考整理支援ドメインにおいて，Jelly UI が採用する汎用的な LLM-Hardened DSL を継承しつつ，
 \begin{enumerate}
-  \item 3 段階 LLM パイプラインと Widget-to-Widget Reactivity により，
+  \item 3 ステップ LLM パイプラインと Widget-to-Widget Reactivity により，
         入力テキストに応じた動的 UI を構造的に妥当な形で生成できるかという
         技術的実現性（Layer1）を確認すること，
   \item LLM モデル構成（All-5-Chat，All-5-mini，Hybrid 構成など）の違いが，
@@ -435,10 +438,10 @@ Level 4 以降，とくに Widget 間のリアクティブな連動を伴う UI 
 
 \begin{description}
   \item[RQ1] 提案システムは，思考整理支援ドメインにおいて，
-             3 段階 LLM パイプラインと Widget-to-Widget Reactivity により，
+             3 ステップ LLM パイプラインと Widget-to-Widget Reactivity により，
              入力テキストに応じた動的 UI を，DSL の構造健全性（Layer1）の観点から
              妥当な形で生成できるか。
-  \item[RQ2] 提案システムにおいて，Stage ごとのモデル選択戦略
+  \item[RQ2] 提案システムにおいて，Step ごとのモデル選択戦略
              （All-5-Chat，All-5-mini，Hybrid 構成など）の違いは，
              DSL の構造健全性（Layer1）と実用性指標
              （Layer2：レイテンシ，推定コスト，異常終了率）に
@@ -649,7 +652,7 @@ IDDMは、各Widgetが扱うデータ構造とWidget間の連動を定義する�
 
 本研究におけるWidgetとは、特定の思考整理タスクを支援するための、事前定義されたUI部品である。
 Widgetは単なるボタンやテキストフィールドといった原子的なUI要素（Atom）ではなく、特定の目的を持った複合的なUI部品である。
-例えば「優先度スライダーグリッド」Widgetは、複数の軸に対するスライダーと、その結果を表示するランキング表示を組み合わせた複合部品である。
+例えば「優先度スライダーグリッド」Widgetは、複数のスライダー（Atom）、ラベル（Atom）、ランキング表示（複数のAtom）を組み合わせた複合部品である。
 
 Jelly UIと本研究のアプローチの違い：
 \begin{itemize}
@@ -810,7 +813,7 @@ Widgetの「枠」は固定だが、その中身（ラベル、サンプルデ�
 スタイル（色、サイズ等）の動的生成はエンゲージメント向上を目的とした別の研究領域であり、本研究の範囲外とする。
 配置についても、思考整理では上から順に処理するリニアな構造で十分であるため、レイアウトパターンからの選択に留める。
 
-これらの設計判断を実現するため、本システムでは以下の3段階LLM呼び出しパイプラインを採用する：
+これらの設計判断を実現するため、本システムでは以下の3ステップLLM呼び出しパイプラインを採用する：
 
 \begin{enumerate}
     \item \textbf{Capture \& 診断}：ユーザーが悩みを入力し、LLMがボトルネック（思考の障壁）を診断する
@@ -821,7 +824,7 @@ Widgetの「枠」は固定だが、その中身（ラベル、サンプルデ�
     \item \textbf{Reactive更新}：ユーザー操作に応じて、事前定義された連動ルールに基づきWidget間でデータが伝播する（LLM不介在）
 \end{enumerate}
 
-このパイプラインにおいて、LLMは(2)-(4)の3段階で呼び出される。
+このパイプラインにおいて、LLMは(2)-(4)の3ステップで呼び出される。
 重要な点は、(6)のReactive更新時にはLLMが介在しないことである。
 連動ルールはDSLとして事前に生成されており、実際の連動はそのルールに基づいて機械的に実行される。
 これにより、リアルタイムな応答性を確保しつつ、文脈依存の連動パターンを実現する。
@@ -907,36 +910,44 @@ LLMはCapture Phaseで収集した情報から、ユーザーの思考の障壁�
 
 \section{UI生成パイプライン}
 
-\subsection{3段階LLM呼び出し構成}
 
-本システムでは、Jelly UIのデータモデルベースのアプローチを継承しつつ、ドメイン特化のために3段階のLLM呼び出しパイプラインを採用した。
+% 注意: 実装上もStageとStepの用語が被っているため，論文内ではStepとする
+% 実装上はLLM呼び出しの段階はStageのままとなっているため，注意しながら記述する必要がある
+% 論文では以下のように記述する:
+% [Step 1] Widget選定 (LLM)
+% [Step 2] Object-Relational Schema + DependencyGraph生成 (LLM)
+% [Step 3] UISpec + ReactiveBinding生成 (LLM)
+
+\subsection{3ステップLLM呼び出し構成}
+
+本システムでは、Jelly UIのデータモデルベースのアプローチを継承しつつ、ドメイン特化のために3ステップのLLM呼び出しパイプラインを採用した。
 
 % \begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
 ユーザー入力（悩みテキスト）
         ↓
-[Stage 1] Widget選定 (LLM)
+[Step 1] Widget選定 (LLM)
     入力: ConcernText, BottleneckType, Widget Definitions
     出力: WidgetSelectionResult
         ↓
-[Stage 2] Object-Relational Schema + DependencyGraph生成 (LLM)
+[Step 2] Object-Relational Schema + DependencyGraph生成 (LLM)
     入力: ConcernText, SelectedWidgets, PreviousResult
     出力: Object-Relational Schema Instance
         ↓
-[Stage 3] UISpec + ReactiveBinding生成 (LLM)
+[Step 3] UISpec + ReactiveBinding生成 (LLM)
     入力: Object-Relational Schema Instance, SelectedWidgets, generationHints
     出力: UISpec Instance
         ↓
 [フロントエンド] DSL Parse -> Jotai Atom化 -> Rendering
 % \end{lstlisting}
 
-この3段階構成により、以下の利点が得られる。
+この3ステップ構成により、以下の利点が得られる。
 \begin{enumerate}
     \item \textbf{段階的具体化}: 抽象度の高いWidget選定から、具体的なUISpec生成まで段階的に詳細化する
     \item \textbf{文脈の維持}: 各段階の出力が次段階の入力として使用され、一貫した文脈を維持する
     \item \textbf{検証可能性}: 各段階の出力を個別に検証・デバッグできる
 \end{enumerate}
 
-\subsection{Stage 1: Widget選定}
+\subsection{Step 1: Widget選定}
 LLMは、ユーザーの悩みとボトルネック診断結果に基づき、4ステージ分のWidgetを一括で選定する。
 
 \begin{lstlisting}[caption = 出力: WidgetSelectionResult (JSON) , label = lst:widget-selection-result]
@@ -958,7 +969,7 @@ LLMは、ユーザーの悩みとボトルネック診断結果に基づき、4�
 }
 \end{lstlisting}
 
-\subsection{Stage 2: Object-Relational Schema + DependencyGraph生成}
+\subsection{Step 2: Object-Relational Schema + DependencyGraph生成}
 選定されたWidgetに基づき、データ構造（Object-Relational Schema）とデータ間の依存関係（DependencyGraph）を生成する。
 
 \begin{lstlisting}[caption = Object-Relational Schemaの構造 , label = lst:ors-structure]
@@ -980,9 +991,9 @@ interface Attribute {
 }
 \end{lstlisting}
 
-\subsection{Stage 3: UISpec + ReactiveBinding生成}
+\subsection{Step 3: UISpec + ReactiveBinding生成}
 
-Object-Relational Schemaに基づき、具体的なWidget仕様（UISpec）とWidget間のリアクティブ連携（ReactiveBinding）を生成する。このステージでgeneratedValue（LLM生成コンテンツ）も同時に生成される。
+Object-Relational Schemaに基づき、具体的なWidget仕様（UISpec）とWidget間のリアクティブ連携（ReactiveBinding）を生成する。このステップでgeneratedValue（LLM生成コンテンツ）も同時に生成される。
 
 
 \begin{lstlisting}[caption = UISpecの構造, label = lst:uispec-structure]
@@ -1140,7 +1151,7 @@ export function createWidgetAtom<T>(id: string, init: T): Atom<T> {
 
 \subsection{概念}
 generatedValueは、UIそのものではなく\textbf{UI内のコンテンツ}をLLMが生成する仕組みである。これにより、Cold Start Problem（空のWidgetから始める認知負荷）を解決する。
-重要な設計原則として、generatedValueはUISpec生成時（Stage 3）に同時生成され、追加のLLM呼び出しは発生しない。
+重要な設計原則として、generatedValueはUISpec生成時（Step 3）に同時生成され、追加のLLM呼び出しは発生しない。
 
 \subsection{分類とWidget定義}
 \begin{itemize}
@@ -1181,7 +1192,7 @@ UISpec InstanceからReact UIを動的レンダリングする主要コンポー
 \section{まとめ}
 本章では、提案手法を具体化した思考整理支援アプリケーションの実装について述べた。
 \begin{enumerate}
-    \item \textbf{3段階LLM呼び出し}: 段階的具体化により一貫性を維持した。
+    \item \textbf{3ステップLLM呼び出し}: 段階的具体化により一貫性を維持した。
     \item \textbf{Widget-to-Widget Reactivity}: Jotaiと独自のエンジンにより、LLMを介さないリアルタイム連動を実現した。
     \item \textbf{generatedValue}: コンテンツ同時生成によりCold Start Problemを解決した。
 \end{enumerate}
@@ -1194,11 +1205,11 @@ UISpec InstanceからReact UIを動的レンダリングする主要コンポー
 本章では、提案システムの技術的実現性と実用性を検証するため、以下の2つの研究課題（RQ）を設定し、対応する実験を行う。
 
 \begin{description}
-    \item[RQ1] 提案システムは、入力に応じた動的UIを適切に生成できるか？（単発実行による技術確認）
+    \item[RQ1] 提案システムは，入力に応じた動的UIを適切に生成できるか？（単発実行による技術確認）
     \item[RQ4] LLMモデル構成の違いは、生成品質と実用性にどう影響するか？（バッチ実行による統計分析）
 \end{description}
 
-RQ1は開発者による単発実行を通じて、3段階LLMパイプライン、Widget-to-Widget Reactivity、generatedValueが期待通り機能することを確認する定性的評価である。
+RQ1は開発者による単発実行を通じて、3ステップLLMパイプライン、Widget-to-Widget Reactivity、generatedValueが期待通り機能することを確認する定性的評価である。
 RQ4は250回の自動バッチ実行により、5つのモデル構成間の生成品質を統計的に比較する定量的評価である。
 
 \section{評価フレームワーク}
@@ -1240,7 +1251,7 @@ W2WR\_SR、RCR、JARは本研究で新たに導入した指標であり、DSL生
 \small
 \begin{tabular}{llp{6cm}} \toprule
 記号 & 指標名 & 定義 \\ \midrule
-LAT & 平均レイテンシ & 各Stage処理時間および全体処理時間（ms） \\
+LAT & 平均レイテンシ & 各Step処理時間および全体処理時間（ms） \\
 COST & 推定APIコスト & 1セッションあたりのトークン使用量に基づく推定コスト（JPY） \\
 FR & 異常終了率 & タイムアウト・JSON破損・API失敗の割合 \\ \bottomrule
 \end{tabular}
@@ -1249,14 +1260,14 @@ FR & 異常終了率 & タイムアウト・JSON破損・API失敗の割合 \\ \
 \section{実験1: 単発実行による技術確認（RQ1）}
 
 \subsection{目的}
-3段階LLMパイプラインが入力テキストに応じて適切なDSLを生成し、Widget-to-Widget ReactivityおよびgeneratedValueが期待通り機能することを確認する。
+3ステップLLMパイプラインが入力テキストに応じて適切なDSLを生成し、Widget-to-Widget ReactivityおよびgeneratedValueが期待通り機能することを確認する。
 
 \subsection{方法}
 開発者が代表的な入力テキスト（悩みの種類、複雑さが異なる5件程度）を用いて単発実行を行い、以下を目視確認する：
 \begin{enumerate}
-    \item Stage 1: 入力内容に適したWidget種類が選択されているか
-    \item Stage 2: ORSとDependencyGraphが正しく構造化されているか
-    \item Stage 3: UISpecにWidget間連動（ReactiveBinding）が定義されているか
+    \item Step 1: 入力内容に適したWidget種類が選択されているか
+    \item Step 2: ORSとDependencyGraphが正しく構造化されているか
+    \item Step 3: UISpecにWidget間連動（ReactiveBinding）が定義されているか
     \item フロントエンド: Widget間のリアルタイム連動が動作するか
     \item generatedValue: サンプルデータが適切に生成・表示されているか
 \end{enumerate}
@@ -1280,7 +1291,7 @@ Azure OpenAI Serviceで利用可能なモデルを用いて、表\ref{tab:model_
 \centering
 \small
 \begin{tabular}{clccc} \toprule
-ID & 構成名 & Stage 1 & Stage 2 & Stage 3 \\ \midrule
+ID & 構成名 & Step 1 & Step 2 & Step 3 \\ \midrule
 A & All-5-Chat & GPT-5-Chat & GPT-5-Chat & GPT-5-Chat \\
 B & All-5-mini & GPT-5-mini & GPT-5-mini & GPT-5-mini \\
 C & Hybrid-5Chat/4.1 & GPT-5-Chat & GPT-4.1 & GPT-4.1 \\
@@ -1373,7 +1384,7 @@ Router-based & - & - & - \\ \bottomrule
 この結果が得られた場合、以下の論点を展開する：
 \begin{itemize}
     \item \textbf{品質とコストのトレードオフ}: 高品質モデルはDSL生成において優位性を持つが、実運用ではコスト制約が存在する。品質要求とコストのバランスをどう取るかが設計判断となる。
-    \item \textbf{Hybrid構成の有効性}: Stage 1（Widget選択）のみ高性能モデルを使用し、Stage 2/3は低コストモデルで代替するHybrid構成が、品質を維持しつつコストを抑制できるかを検証する。
+    \item \textbf{Hybrid構成の有効性}: Step 1（Widget選択）のみ高性能モデルを使用し、Step 2/3は低コストモデルで代替するHybrid構成が、品質を維持しつつコストを抑制できるかを検証する。
     \item \textbf{構造化出力タスクの特性}: DSL生成は構造化出力タスクであり、汎用的な言語理解能力よりもスキーマ遵守能力が重要である可能性を示唆する。
 \end{itemize}
 
@@ -1401,7 +1412,7 @@ Router-based & - & - & - \\ \bottomrule
 \begin{itemize}
     \item \textbf{タスク複雑度とモデル選択}: Widget-to-Widget Reactivityのような複雑な参照関係の生成には高性能モデルが必要だが、基本的なDSL構造の生成は低コストモデルで十分である可能性がある。
     \item \textbf{動的モデル選択の有効性}: Router-based構成がタスク特性に応じてモデルを適応的に選択し、品質とコストの最適バランスを実現できるかを評価する。
-    \item \textbf{段階別最適化の可能性}: 各Stageの特性（Stage 1: 分類タスク、Stage 2: 構造化タスク、Stage 3: 生成タスク）に応じた最適モデル構成の存在を示唆する。
+    \item \textbf{段階別最適化の可能性}: 各Stepの特性（Step 1: 分類タスク、Step 2: 構造化タスク、Step 3: 生成タスク）に応じた最適モデル構成の存在を示唆する。
 \end{itemize}
 
 \section{設計判断の妥当性}

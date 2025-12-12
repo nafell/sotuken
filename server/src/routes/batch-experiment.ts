@@ -24,11 +24,20 @@ import {
   type Layer1Metrics,
   type Layer4Metrics,
   type ModelStatistics,
+  type ExperimentInput,
 } from '../types/experiment-trial.types';
 import { getStatisticalAnalysisService } from '../services/StatisticalAnalysisService';
 import { exportToMarkdown, exportToCSV, exportSummaryTable } from '../services/StatisticalExportService';
-import { validateUISpecForFrontend } from '../services/v4/ValidationService';
+import { createValidationService, validateUISpecForFrontend, getErrorSummary } from '../services/v4/ValidationService';
+import { createExperimentOrchestrator } from '../services/ModelConfigurationService';
+import { WidgetSelectionService } from '../services/v4/WidgetSelectionService';
+import { ORSGeneratorService } from '../services/v4/ORSGeneratorService';
+import { UISpecGeneratorV4 } from '../services/v4/UISpecGeneratorV4';
+import { LLMOrchestrator } from '../services/v4/LLMOrchestrator';
 import type { PlanUISpec } from '../types/v4/ui-spec.types';
+import type { WidgetSelectionResult } from '../types/v4/widget-selection.types';
+import type { PlanORS } from '../types/v4/ors.types';
+import type { LLMCallMetrics } from '../types/v4/llm-task.types';
 
 const batchExperimentRoutes = new Hono();
 
@@ -801,6 +810,81 @@ batchExperimentRoutes.get('/:batchId/unvalidated', async (c) => {
 });
 
 /**
+ * GET /api/experiment/batch/:batchId/api-errors
+ * API_ERROR付きの試行一覧を取得
+ *
+ * dslErrorsにAPI_ERRORが含まれる試行を返す
+ */
+batchExperimentRoutes.get('/:batchId/api-errors', async (c) => {
+  try {
+    const batchId = c.req.param('batchId');
+
+    // UUID形式の検証
+    if (!isValidUUID(batchId)) {
+      return c.json({
+        success: false,
+        error: `Invalid batch ID format: "${batchId}". Expected UUID format (e.g., "b845003f-a50f-4f51-a77c-c4256340a20e")`
+      }, 400);
+    }
+
+    // 全ログを取得
+    const allLogs = await db
+      .select()
+      .from(experimentTrialLogs)
+      .where(eq(experimentTrialLogs.batchId, batchId));
+
+    // API_ERRORを含むログをフィルタ
+    const apiErrorLogs = allLogs.filter(log => {
+      if (!log.dslErrors || !Array.isArray(log.dslErrors)) {
+        return false;
+      }
+      // dslErrorsにAPI_ERRORを含むものを検出
+      return (log.dslErrors as string[]).some(err =>
+        err === 'API_ERROR' || err.startsWith('API_ERROR')
+      );
+    });
+
+    // Stage別に集計
+    const stageDistribution: Record<number, number> = {};
+    const modelConfigDistribution: Record<string, number> = {};
+    const inputIdSet = new Set<string>();
+
+    for (const log of apiErrorLogs) {
+      stageDistribution[log.stage] = (stageDistribution[log.stage] ?? 0) + 1;
+      modelConfigDistribution[log.modelConfig] = (modelConfigDistribution[log.modelConfig] ?? 0) + 1;
+      inputIdSet.add(log.inputId);
+    }
+
+    return c.json({
+      success: true,
+      apiErrorCount: apiErrorLogs.length,
+      totalLogCount: allLogs.length,
+      affectedInputCount: inputIdSet.size,
+      stageDistribution,
+      modelConfigDistribution,
+      apiErrorLogs: apiErrorLogs.map(log => ({
+        id: log.id,
+        trialNumber: log.trialNumber,
+        inputId: log.inputId,
+        modelConfig: log.modelConfig,
+        stage: log.stage,
+        dslErrors: log.dslErrors,
+        latencyMs: log.latencyMs,
+        inputTokens: log.inputTokens,
+        outputTokens: log.outputTokens,
+        timestamp: log.timestamp,
+      })),
+    });
+  } catch (error) {
+    console.error('Failed to get API error logs:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+
+/**
  * POST /api/experiment/batch/:batchId/revalidate
  * 未検証ログを再検証
  *
@@ -915,6 +999,514 @@ batchExperimentRoutes.post('/:batchId/revalidate', async (c) => {
     });
   } catch (error) {
     console.error('Failed to revalidate logs:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+
+// ========================================
+// API_ERROR再生成エンドポイント
+// ========================================
+
+/**
+ * 入力コーパスを読み込むヘルパー関数
+ */
+async function loadInputCorpus(corpusId: string): Promise<ExperimentInput[]> {
+  const fs = await import('fs/promises');
+  const path = await import('path');
+
+  if (corpusId === 'test_cases') {
+    const testCasesDir = path.join(process.cwd(), '..', 'config', 'test-cases');
+    const files = await fs.readdir(testCasesDir);
+    const jsonFiles = files.filter(f => f.endsWith('.json')).sort();
+
+    const inputs: ExperimentInput[] = [];
+    for (const file of jsonFiles) {
+      const content = await fs.readFile(path.join(testCasesDir, file), 'utf-8');
+      const testCase = JSON.parse(content);
+      inputs.push({
+        inputId: testCase.caseId,
+        concernText: testCase.concernText,
+        contextFactors: {
+          category: testCase.contextFactors.category,
+          urgency: testCase.contextFactors.urgency,
+          emotionalState: testCase.contextFactors.emotionalState,
+          timeAvailable: String(testCase.contextFactors.timeAvailable),
+        },
+      });
+    }
+    return inputs;
+  }
+
+  const corpusPath = path.join(process.cwd(), '..', 'config', 'experiment-input-corpus.json');
+  const content = await fs.readFile(corpusPath, 'utf-8');
+  const corpus = JSON.parse(content);
+  return corpus.inputs ?? [];
+}
+
+/**
+ * ボトルネックタイプ推定
+ */
+function inferBottleneckType(contextFactors: { emotionalState?: string }): string {
+  const mapping: Record<string, string> = {
+    'confused': 'information',
+    'anxious': 'emotional',
+    'overwhelmed': 'planning',
+    'stuck': 'thought',
+    'neutral': 'thought',
+  };
+  return mapping[contextFactors.emotionalState ?? 'neutral'] ?? 'thought';
+}
+
+/**
+ * v4サービス群を作成するヘルパー
+ */
+function createV4Services(orchestrator: LLMOrchestrator) {
+  return {
+    widgetSelectionService: new WidgetSelectionService({
+      llmOrchestrator: orchestrator,
+      debug: true,
+    }),
+    orsGeneratorService: new ORSGeneratorService({
+      llmOrchestrator: orchestrator,
+      debug: true,
+      disableFallback: true,
+    }),
+    uiSpecGeneratorService: new UISpecGeneratorV4({
+      llmOrchestrator: orchestrator,
+      debug: true,
+      disableFallback: true,
+    }),
+  };
+}
+
+/**
+ * 単一試行を再生成して既存ログを更新
+ */
+async function regenerateTrialAndUpdateLogs(
+  batchId: string,
+  experimentId: string,
+  trialNumber: number,
+  inputId: string,
+  modelConfigId: ModelConfigId,
+  input: ExperimentInput,
+  existingLogIds: { stage1?: string; stage2?: string; stage3?: string }
+): Promise<{
+  success: boolean;
+  stages: Array<{
+    stage: number;
+    success: boolean;
+    logId?: string;
+    error?: string;
+  }>;
+}> {
+  const validationService = createValidationService();
+  const orchestrator = createExperimentOrchestrator(modelConfigId);
+  const services = createV4Services(orchestrator);
+  const bottleneckType = inferBottleneckType(input.contextFactors);
+  const sessionId = `regen-${batchId}-${trialNumber}-${Date.now()}`;
+
+  const stageResults: Array<{
+    stage: number;
+    success: boolean;
+    logId?: string;
+    error?: string;
+  }> = [];
+
+  try {
+    // ========================================
+    // Stage 1: Widget Selection
+    // ========================================
+    const stage1Result = await services.widgetSelectionService.selectWidgets({
+      concernText: input.concernText,
+      bottleneckType,
+      sessionId,
+    });
+
+    let stage1DslErrors: string[] | null = null;
+    let stage1TypeErrorCount = 0;
+    let stage1ReferenceErrorCount = 0;
+    let stage1CycleDetected = false;
+
+    if (stage1Result.success && stage1Result.data) {
+      const validationResult = validationService.validateWidgetSelection(stage1Result.data);
+      const summary = getErrorSummary(validationResult);
+      stage1DslErrors = summary.dslErrors;
+      stage1TypeErrorCount = summary.typeErrorCount;
+      stage1ReferenceErrorCount = summary.referenceErrorCount;
+      stage1CycleDetected = summary.cycleDetected;
+    } else if (!stage1Result.success) {
+      stage1DslErrors = [stage1Result.error?.type ?? 'WIDGET_SELECTION_FAILED'];
+    }
+
+    // Stage 1ログを更新
+    if (existingLogIds.stage1) {
+      await db.update(experimentTrialLogs)
+        .set({
+          inputTokens: stage1Result.metrics.inputTokens ?? 0,
+          outputTokens: stage1Result.metrics.outputTokens ?? 0,
+          latencyMs: stage1Result.metrics.latencyMs,
+          dslErrors: stage1DslErrors,
+          typeErrorCount: stage1TypeErrorCount,
+          referenceErrorCount: stage1ReferenceErrorCount,
+          cycleDetected: stage1CycleDetected,
+          regenerated: true,
+          generatedData: stage1Result.data ?? null,
+          promptData: stage1Result.prompt ?? null,
+          inputVariables: { concernText: input.concernText, bottleneckType },
+          timestamp: new Date(),
+        })
+        .where(eq(experimentTrialLogs.id, existingLogIds.stage1));
+    }
+
+    stageResults.push({
+      stage: 1,
+      success: stage1Result.success && stage1DslErrors === null,
+      logId: existingLogIds.stage1,
+    });
+
+    if (!stage1Result.success || stage1DslErrors !== null) {
+      return { success: false, stages: stageResults };
+    }
+
+    const widgetSelectionResult = stage1Result.data as WidgetSelectionResult;
+
+    // ========================================
+    // Stage 2: Plan ORS Generation
+    // ========================================
+    const stage2Result = await services.orsGeneratorService.generatePlanORS({
+      concernText: input.concernText,
+      bottleneckType,
+      widgetSelectionResult,
+      sessionId,
+    });
+
+    let stage2DslErrors: string[] | null = null;
+    let stage2TypeErrorCount = 0;
+    let stage2ReferenceErrorCount = 0;
+    let stage2CycleDetected = false;
+
+    if (stage2Result.success && stage2Result.data) {
+      const validationResult = validationService.validatePlanORS(stage2Result.data);
+      const summary = getErrorSummary(validationResult);
+      stage2DslErrors = summary.dslErrors;
+      stage2TypeErrorCount = summary.typeErrorCount;
+      stage2ReferenceErrorCount = summary.referenceErrorCount;
+      stage2CycleDetected = summary.cycleDetected;
+    } else if (!stage2Result.success) {
+      stage2DslErrors = [stage2Result.error?.type ?? 'ORS_GENERATION_FAILED'];
+    }
+
+    // Stage 2ログを更新
+    if (existingLogIds.stage2) {
+      await db.update(experimentTrialLogs)
+        .set({
+          inputTokens: stage2Result.metrics.inputTokens ?? 0,
+          outputTokens: stage2Result.metrics.outputTokens ?? 0,
+          latencyMs: stage2Result.metrics.latencyMs,
+          dslErrors: stage2DslErrors,
+          typeErrorCount: stage2TypeErrorCount,
+          referenceErrorCount: stage2ReferenceErrorCount,
+          cycleDetected: stage2CycleDetected,
+          regenerated: true,
+          generatedData: stage2Result.data ?? null,
+          promptData: stage2Result.prompt ?? null,
+          inputVariables: { concernText: input.concernText, bottleneckType },
+          timestamp: new Date(),
+        })
+        .where(eq(experimentTrialLogs.id, existingLogIds.stage2));
+    }
+
+    stageResults.push({
+      stage: 2,
+      success: stage2Result.success && stage2DslErrors === null,
+      logId: existingLogIds.stage2,
+    });
+
+    if (!stage2Result.success || stage2DslErrors !== null) {
+      return { success: false, stages: stageResults };
+    }
+
+    const planORS = stage2Result.data as PlanORS;
+
+    // ========================================
+    // Stage 3: Plan UISpec Generation
+    // ========================================
+    const stage3Result = await services.uiSpecGeneratorService.generatePlanUISpec({
+      planORS,
+      concernText: input.concernText,
+      widgetSelectionResult,
+      sessionId,
+      enableReactivity: true,
+    });
+
+    let stage3DslErrors: string[] | null = null;
+    let stage3W2wrErrors: string[] | null = null;
+    let stage3TypeErrorCount = 0;
+    let stage3ReferenceErrorCount = 0;
+    let stage3CycleDetected = false;
+
+    if (stage3Result.success && stage3Result.data) {
+      const validationResult = validationService.validateUISpec(stage3Result.data, widgetSelectionResult);
+      const summary = getErrorSummary(validationResult);
+      stage3TypeErrorCount = summary.typeErrorCount;
+      stage3ReferenceErrorCount = summary.referenceErrorCount;
+      stage3CycleDetected = summary.cycleDetected;
+
+      if (!validationResult.valid) {
+        const allErrors = validationResult.errors.map(e => e.type);
+        const w2wrTypes = ['CIRCULAR_DEPENDENCY', 'SELF_REFERENCE', 'INVALID_BINDING',
+                         'UNKNOWN_SOURCE_WIDGET', 'UNKNOWN_TARGET_WIDGET'];
+        const w2wrFound = allErrors.filter(e => w2wrTypes.includes(e));
+        const dslFound = allErrors.filter(e => !w2wrTypes.includes(e));
+        stage3W2wrErrors = w2wrFound.length > 0 ? w2wrFound : null;
+        stage3DslErrors = dslFound.length > 0 ? dslFound : null;
+      }
+    } else if (!stage3Result.success) {
+      stage3DslErrors = [stage3Result.error?.type ?? 'UISPEC_GENERATION_FAILED'];
+    }
+
+    // フロントエンド互換検証
+    const frontendValidation = stage3Result.success && stage3Result.data
+      ? validateUISpecForFrontend(stage3Result.data as PlanUISpec)
+      : undefined;
+
+    // Stage 3ログを更新
+    if (existingLogIds.stage3) {
+      await db.update(experimentTrialLogs)
+        .set({
+          inputTokens: stage3Result.metrics.inputTokens ?? 0,
+          outputTokens: stage3Result.metrics.outputTokens ?? 0,
+          latencyMs: stage3Result.metrics.latencyMs,
+          dslErrors: stage3DslErrors,
+          w2wrErrors: stage3W2wrErrors,
+          renderErrors: frontendValidation?.renderErrors ?? null,
+          reactComponentErrors: frontendValidation?.reactComponentErrors ?? null,
+          jotaiAtomErrors: frontendValidation?.jotaiAtomErrors ?? null,
+          typeErrorCount: frontendValidation?.typeErrorCount ?? stage3TypeErrorCount,
+          referenceErrorCount: frontendValidation?.referenceErrorCount ?? stage3ReferenceErrorCount,
+          cycleDetected: frontendValidation?.cycleDetected ?? stage3CycleDetected,
+          regenerated: true,
+          generatedData: stage3Result.data ?? null,
+          promptData: stage3Result.prompt ?? null,
+          inputVariables: { concernText: input.concernText, enableReactivity: true },
+          serverValidatedAt: frontendValidation ? new Date(frontendValidation.serverValidatedAt) : null,
+          timestamp: new Date(),
+        })
+        .where(eq(experimentTrialLogs.id, existingLogIds.stage3));
+    }
+
+    stageResults.push({
+      stage: 3,
+      success: stage3Result.success && stage3DslErrors === null,
+      logId: existingLogIds.stage3,
+    });
+
+    const overallSuccess = stageResults.every(s => s.success);
+    return { success: overallSuccess, stages: stageResults };
+
+  } catch (error) {
+    console.error(`Regeneration failed for trial ${trialNumber}:`, error);
+    return {
+      success: false,
+      stages: stageResults.concat([{
+        stage: stageResults.length + 1,
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }]),
+    };
+  }
+}
+
+/**
+ * POST /api/experiment/batch/:batchId/regenerate
+ * API_ERROR付きの試行を再生成
+ *
+ * Body:
+ * - logIds?: string[] - 特定のログIDのみ再生成（省略時は全API_ERRORを対象）
+ * - dryRun?: boolean - trueの場合、実際の再生成は行わず影響範囲のみ返す
+ */
+batchExperimentRoutes.post('/:batchId/regenerate', async (c) => {
+  try {
+    const batchId = c.req.param('batchId');
+
+    // UUID形式の検証
+    if (!isValidUUID(batchId)) {
+      return c.json({
+        success: false,
+        error: `Invalid batch ID format: "${batchId}". Expected UUID format`
+      }, 400);
+    }
+
+    const body = await c.req.json().catch(() => ({}));
+    const { logIds, dryRun = false } = body as {
+      logIds?: string[];
+      dryRun?: boolean;
+    };
+
+    // バッチ情報を取得
+    const [batch] = await db
+      .select()
+      .from(batchExecutions)
+      .where(eq(batchExecutions.id, batchId));
+
+    if (!batch) {
+      return c.json({
+        success: false,
+        error: 'Batch not found'
+      }, 404);
+    }
+
+    // 全ログを取得
+    const allLogs = await db
+      .select()
+      .from(experimentTrialLogs)
+      .where(eq(experimentTrialLogs.batchId, batchId));
+
+    // API_ERRORを含むログをフィルタ
+    let targetLogs = allLogs.filter(log => {
+      if (!log.dslErrors || !Array.isArray(log.dslErrors)) {
+        return false;
+      }
+      return (log.dslErrors as string[]).some(err =>
+        err === 'API_ERROR' || err.startsWith('API_ERROR')
+      );
+    });
+
+    // logIdsが指定されている場合はフィルタ
+    if (logIds && logIds.length > 0) {
+      targetLogs = targetLogs.filter(log => logIds.includes(log.id));
+    }
+
+    if (targetLogs.length === 0) {
+      return c.json({
+        success: true,
+        message: 'No API_ERROR logs to regenerate',
+        regeneratedCount: 0,
+      });
+    }
+
+    // 試行番号+モデル構成でグループ化（同じ試行の全Stageを再生成する必要がある）
+    const trialGroups = new Map<string, typeof targetLogs>();
+    for (const log of targetLogs) {
+      const key = `${log.trialNumber}-${log.modelConfig}`;
+      if (!trialGroups.has(key)) {
+        trialGroups.set(key, []);
+      }
+      trialGroups.get(key)!.push(log);
+    }
+
+    // 影響を受ける試行の全Stageを取得
+    const affectedTrials: Array<{
+      trialNumber: number;
+      modelConfig: string;
+      inputId: string;
+      existingLogIds: { stage1?: string; stage2?: string; stage3?: string };
+      apiErrorStages: number[];
+    }> = [];
+
+    for (const [key, logs] of trialGroups) {
+      const firstLog = logs[0];
+      const trialNumber = firstLog.trialNumber;
+      const modelConfig = firstLog.modelConfig;
+      const inputId = firstLog.inputId;
+
+      // この試行の全Stageログを取得
+      const trialLogs = allLogs.filter(
+        log => log.trialNumber === trialNumber && log.modelConfig === modelConfig
+      );
+
+      const existingLogIds: { stage1?: string; stage2?: string; stage3?: string } = {};
+      for (const log of trialLogs) {
+        if (log.stage === 1) existingLogIds.stage1 = log.id;
+        if (log.stage === 2) existingLogIds.stage2 = log.id;
+        if (log.stage === 3) existingLogIds.stage3 = log.id;
+      }
+
+      affectedTrials.push({
+        trialNumber,
+        modelConfig,
+        inputId,
+        existingLogIds,
+        apiErrorStages: logs.map(l => l.stage),
+      });
+    }
+
+    // dryRunの場合は影響範囲のみ返す
+    if (dryRun) {
+      return c.json({
+        success: true,
+        dryRun: true,
+        affectedTrialCount: affectedTrials.length,
+        affectedTrials: affectedTrials.map(t => ({
+          trialNumber: t.trialNumber,
+          modelConfig: t.modelConfig,
+          inputId: t.inputId,
+          apiErrorStages: t.apiErrorStages,
+        })),
+      });
+    }
+
+    // 入力コーパスを読み込み
+    const inputCorpus = await loadInputCorpus(batch.inputCorpusId);
+    const inputMap = new Map(inputCorpus.map(i => [i.inputId, i]));
+
+    console.log(`🔄 Regenerating ${affectedTrials.length} trials for batch ${batchId}`);
+
+    const results: Array<{
+      trialNumber: number;
+      modelConfig: string;
+      success: boolean;
+      stages: Array<{ stage: number; success: boolean; error?: string }>;
+    }> = [];
+
+    for (const trial of affectedTrials) {
+      const input = inputMap.get(trial.inputId);
+      if (!input) {
+        results.push({
+          trialNumber: trial.trialNumber,
+          modelConfig: trial.modelConfig,
+          success: false,
+          stages: [{ stage: 0, success: false, error: `Input not found: ${trial.inputId}` }],
+        });
+        continue;
+      }
+
+      console.log(`  Regenerating trial ${trial.trialNumber} (${trial.modelConfig})...`);
+
+      const result = await regenerateTrialAndUpdateLogs(
+        batchId,
+        batch.experimentId,
+        trial.trialNumber,
+        trial.inputId,
+        trial.modelConfig as ModelConfigId,
+        input,
+        trial.existingLogIds
+      );
+
+      results.push({
+        trialNumber: trial.trialNumber,
+        modelConfig: trial.modelConfig,
+        success: result.success,
+        stages: result.stages,
+      });
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    const failCount = results.filter(r => !r.success).length;
+
+    console.log(`✅ Regeneration complete: ${successCount} success, ${failCount} failed`);
+
+    return c.json({
+      success: true,
+      regeneratedCount: successCount,
+      failedCount: failCount,
+      results,
+    });
+  } catch (error) {
+    console.error('Failed to regenerate logs:', error);
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'

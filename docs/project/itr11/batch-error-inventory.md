@@ -28,3 +28,19 @@
 ### jotai_atom_errors (JA_SR計算用)
 - ReactiveBindingエンジン初期化失敗: `ATOM_CREATION_FAILED:engine_init`。【F:concern-app/src/components/experiment/HeadlessValidator.tsx†L284-L295】
 - UISpec構造不備推定: `ATOM_CREATION_FAILED:structure_error`（NO_WIDGETSやMISSING_WIDGET_IDがある場合に付与）。【F:concern-app/src/components/experiment/HeadlessValidator.tsx†L298-L304】
+
+## 集計済みエラーメトリクス
+
+各ステージ結果には、エラー配列とは別に以下の集計済みフィールドが保存される。【F:server/src/services/v4/ValidationService.ts†L948-L960】
+
+### type_error_count
+- `TYPE_MISMATCH` または `ZOD_SCHEMA_MISMATCH` エラーの件数。
+- スキーマ型不整合の定量的評価に使用。
+
+### reference_error_count
+- `REFERENCE_ERROR`, `UNKNOWN_ENTITY`, `UNKNOWN_ATTRIBUTE`, `INVALID_PATH` エラーの件数。
+- 参照整合性違反の定量的評価に使用。
+
+### cycle_detected
+- `CIRCULAR_DEPENDENCY` エラーが1件以上存在するかの真偽値。
+- リアクティブバインディングの循環参照検出フラグ。

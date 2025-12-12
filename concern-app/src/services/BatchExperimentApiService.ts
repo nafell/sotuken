@@ -152,6 +152,60 @@ export interface CorpusInfo {
 }
 
 // ========================================
+// Statistics Types
+// ========================================
+
+export type TestType = 'z-test' | 'mann-whitney-u';
+export type EffectSizeInterpretation = 'negligible' | 'small' | 'medium' | 'large';
+
+export interface SampleStats {
+  n: number;
+  value: number;
+  successes?: number;
+  values?: number[];
+}
+
+export interface StatisticalTestResult {
+  metric: string;
+  testType: TestType;
+  model1: string;
+  model2: string;
+  model1Stats: SampleStats;
+  model2Stats: SampleStats;
+  testStatistic: number;
+  pValue: number;
+  pValueCorrected: number;
+  significant: boolean;
+  significantCorrected: boolean;
+  effectSize: number;
+  effectSizeInterpretation: EffectSizeInterpretation;
+}
+
+export interface TestSummary {
+  totalTests: number;
+  significantCount: number;
+  significantCorrectedCount: number;
+}
+
+export interface BatchStatisticsResult {
+  batchId: string;
+  experimentId: string;
+  generatedAt: string;
+  alpha: number;
+  alphaCorrected: number;
+  correctionMethod: 'bonferroni';
+  totalComparisons: number;
+  layer1Comparisons: StatisticalTestResult[];
+  layer4Comparisons: StatisticalTestResult[];
+  summary: {
+    layer1: TestSummary;
+    layer4: TestSummary;
+  };
+}
+
+export type StatisticsExportFormat = 'markdown' | 'csv' | 'summary';
+
+// ========================================
 // API Service
 // ========================================
 
@@ -376,6 +430,34 @@ export class BatchExperimentApiService {
 
     // クリーンアップ関数を返す
     return () => eventSource.close();
+  }
+
+  // ========================================
+  // 統計分析API
+  // ========================================
+
+  /**
+   * 統計検定結果を取得
+   */
+  async getStatistics(batchId: string): Promise<BatchStatisticsResult> {
+    const response = await fetch(
+      `${this.baseUrl}/api/experiment/batch/${batchId}/statistics`
+    );
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.error ?? 'Failed to get statistics');
+    }
+    return data.data;
+  }
+
+  /**
+   * 統計エクスポートURLを取得
+   */
+  getStatisticsExportUrl(
+    batchId: string,
+    format: StatisticsExportFormat = 'markdown'
+  ): string {
+    return `${this.baseUrl}/api/experiment/batch/${batchId}/statistics/export?format=${format}`;
   }
 }
 

@@ -26,6 +26,8 @@ import {
   type Layer4Metrics,
   type ModelStatistics,
 } from '../types/experiment-trial.types';
+import { getStatisticalAnalysisService } from '../services/StatisticalAnalysisService';
+import { exportToMarkdown, exportToCSV, exportSummaryTable } from '../services/StatisticalExportService';
 
 const batchExperimentRoutes = new Hono();
 
@@ -705,6 +707,106 @@ batchExperimentRoutes.get('/corpuses', async (c) => {
     });
   } catch (error) {
     console.error('Failed to list corpuses:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+
+// ========================================
+// 統計分析エンドポイント
+// ========================================
+
+/**
+ * GET /api/experiment/batch/:batchId/statistics
+ * バッチの統計検定結果を取得
+ */
+batchExperimentRoutes.get('/:batchId/statistics', async (c) => {
+  try {
+    const batchId = c.req.param('batchId');
+
+    const statisticsService = getStatisticalAnalysisService();
+    const result = await statisticsService.runAllPairwiseComparisons(batchId);
+
+    if (!result) {
+      return c.json({
+        success: false,
+        error: 'Batch not found or no trial data available'
+      }, 404);
+    }
+
+    return c.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error('Failed to get statistics:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+
+/**
+ * GET /api/experiment/batch/:batchId/statistics/export
+ * 統計検定結果をエクスポート
+ */
+batchExperimentRoutes.get('/:batchId/statistics/export', async (c) => {
+  try {
+    const batchId = c.req.param('batchId');
+    const format = c.req.query('format') ?? 'markdown';
+
+    const statisticsService = getStatisticalAnalysisService();
+    const result = await statisticsService.runAllPairwiseComparisons(batchId);
+
+    if (!result) {
+      return c.json({
+        success: false,
+        error: 'Batch not found or no trial data available'
+      }, 404);
+    }
+
+    switch (format) {
+      case 'markdown': {
+        const content = exportToMarkdown(result);
+        return new Response(content, {
+          headers: {
+            'Content-Type': 'text/markdown; charset=utf-8',
+            'Content-Disposition': `attachment; filename="statistics_${batchId}.md"`,
+          },
+        });
+      }
+
+      case 'csv': {
+        const content = exportToCSV(result);
+        return new Response(content, {
+          headers: {
+            'Content-Type': 'text/csv; charset=utf-8',
+            'Content-Disposition': `attachment; filename="statistics_${batchId}.csv"`,
+          },
+        });
+      }
+
+      case 'summary': {
+        const content = exportSummaryTable(result);
+        return new Response(content, {
+          headers: {
+            'Content-Type': 'text/markdown; charset=utf-8',
+            'Content-Disposition': `attachment; filename="statistics_summary_${batchId}.md"`,
+          },
+        });
+      }
+
+      default:
+        return c.json({
+          success: false,
+          error: `Unsupported format: ${format}. Supported: markdown, csv, summary`
+        }, 400);
+    }
+  } catch (error) {
+    console.error('Failed to export statistics:', error);
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'

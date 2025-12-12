@@ -358,6 +358,9 @@ export const experimentTrialLogs = pgTable('experiment_trial_logs', {
   promptData: text('prompt_data'), // 実際にLLMに送信されたプロンプト全文
   inputVariables: jsonb('input_variables'), // 各Stageで使用したプロンプト変数
 
+  // 検証タイムスタンプ（LL-001対応: nullの曖昧性を解消）
+  serverValidatedAt: timestamp('server_validated_at', { withTimezone: true }), // サーバー側検証完了時刻（null = 未検証）
+
   // タイムスタンプ
   timestamp: timestamp('timestamp', { withTimezone: true }).default(sql`now()`)
 }, (table) => ({

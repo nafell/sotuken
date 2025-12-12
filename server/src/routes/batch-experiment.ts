@@ -27,6 +27,8 @@ import {
 } from '../types/experiment-trial.types';
 import { getStatisticalAnalysisService } from '../services/StatisticalAnalysisService';
 import { exportToMarkdown, exportToCSV, exportSummaryTable } from '../services/StatisticalExportService';
+import { validateUISpecForFrontend } from '../services/v4/ValidationService';
+import type { PlanUISpec } from '../types/v4/ui-spec.types';
 
 const batchExperimentRoutes = new Hono();
 
@@ -705,6 +707,187 @@ batchExperimentRoutes.get('/corpuses', async (c) => {
     });
   } catch (error) {
     console.error('Failed to list corpuses:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+
+// ========================================
+// 再検証エンドポイント（LL-001/LL-002対応）
+// ========================================
+
+/**
+ * GET /api/experiment/batch/:batchId/unvalidated
+ * 未検証のログ一覧を取得
+ *
+ * serverValidatedAt が null のStage 3ログを返す
+ */
+batchExperimentRoutes.get('/:batchId/unvalidated', async (c) => {
+  try {
+    const batchId = c.req.param('batchId');
+
+    // Stage 3 かつ serverValidatedAt が null のログを取得
+    const unvalidatedLogs = await db
+      .select({
+        id: experimentTrialLogs.id,
+        trialNumber: experimentTrialLogs.trialNumber,
+        inputId: experimentTrialLogs.inputId,
+        modelConfig: experimentTrialLogs.modelConfig,
+        stage: experimentTrialLogs.stage,
+        generatedData: experimentTrialLogs.generatedData,
+        timestamp: experimentTrialLogs.timestamp,
+      })
+      .from(experimentTrialLogs)
+      .where(
+        and(
+          eq(experimentTrialLogs.batchId, batchId),
+          eq(experimentTrialLogs.stage, 3)
+        )
+      );
+
+    // serverValidatedAt が null のものをフィルタ（Drizzle の isNull が使えない場合の回避策）
+    const fullLogs = await db
+      .select()
+      .from(experimentTrialLogs)
+      .where(
+        and(
+          eq(experimentTrialLogs.batchId, batchId),
+          eq(experimentTrialLogs.stage, 3)
+        )
+      );
+
+    const unvalidated = fullLogs.filter(log => log.serverValidatedAt === null);
+
+    return c.json({
+      success: true,
+      unvalidatedCount: unvalidated.length,
+      totalStage3Count: fullLogs.length,
+      unvalidatedLogs: unvalidated.map(log => ({
+        id: log.id,
+        trialNumber: log.trialNumber,
+        inputId: log.inputId,
+        modelConfig: log.modelConfig,
+        hasGeneratedData: log.generatedData !== null,
+        timestamp: log.timestamp,
+      })),
+    });
+  } catch (error) {
+    console.error('Failed to get unvalidated logs:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+
+/**
+ * POST /api/experiment/batch/:batchId/revalidate
+ * 未検証ログを再検証
+ *
+ * Body:
+ * - logIds?: string[] - 特定のログIDのみ再検証（省略時は全未検証を対象）
+ * - rerunBackendValidation?: boolean - バックエンド検証も再実行するか（デフォルト: false）
+ */
+batchExperimentRoutes.post('/:batchId/revalidate', async (c) => {
+  try {
+    const batchId = c.req.param('batchId');
+    const body = await c.req.json().catch(() => ({}));
+    const { logIds, rerunBackendValidation = false } = body as {
+      logIds?: string[];
+      rerunBackendValidation?: boolean;
+    };
+
+    // 対象ログを取得
+    let targetLogs = await db
+      .select()
+      .from(experimentTrialLogs)
+      .where(
+        and(
+          eq(experimentTrialLogs.batchId, batchId),
+          eq(experimentTrialLogs.stage, 3)
+        )
+      );
+
+    // logIdsが指定されている場合はフィルタ
+    if (logIds && logIds.length > 0) {
+      targetLogs = targetLogs.filter(log => logIds.includes(log.id));
+    } else {
+      // 未検証のみを対象
+      targetLogs = targetLogs.filter(log => log.serverValidatedAt === null);
+    }
+
+    if (targetLogs.length === 0) {
+      return c.json({
+        success: true,
+        message: 'No logs to revalidate',
+        revalidatedCount: 0,
+      });
+    }
+
+    console.log(`🔄 Revalidating ${targetLogs.length} logs for batch ${batchId}`);
+
+    const results: Array<{
+      logId: string;
+      success: boolean;
+      error?: string;
+    }> = [];
+
+    for (const log of targetLogs) {
+      try {
+        if (!log.generatedData) {
+          results.push({
+            logId: log.id,
+            success: false,
+            error: 'No generated data available',
+          });
+          continue;
+        }
+
+        // フロントエンド互換検証を実行
+        const frontendValidation = validateUISpecForFrontend(log.generatedData as PlanUISpec);
+
+        // DB更新
+        await db
+          .update(experimentTrialLogs)
+          .set({
+            renderErrors: frontendValidation.renderErrors,
+            reactComponentErrors: frontendValidation.reactComponentErrors,
+            jotaiAtomErrors: frontendValidation.jotaiAtomErrors,
+            typeErrorCount: frontendValidation.typeErrorCount,
+            referenceErrorCount: frontendValidation.referenceErrorCount,
+            cycleDetected: frontendValidation.cycleDetected,
+            serverValidatedAt: new Date(frontendValidation.serverValidatedAt),
+          })
+          .where(eq(experimentTrialLogs.id, log.id));
+
+        results.push({
+          logId: log.id,
+          success: true,
+        });
+      } catch (err) {
+        results.push({
+          logId: log.id,
+          success: false,
+          error: err instanceof Error ? err.message : 'Unknown error',
+        });
+      }
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    const failCount = results.filter(r => !r.success).length;
+
+    console.log(`✅ Revalidation complete: ${successCount} success, ${failCount} failed`);
+
+    return c.json({
+      success: true,
+      revalidatedCount: successCount,
+      failedCount: failCount,
+      results,
+    });
+  } catch (error) {
+    console.error('Failed to revalidate logs:', error);
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'

@@ -11,7 +11,7 @@ import { db } from '../database/index';
 import { batchExecutions, experimentTrialLogs } from '../database/schema';
 import { eq, and } from 'drizzle-orm';
 import { createExperimentOrchestrator, STAGE_TO_TASK_TYPE } from './ModelConfigurationService';
-import { createValidationService, getErrorSummary } from './v4/ValidationService';
+import { createValidationService, getErrorSummary, validateUISpecForFrontend, type FrontendValidationResult } from './v4/ValidationService';
 import { WidgetSelectionService } from './v4/WidgetSelectionService';
 import { ORSGeneratorService } from './v4/ORSGeneratorService';
 import { UISpecGeneratorV4 } from './v4/UISpecGeneratorV4';
@@ -64,6 +64,8 @@ interface StageResult {
   regenerated: boolean;
   promptData?: string; // 実際にLLMに送信されたプロンプト全文
   inputVariables?: Record<string, unknown>; // プロンプト変数
+  // フロントエンド互換検証結果（Stage 3のみ）
+  frontendValidation?: FrontendValidationResult;
 }
 
 interface TrialResult {
@@ -634,6 +636,12 @@ export class BatchExecutionService {
       dslErrors = [result.error?.type ?? 'UISPEC_GENERATION_FAILED'];
     }
 
+    // Stage 3: フロントエンド互換検証をサーバー側で実行
+    // SSE切断時も検証結果が保存されるようにする（LL-002対応）
+    const frontendValidation = result.success && result.data
+      ? validateUISpecForFrontend(result.data as PlanUISpec)
+      : undefined;
+
     return {
       stage: 3,
       success: result.success && dslErrors === null,
@@ -652,6 +660,7 @@ export class BatchExecutionService {
         planORS: '(omitted for brevity)',
         widgetSelectionResult: '(omitted for brevity)',
       },
+      frontendValidation,
     };
   }
 
@@ -757,6 +766,10 @@ export class BatchExecutionService {
 
     const modelConfig = modelConfigId; // 'A', 'B', 'C', 'D', 'E'
 
+    // Stage 3の場合、サーバー側でフロントエンド互換検証を実行済み
+    const fv = result.frontendValidation;
+    const hasServerValidation = stageNum === 3 && fv !== undefined;
+
     await db.insert(experimentTrialLogs).values({
       experimentId,
       batchId,
@@ -769,18 +782,21 @@ export class BatchExecutionService {
       outputTokens: result.metrics.outputTokens ?? 0,
       latencyMs: result.metrics.latencyMs,
       dslErrors: result.dslErrors,
-      renderErrors: null, // フロントエンドからのフィードバック待ち
+      // フロントエンド互換検証結果（サーバー側で実行済みの場合は設定）
+      renderErrors: hasServerValidation ? fv.renderErrors : null,
       w2wrErrors: result.w2wrErrors, // W2WR DSL生成エラー
-      reactComponentErrors: null, // フロントエンドからのフィードバック待ち
-      jotaiAtomErrors: null, // フロントエンドからのフィードバック待ち
-      typeErrorCount: result.typeErrorCount ?? 0,
-      referenceErrorCount: result.referenceErrorCount ?? 0,
-      cycleDetected: result.cycleDetected ?? false,
+      reactComponentErrors: hasServerValidation ? fv.reactComponentErrors : null,
+      jotaiAtomErrors: hasServerValidation ? fv.jotaiAtomErrors : null,
+      typeErrorCount: hasServerValidation ? fv.typeErrorCount : (result.typeErrorCount ?? 0),
+      referenceErrorCount: hasServerValidation ? fv.referenceErrorCount : (result.referenceErrorCount ?? 0),
+      cycleDetected: hasServerValidation ? fv.cycleDetected : (result.cycleDetected ?? false),
       regenerated: result.regenerated,
       runtimeError: isRuntimeError,
       generatedData: result.data ?? null,
       promptData: result.promptData ?? null, // 実際にLLMに送信されたプロンプト全文
       inputVariables: result.inputVariables ?? null, // プロンプト変数
+      // サーバー検証タイムスタンプ（LL-001対応: nullの曖昧性を解消）
+      serverValidatedAt: hasServerValidation ? new Date(fv.serverValidatedAt) : null,
     });
   }
 

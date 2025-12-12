@@ -50,6 +50,13 @@
       "when": 1765411874816,
       "tag": "0006_early_shiva",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1765500000000,
+      "tag": "0007_add_server_validated_at",
+      "breakpoints": true
     }
   ]
 }

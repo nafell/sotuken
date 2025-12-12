@@ -14,6 +14,24 @@ import {
   type CorpusInfo,
 } from '../../services/BatchExperimentApiService';
 
+// W2WRカテゴリのラベル
+const W2WR_LABELS: Record<string, string> = {
+  A: 'No W2WR',
+  B: 'Passthrough',
+  C: 'JS単純',
+  D: 'JS複合',
+  E: '複数Binding',
+};
+
+// W2WRカテゴリの色
+const W2WR_COLORS: Record<string, string> = {
+  A: '#9e9e9e',
+  B: '#4caf50',
+  C: '#2196f3',
+  D: '#ff9800',
+  E: '#f44336',
+};
+
 export default function BatchExperiment() {
   const navigate = useNavigate();
   const api = getBatchExperimentApi();
@@ -208,6 +226,92 @@ export default function BatchExperiment() {
           <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
             選択中: {selectedCorpus.description} ({selectedCorpus.inputCount}件の入力データ)
           </p>
+        )}
+
+        {/* コーパスメタ情報表示 */}
+        {selectedCorpus?.metadata && (
+          <div style={{
+            marginTop: '12px',
+            padding: '12px',
+            backgroundColor: '#fafafa',
+            borderRadius: '4px',
+            border: '1px solid #e0e0e0',
+          }}>
+            {/* W2WR分布 */}
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '6px' }}>
+                W2WR分布
+              </div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {Object.entries(selectedCorpus.metadata.w2wrDistribution).map(([key, count]) => (
+                  <span
+                    key={key}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '2px 8px',
+                      fontSize: '12px',
+                      backgroundColor: W2WR_COLORS[key] ?? '#999',
+                      color: 'white',
+                      borderRadius: '12px',
+                    }}
+                  >
+                    {key}: {W2WR_LABELS[key] ?? key} ({count})
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* 複雑度分布 */}
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '6px' }}>
+                複雑度分布
+              </div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {Object.entries(selectedCorpus.metadata.complexityDistribution).map(([key, count]) => (
+                  <span
+                    key={key}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '2px 8px',
+                      fontSize: '12px',
+                      backgroundColor: key === 'simple' ? '#4caf50' : key === 'medium' ? '#ff9800' : '#f44336',
+                      color: 'white',
+                      borderRadius: '12px',
+                    }}
+                  >
+                    {key} ({count})
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* カテゴリ分布 */}
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '6px' }}>
+                カテゴリ分布
+              </div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {Object.entries(selectedCorpus.metadata.categoryDistribution).map(([key, count]) => (
+                  <span
+                    key={key}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '2px 8px',
+                      fontSize: '12px',
+                      backgroundColor: '#5c6bc0',
+                      color: 'white',
+                      borderRadius: '12px',
+                    }}
+                  >
+                    {key} ({count})
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
         )}
       </section>
 

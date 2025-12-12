@@ -958,3 +958,296 @@ export function getErrorSummary(result: ValidationResult): {
     cycleDetected: hasCyclicDependency(result),
   };
 }
+
+// =============================================================================
+// フロントエンド互換バリデーション（HeadlessValidator移植版）
+// =============================================================================
+
+/**
+ * フロントエンド検証結果（HeadlessValidationResult互換）
+ *
+ * @see concern-app/src/components/experiment/HeadlessValidator.tsx
+ */
+export interface FrontendValidationResult {
+  /** 検証成功 */
+  success: boolean;
+  /** レンダーエラー */
+  renderErrors: string[] | null;
+  /** Reactコンポーネント変換エラー */
+  reactComponentErrors: string[] | null;
+  /** Jotai atom変換エラー */
+  jotaiAtomErrors: string[] | null;
+  /** 型エラー数 */
+  typeErrorCount: number;
+  /** 参照エラー数 */
+  referenceErrorCount: number;
+  /** 循環依存検出 */
+  cycleDetected: boolean;
+  /** Atom作成数 */
+  atomCount: number;
+  /** バインディング数 */
+  bindingCount: number;
+  /** サーバー検証タイムスタンプ */
+  serverValidatedAt: number;
+}
+
+/**
+ * UISpecをフロントエンド互換形式で検証
+ *
+ * HeadlessValidator.validateUISpecHeadless() のサーバーサイド移植版。
+ * SSE切断時もサーバー側で検証を完結させるために使用。
+ *
+ * @param uiSpec 検証対象のUISpec（Stage 3生成結果）
+ * @returns フロントエンド互換の検証結果
+ */
+export function validateUISpecForFrontend(
+  uiSpec: UISpec | PlanUISpec | null
+): FrontendValidationResult {
+  const errors: string[] = [];
+  const reactComponentErrors: string[] = [];
+  const jotaiAtomErrors: string[] = [];
+  let cycleDetected = false;
+  let atomCount = 0;
+  let bindingCount = 0;
+  let typeErrorCount = 0;
+  let referenceErrorCount = 0;
+
+  try {
+    if (!uiSpec) {
+      errors.push('MISSING_UISPEC');
+      reactComponentErrors.push('MISSING_UISPEC');
+    } else {
+      // UISpec構造検証
+      const uiSpecResult = validateUISpecStructure(uiSpec);
+      errors.push(...uiSpecResult.errors);
+
+      // Reactコンポーネントエラー収集
+      for (const err of uiSpecResult.errors) {
+        if (err === 'NO_WIDGETS' || err === 'DUPLICATE_WIDGET_ID' || err.startsWith('MISSING_')) {
+          reactComponentErrors.push(err);
+        }
+      }
+
+      // Widget数をatom数として記録
+      const widgets = getWidgetsFromUISpec(uiSpec);
+      atomCount = widgets.length;
+
+      // ReactiveBindings検証
+      const bindings = getBindingsFromUISpec(uiSpec);
+      if (bindings.length > 0) {
+        bindingCount = bindings.length;
+        const widgetIds = new Set(widgets.map(w => w.id));
+
+        // 循環依存チェック
+        cycleDetected = detectCyclicDependenciesInBindings(bindings);
+        if (cycleDetected) {
+          errors.push('CYCLIC_DEPENDENCY');
+        }
+
+        // ウィジェット参照チェック
+        const refResult = validateWidgetReferencesInBindings(bindings, widgetIds);
+        referenceErrorCount = refResult.errors.length;
+        errors.push(...refResult.errors);
+
+        // メカニズム検証
+        const mechResult = validateBindingMechanisms(bindings);
+        typeErrorCount = mechResult.errors.length;
+        errors.push(...mechResult.errors);
+      }
+
+      // Jotai Atom作成検証（構造エラーがあればatom作成も失敗と推定）
+      if (uiSpecResult.errors.some(e => e === 'NO_WIDGETS' || e === 'MISSING_WIDGET_ID')) {
+        jotaiAtomErrors.push('ATOM_CREATION_FAILED:structure_error');
+      }
+    }
+  } catch (error) {
+    const errMsg = `VALIDATION_ERROR: ${error instanceof Error ? error.message : 'Unknown'}`;
+    errors.push(errMsg);
+    reactComponentErrors.push('RENDER_EXCEPTION');
+  }
+
+  return {
+    success: errors.length === 0,
+    renderErrors: errors.length > 0 ? [...new Set(errors)] : null,
+    reactComponentErrors: reactComponentErrors.length > 0 ? [...new Set(reactComponentErrors)] : null,
+    jotaiAtomErrors: jotaiAtomErrors.length > 0 ? [...new Set(jotaiAtomErrors)] : null,
+    typeErrorCount,
+    referenceErrorCount,
+    cycleDetected,
+    atomCount,
+    bindingCount,
+    serverValidatedAt: Date.now(),
+  };
+}
+
+/**
+ * UISpec構造を検証
+ */
+function validateUISpecStructure(uiSpec: UISpec | PlanUISpec): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  const widgets = getWidgetsFromUISpec(uiSpec);
+
+  // Widgets検証
+  if (!widgets || widgets.length === 0) {
+    errors.push('NO_WIDGETS');
+  }
+
+  // ID重複チェック
+  const widgetIds = widgets.map(w => w.id);
+  const uniqueIds = new Set(widgetIds);
+  if (uniqueIds.size !== widgetIds.length) {
+    errors.push('DUPLICATE_WIDGET_ID');
+  }
+
+  // 各ウィジェットの基本検証
+  for (const widget of widgets) {
+    if (!widget.id) {
+      errors.push('MISSING_WIDGET_ID');
+    }
+    if (!widget.component) {
+      errors.push(`MISSING_COMPONENT: ${widget.id}`);
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
+/**
+ * UISpecからwidgets配列を取得（v4.0とv5.0両対応）
+ */
+function getWidgetsFromUISpec(uiSpec: UISpec | PlanUISpec): WidgetSpec[] {
+  // v5.0 PlanUISpec
+  if ('sections' in uiSpec && uiSpec.sections) {
+    const allWidgets: WidgetSpec[] = [];
+    for (const sectionName of ['diverge', 'organize', 'converge'] as const) {
+      const section = uiSpec.sections[sectionName];
+      if (section?.widgets) {
+        allWidgets.push(...section.widgets);
+      }
+    }
+    return allWidgets;
+  }
+  // v4.0 UISpec
+  return (uiSpec as UISpec).widgets ?? [];
+}
+
+/**
+ * UISpecからbindings配列を取得
+ */
+function getBindingsFromUISpec(uiSpec: UISpec | PlanUISpec): ReactiveBinding[] {
+  return uiSpec.reactiveBindings?.bindings ?? [];
+}
+
+/**
+ * 循環依存を検出（DFS）
+ */
+function detectCyclicDependenciesInBindings(bindings: ReactiveBinding[]): boolean {
+  const graph = new Map<string, string[]>();
+
+  // グラフを構築
+  for (const binding of bindings) {
+    if (binding.enabled === false) continue;
+
+    const sourceWidget = binding.source.split('.')[0];
+    const targetWidget = binding.target.split('.')[0];
+
+    if (!graph.has(sourceWidget)) {
+      graph.set(sourceWidget, []);
+    }
+    graph.get(sourceWidget)!.push(targetWidget);
+  }
+
+  // DFSで循環を検出
+  const visited = new Set<string>();
+  const recursionStack = new Set<string>();
+
+  function hasCycle(node: string): boolean {
+    if (recursionStack.has(node)) {
+      return true;
+    }
+    if (visited.has(node)) {
+      return false;
+    }
+
+    visited.add(node);
+    recursionStack.add(node);
+
+    for (const neighbor of graph.get(node) ?? []) {
+      if (hasCycle(neighbor)) {
+        return true;
+      }
+    }
+
+    recursionStack.delete(node);
+    return false;
+  }
+
+  for (const node of graph.keys()) {
+    if (hasCycle(node)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * バインディング内のウィジェット参照を検証
+ */
+function validateWidgetReferencesInBindings(
+  bindings: ReactiveBinding[],
+  widgetIds: Set<string>
+): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  for (const binding of bindings) {
+    const sourceWidget = binding.source.split('.')[0];
+    const targetWidget = binding.target.split('.')[0];
+
+    if (!widgetIds.has(sourceWidget)) {
+      errors.push(`UNKNOWN_SOURCE_WIDGET: ${sourceWidget}`);
+    }
+    if (!widgetIds.has(targetWidget)) {
+      errors.push(`UNKNOWN_TARGET_WIDGET: ${targetWidget}`);
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
+/**
+ * バインディングメカニズムを検証
+ */
+function validateBindingMechanisms(
+  bindings: ReactiveBinding[]
+): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  for (const binding of bindings) {
+    const rel = binding.relationship;
+
+    // 型ベースの検証
+    if (rel.type === 'javascript' && !rel.javascript) {
+      errors.push(`MISSING_JAVASCRIPT: ${binding.id}`);
+    }
+
+    if (rel.type === 'transform' && !rel.transform) {
+      errors.push(`MISSING_TRANSFORM: ${binding.id}`);
+    }
+
+    if (rel.type === 'llm' && !rel.llmPrompt) {
+      errors.push(`MISSING_LLM_PROMPT: ${binding.id}`);
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}

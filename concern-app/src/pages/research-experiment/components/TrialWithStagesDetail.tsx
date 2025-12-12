@@ -39,7 +39,11 @@ export default function TrialWithStagesDetail({ trial, isExpanded, onToggle }: P
   // 全体ステータス判定
   const hasRuntimeError = Array.from(trial.stages.values()).some(s => s.runtimeError);
   const hasAnyError = Array.from(trial.stages.values()).some(s =>
-    (s.dslErrors && s.dslErrors.length > 0) || (s.renderErrors && s.renderErrors.length > 0)
+    (s.dslErrors && s.dslErrors.length > 0) ||
+    (s.renderErrors && s.renderErrors.length > 0) ||
+    s.typeErrorCount > 0 ||
+    s.referenceErrorCount > 0 ||
+    s.cycleDetected
   );
 
   const statusColor = hasRuntimeError ? '#d32f2f' : hasAnyError ? '#f57c00' : '#388e3c';

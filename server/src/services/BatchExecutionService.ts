@@ -58,6 +58,9 @@ interface StageResult {
   metrics: LLMCallMetrics;
   dslErrors: string[] | null;
   w2wrErrors: string[] | null; // W2WR DSL生成エラー
+  typeErrorCount?: number;
+  referenceErrorCount?: number;
+  cycleDetected?: boolean;
   regenerated: boolean;
   promptData?: string; // 実際にLLMに送信されたプロンプト全文
   inputVariables?: Record<string, unknown>; // プロンプト変数
@@ -493,11 +496,17 @@ export class BatchExecutionService {
 
     // Widget選定結果の検証
     let dslErrors: string[] | null = null;
+    let typeErrorCount = 0;
+    let referenceErrorCount = 0;
+    let cycleDetected = false;
+
     if (result.success && result.data) {
       const validationResult = this.validationService.validateWidgetSelection(result.data);
-      if (!validationResult.valid) {
-        dslErrors = validationResult.errors.map(e => e.type);
-      }
+      const summary = getErrorSummary(validationResult);
+      dslErrors = summary.dslErrors;
+      typeErrorCount = summary.typeErrorCount;
+      referenceErrorCount = summary.referenceErrorCount;
+      cycleDetected = summary.cycleDetected;
     } else if (!result.success) {
       dslErrors = [result.error?.type ?? 'WIDGET_SELECTION_FAILED'];
     }
@@ -509,6 +518,9 @@ export class BatchExecutionService {
       metrics: result.metrics,
       dslErrors,
       w2wrErrors: null,
+      typeErrorCount,
+      referenceErrorCount,
+      cycleDetected,
       regenerated: (result.metrics.retryCount ?? 0) > 0,
       promptData: result.prompt, // 実際にLLMに送信されたプロンプト全文
       inputVariables: {
@@ -537,11 +549,17 @@ export class BatchExecutionService {
 
     // PlanORS検証（v5.0）
     let dslErrors: string[] | null = null;
+    let typeErrorCount = 0;
+    let referenceErrorCount = 0;
+    let cycleDetected = false;
+
     if (result.success && result.data) {
       const validationResult = this.validationService.validatePlanORS(result.data);
-      if (!validationResult.valid) {
-        dslErrors = validationResult.errors.map(e => e.type);
-      }
+      const summary = getErrorSummary(validationResult);
+      dslErrors = summary.dslErrors;
+      typeErrorCount = summary.typeErrorCount;
+      referenceErrorCount = summary.referenceErrorCount;
+      cycleDetected = summary.cycleDetected;
     } else if (!result.success) {
       dslErrors = [result.error?.type ?? 'ORS_GENERATION_FAILED'];
     }
@@ -553,6 +571,9 @@ export class BatchExecutionService {
       metrics: result.metrics,
       dslErrors,
       w2wrErrors: null,
+      typeErrorCount,
+      referenceErrorCount,
+      cycleDetected,
       regenerated: (result.metrics.retryCount ?? 0) > 0,
       promptData: result.prompt, // 実際にLLMに送信されたプロンプト全文
       inputVariables: {
@@ -585,9 +606,16 @@ export class BatchExecutionService {
     // UISpec検証
     let dslErrors: string[] | null = null;
     let w2wrErrors: string[] | null = null;
+    let typeErrorCount = 0;
+    let referenceErrorCount = 0;
+    let cycleDetected = false;
 
     if (result.success && result.data) {
       const validationResult = this.validationService.validateUISpec(result.data, widgetSelectionResult);
+      const summary = getErrorSummary(validationResult);
+      typeErrorCount = summary.typeErrorCount;
+      referenceErrorCount = summary.referenceErrorCount;
+      cycleDetected = summary.cycleDetected;
 
       if (!validationResult.valid) {
         // DSLエラーとW2WRエラーを分離
@@ -612,6 +640,9 @@ export class BatchExecutionService {
       metrics: result.metrics,
       dslErrors,
       w2wrErrors,
+      typeErrorCount,
+      referenceErrorCount,
+      cycleDetected,
       regenerated: (result.metrics.retryCount ?? 0) > 0,
       promptData: result.prompt, // 実際にLLMに送信されたプロンプト全文
       inputVariables: {
@@ -684,6 +715,9 @@ export class BatchExecutionService {
       },
       dslErrors: ['RUNTIME_ERROR'],
       w2wrErrors: null,
+      typeErrorCount: 0,
+      referenceErrorCount: 0,
+      cycleDetected: false,
       regenerated: false,
     };
   }
@@ -704,7 +738,7 @@ export class BatchExecutionService {
       inputId,
       modelConfigId,
       stages,
-      success: !runtimeError, // 実行時エラーがなければ成功
+      success: _success && !runtimeError, // DSLエラーまたは実行時エラーがなければ成功
       runtimeError,
     };
   }
@@ -738,9 +772,9 @@ export class BatchExecutionService {
       w2wrErrors: result.w2wrErrors, // W2WR DSL生成エラー
       reactComponentErrors: null, // フロントエンドからのフィードバック待ち
       jotaiAtomErrors: null, // フロントエンドからのフィードバック待ち
-      typeErrorCount: 0,
-      referenceErrorCount: 0,
-      cycleDetected: false,
+      typeErrorCount: result.typeErrorCount ?? 0,
+      referenceErrorCount: result.referenceErrorCount ?? 0,
+      cycleDetected: result.cycleDetected ?? false,
       regenerated: result.regenerated,
       runtimeError: isRuntimeError,
       generatedData: result.data ?? null,

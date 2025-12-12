@@ -20,7 +20,7 @@ import {
 import TrialLogDetail from './components/TrialLogDetail';
 import StatisticsTab from './components/StatisticsTab';
 
-type TabId = 'overview' | 'layer1' | 'layer4' | 'statistics' | 'trials';
+type TabId = 'results' | 'statistics';
 
 export default function BatchResults() {
   const { batchId } = useParams<{ batchId: string }>();
@@ -56,7 +56,7 @@ export default function BatchResults() {
   const [filterStage, setFilterStage] = useState<string>('');
 
   // タブ管理
-  const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const [activeTab, setActiveTab] = useState<TabId>('results');
 
   // データ読み込み
   useEffect(() => {
@@ -387,20 +387,21 @@ export default function BatchResults() {
 
       {/* タブナビゲーション */}
       <div style={{ display: 'flex', marginBottom: '0', borderBottom: '2px solid #1976d2' }}>
-        <button style={tabStyle(activeTab === 'overview')} onClick={() => setActiveTab('overview')}>概要</button>
-        <button style={tabStyle(activeTab === 'layer1')} onClick={() => setActiveTab('layer1')}>Layer1</button>
-        <button style={tabStyle(activeTab === 'layer4')} onClick={() => setActiveTab('layer4')}>Layer4</button>
+        <button style={tabStyle(activeTab === 'results')} onClick={() => setActiveTab('results')}>結果</button>
         <button style={tabStyle(activeTab === 'statistics')} onClick={() => setActiveTab('statistics')}>統計検定</button>
-        <button style={tabStyle(activeTab === 'trials')} onClick={() => setActiveTab('trials')}>試行ログ</button>
       </div>
 
       {/* タブコンテンツ */}
       <div style={{ padding: '24px', backgroundColor: '#fff', border: '1px solid #e0e0e0', borderTop: 'none', borderRadius: '0 0 4px 4px', minHeight: '400px' }}>
-        {activeTab === 'overview' && <OverviewSection />}
-        {activeTab === 'layer1' && <Layer1Section />}
-        {activeTab === 'layer4' && <Layer4Section />}
+        {activeTab === 'results' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <OverviewSection />
+            <Layer1Section />
+            <Layer4Section />
+            <TrialsSection />
+          </div>
+        )}
         {activeTab === 'statistics' && batchId && <StatisticsTab batchId={batchId} />}
-        {activeTab === 'trials' && <TrialsSection />}
       </div>
 
       {/* ナビゲーション */}

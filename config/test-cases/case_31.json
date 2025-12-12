@@ -1,0 +1,55 @@
+{
+  "caseId": "case_31",
+  "title": "中文・学習（JS単純）",
+  "complexity": "simple",
+  "hasReactivity": true,
+
+  "concernText": "読みたい本がたまりすぎた。どれから読むか優先度決めて、計画的に消化したい",
+
+  "contextFactors": {
+    "category": "学習・自己啓発",
+    "urgency": "low",
+    "emotionalState": "eager",
+    "timeAvailable": 20
+  },
+
+  "expectedBottlenecks": [
+    "cannot_prioritize",
+    "too_many_options"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "読みたい本をリストアップ"
+    },
+    "organize": {
+      "widgets": ["matrix_placement"],
+      "purpose": "興味度×緊急度で配置"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "読む順番を決定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "matrix_placement.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.map(c => ({id: c.id, text: c.text, x: 50, y: 50}))"
+        },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "読書計画へのJS適用",
+    "cards→matrix変換",
+    "優先度決定フロー"
+  ]
+}

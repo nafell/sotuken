@@ -1,0 +1,41 @@
+{
+  "caseId": "case_13",
+  "title": "長文・人生選択（No W2WR）",
+  "complexity": "simple",
+  "hasReactivity": false,
+
+  "concernText": "結婚するかどうか迷ってる。彼女のことは好きだけど、本当にこの人と一生やっていけるのか不安もある。親からはそろそろ決めろって言われるし、友達はどんどん結婚していく。でも焦って決めて後悔したくない。自分が何を大事にしたいのか、整理してから決めたい",
+
+  "contextFactors": {
+    "category": "人生選択",
+    "urgency": "medium",
+    "emotionalState": "conflicted",
+    "timeAvailable": 60
+  },
+
+  "expectedBottlenecks": [
+    "multiple_issues",
+    "fear_of_decision"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["emotion_palette", "brainstorm_cards"],
+      "purpose": "今の感情と考えを可視化"
+    },
+    "organize": {
+      "widgets": ["card_sorting"],
+      "purpose": "価値観や条件を分類"
+    },
+    "converge": {
+      "widgets": ["tradeoff_balance"],
+      "purpose": "結婚する/しないのメリデメ比較"
+    }
+  },
+
+  "evaluationCriteria": [
+    "複合的な悩みへの適切な分解",
+    "感情と論理の両方を扱うwidget選択",
+    "W2WRなしでの独立処理"
+  ]
+}

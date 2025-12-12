@@ -1,0 +1,54 @@
+{
+  "caseId": "case_30",
+  "title": "中文・人間関係（JS単純）",
+  "complexity": "simple",
+  "hasReactivity": true,
+
+  "concernText": "友人関係を見直したい。誰と付き合いを続けるか、距離を置くか、整理して優先度つけたい",
+
+  "contextFactors": {
+    "category": "人間関係",
+    "urgency": "low",
+    "emotionalState": "contemplative",
+    "timeAvailable": 30
+  },
+
+  "expectedBottlenecks": [
+    "cannot_prioritize"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "友人をリストアップ"
+    },
+    "organize": {
+      "widgets": ["matrix_placement"],
+      "purpose": "親密度×会う頻度で配置"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "付き合いの優先度を設定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "matrix_placement.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.map(c => ({id: c.id, text: c.text, x: 50, y: 50}))"
+        },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "人間関係整理へのJS適用",
+    "matrix配置への変換",
+    "シンプルなデータマッピング"
+  ]
+}

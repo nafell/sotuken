@@ -1,0 +1,54 @@
+{
+  "caseId": "case_35",
+  "title": "短文・キャリア（JS複合）",
+  "complexity": "medium",
+  "hasReactivity": true,
+
+  "concernText": "転職先候補のメリデメを比較して決めたい",
+
+  "contextFactors": {
+    "category": "キャリア",
+    "urgency": "high",
+    "emotionalState": "decisive",
+    "timeAvailable": 30
+  },
+
+  "expectedBottlenecks": [
+    "too_many_options"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "各候補のメリット・デメリットを書き出す"
+    },
+    "organize": {
+      "widgets": ["card_sorting"],
+      "purpose": "メリット/デメリットに分類"
+    },
+    "converge": {
+      "widgets": ["tradeoff_balance"],
+      "purpose": "候補間のトレードオフを比較"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "card_sorting.categories",
+        "target": "tradeoff_balance.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "Object.entries(source).flatMap(([cat, items]) => items.map(i => ({text: i.text, side: cat === 'メリット' ? 'left' : 'right'})))"
+        },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "Object.entries + flatMapのJS生成",
+    "カテゴリ→side変換ロジック",
+    "tradeoff_balanceへの複合変換"
+  ]
+}

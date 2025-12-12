@@ -1,0 +1,65 @@
+{
+  "caseId": "case_45",
+  "title": "中文・人間関係（複数Binding）",
+  "complexity": "medium",
+  "hasReactivity": true,
+
+  "concernText": "チーム内の問題を解決したい。課題を出して、関係性を整理して、優先度つけて対策を立てたい",
+
+  "contextFactors": {
+    "category": "人間関係",
+    "urgency": "high",
+    "emotionalState": "responsible",
+    "timeAvailable": 40
+  },
+
+  "expectedBottlenecks": [
+    "fixed_perspective",
+    "multiple_issues"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "チームの課題を書き出す"
+    },
+    "organize": {
+      "widgets": ["dependency_mapping"],
+      "purpose": "課題間の依存関係を可視化"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "対処の優先度を設定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "dependency_mapping.nodes",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.map(c => ({id: c.id, label: c.text}))"
+        },
+        "updateMode": "realtime"
+      },
+      {
+        "source": "dependency_mapping.criticalPath",
+        "target": "priority_slider_grid.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.map((id, i) => ({id: id, label: id, priority: 100 - i * 10}))"
+        },
+        "updateMode": "debounced",
+        "debounceMs": 300
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "diverge→organize→convergeの完全連鎖",
+    "dependency_mappingのcriticalPath活用",
+    "優先度自動計算のJS"
+  ]
+}

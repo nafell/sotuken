@@ -1,0 +1,52 @@
+{
+  "caseId": "case_25",
+  "title": "長文・仕事（Passthrough）",
+  "complexity": "simple",
+  "hasReactivity": true,
+
+  "concernText": "部署異動の話が来てて迷ってる。今の部署は慣れてるけどマンネリ化してる。新しい部署は挑戦的だけど不安もある。異動のメリットデメリットを整理してから決めたいんだけど、頭の中がごちゃごちゃしてる",
+
+  "contextFactors": {
+    "category": "仕事",
+    "urgency": "high",
+    "emotionalState": "conflicted",
+    "timeAvailable": 35
+  },
+
+  "expectedBottlenecks": [
+    "multiple_issues",
+    "fear_of_decision"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "異動に関する考えを全て書き出す"
+    },
+    "organize": {
+      "widgets": ["card_sorting"],
+      "purpose": "メリット・デメリット・不安に分類"
+    },
+    "converge": {
+      "widgets": ["tradeoff_balance"],
+      "purpose": "異動する/しないの比較"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "card_sorting.cards",
+        "relationship": { "type": "passthrough" },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "意思決定支援へのpassthrough適用",
+    "メリデメ分類フロー",
+    "複合的悩みへのW2WR連携"
+  ]
+}

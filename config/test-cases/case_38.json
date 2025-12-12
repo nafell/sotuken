@@ -1,0 +1,55 @@
+{
+  "caseId": "case_38",
+  "title": "中文・仕事（JS複合）",
+  "complexity": "medium",
+  "hasReactivity": true,
+
+  "concernText": "プロジェクトのリスク管理をしたい。技術的リスク、スケジュールリスク、人的リスクが絡み合ってて、整理してから対策の優先度を決めたい",
+
+  "contextFactors": {
+    "category": "仕事",
+    "urgency": "high",
+    "emotionalState": "concerned",
+    "timeAvailable": 35
+  },
+
+  "expectedBottlenecks": [
+    "multiple_issues"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["mind_map"],
+      "purpose": "リスク要因を放射状に洗い出す"
+    },
+    "organize": {
+      "widgets": ["matrix_placement"],
+      "purpose": "発生確率×影響度で配置"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "対策優先度を設定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "mind_map.nodes",
+        "target": "matrix_placement.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.filter(n => n.depth > 0).map(n => ({id: n.id, text: n.label, x: 50, y: 50}))"
+        },
+        "updateMode": "debounced",
+        "debounceMs": 300
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "リスク管理へのJS複合適用",
+    "mind_map→matrix変換",
+    "debouncedによる負荷軽減"
+  ]
+}

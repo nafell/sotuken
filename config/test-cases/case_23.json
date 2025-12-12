@@ -1,0 +1,52 @@
+{
+  "caseId": "case_23",
+  "title": "長文・キャリア（Passthrough）",
+  "complexity": "simple",
+  "hasReactivity": true,
+
+  "concernText": "スキルアップしたいんだけど、何を勉強すればいいかわからない。プログラミングもいいし、英語も必要だし、マネジメントスキルも欲しい。でも時間は限られてるから全部はできない。まず候補を出して、自分のキャリアに本当に必要なものを絞りたい",
+
+  "contextFactors": {
+    "category": "キャリア",
+    "urgency": "low",
+    "emotionalState": "ambitious",
+    "timeAvailable": 40
+  },
+
+  "expectedBottlenecks": [
+    "too_many_options",
+    "cannot_prioritize"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "学びたいスキルを全て書き出す"
+    },
+    "organize": {
+      "widgets": ["card_sorting"],
+      "purpose": "短期・中期・長期に分類"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "今すぐ取り組む優先度を設定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "card_sorting.cards",
+        "relationship": { "type": "passthrough" },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "長文からのpassthrough W2WR生成",
+    "選択肢絞り込みフロー",
+    "スキルアップ計画への適用"
+  ]
+}

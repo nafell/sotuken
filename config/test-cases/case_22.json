@@ -1,0 +1,52 @@
+{
+  "caseId": "case_22",
+  "title": "中文・仕事（Passthrough）",
+  "complexity": "simple",
+  "hasReactivity": true,
+
+  "concernText": "新規プロジェクトの要件が多すぎてどこから手をつけるか迷ってる。まず全部出してから優先度決めたい",
+
+  "contextFactors": {
+    "category": "仕事",
+    "urgency": "high",
+    "emotionalState": "pressured",
+    "timeAvailable": 25
+  },
+
+  "expectedBottlenecks": [
+    "cannot_prioritize",
+    "unorganized_info"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "プロジェクト要件を洗い出す"
+    },
+    "organize": {
+      "widgets": ["card_sorting"],
+      "purpose": "機能別・フェーズ別に分類"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "実装優先度を設定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "card_sorting.cards",
+        "relationship": { "type": "passthrough" },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "プロジェクト管理へのpassthrough適用",
+    "優先順位付けの支援",
+    "シンプルなW2WR生成"
+  ]
+}

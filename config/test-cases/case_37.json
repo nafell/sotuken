@@ -1,0 +1,55 @@
+{
+  "caseId": "case_37",
+  "title": "中文・人間関係（JS複合）",
+  "complexity": "medium",
+  "hasReactivity": true,
+
+  "concernText": "職場の人間関係で複数の問題が絡み合ってる。上司との関係、同僚との協力、後輩の指導。それぞれの課題を整理してから優先順位つけたい",
+
+  "contextFactors": {
+    "category": "人間関係",
+    "urgency": "medium",
+    "emotionalState": "stressed",
+    "timeAvailable": 40
+  },
+
+  "expectedBottlenecks": [
+    "multiple_issues"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["mind_map"],
+      "purpose": "人間関係の課題を放射状に展開"
+    },
+    "organize": {
+      "widgets": ["matrix_placement"],
+      "purpose": "緊急度×重要度で配置"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "対処の優先度を設定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "mind_map.nodes",
+        "target": "matrix_placement.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.filter(n => n.depth > 0).map(n => ({id: n.id, text: n.label, x: 50, y: 50}))"
+        },
+        "updateMode": "debounced",
+        "debounceMs": 300
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "filter + mapの複合JS生成",
+    "mind_map depthフィルタリング",
+    "debouncedモードの設定"
+  ]
+}

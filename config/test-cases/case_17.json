@@ -1,0 +1,51 @@
+{
+  "caseId": "case_17",
+  "title": "短文・仕事（Passthrough）",
+  "complexity": "simple",
+  "hasReactivity": true,
+
+  "concernText": "会議で出たアイデアをまとめて優先度つけたい",
+
+  "contextFactors": {
+    "category": "仕事",
+    "urgency": "high",
+    "emotionalState": "focused",
+    "timeAvailable": 20
+  },
+
+  "expectedBottlenecks": [
+    "unorganized_info"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "会議で出たアイデアを記録"
+    },
+    "organize": {
+      "widgets": ["card_sorting"],
+      "purpose": "テーマ別に分類"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "実行優先度を設定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "card_sorting.cards",
+        "relationship": { "type": "passthrough" },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "シンプルなpassthrough連携",
+    "仕事系タスクへの対応",
+    "基本的なW2WR生成"
+  ]
+}

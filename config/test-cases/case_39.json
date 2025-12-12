@@ -1,0 +1,56 @@
+{
+  "caseId": "case_39",
+  "title": "中文・学習（JS複合）",
+  "complexity": "medium",
+  "hasReactivity": true,
+
+  "concernText": "プログラミング学習で行き詰まってる。いろんな言語やフレームワークに手を出しすぎて、どれも中途半端。一度整理して集中すべきものを決めたい",
+
+  "contextFactors": {
+    "category": "学習・自己啓発",
+    "urgency": "medium",
+    "emotionalState": "frustrated",
+    "timeAvailable": 35
+  },
+
+  "expectedBottlenecks": [
+    "fixed_perspective",
+    "too_many_options"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["mind_map"],
+      "purpose": "学習中の技術を体系的に整理"
+    },
+    "organize": {
+      "widgets": ["matrix_placement"],
+      "purpose": "習熟度×市場価値で配置"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "集中すべき技術の優先度を設定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "mind_map.nodes",
+        "target": "matrix_placement.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.filter(n => n.depth > 0).map(n => ({id: n.id, text: n.label, x: 50, y: 50}))"
+        },
+        "updateMode": "debounced",
+        "debounceMs": 300
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "学習整理へのJS複合適用",
+    "filterによるルートノード除外",
+    "技術選定フローへのW2WR"
+  ]
+}

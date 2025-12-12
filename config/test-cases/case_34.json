@@ -1,0 +1,55 @@
+{
+  "caseId": "case_34",
+  "title": "長文・人生選択（JS単純）",
+  "complexity": "simple",
+  "hasReactivity": true,
+
+  "concernText": "子供を持つかどうか悩んでる。経済的な不安、自分の時間がなくなる不安、でも子供がいる人生も経験したい気持ちもある。パートナーとも話し合いたいけど、まず自分の気持ちを整理したい。感情と理性がぐちゃぐちゃになってる",
+
+  "contextFactors": {
+    "category": "人生選択",
+    "urgency": "low",
+    "emotionalState": "conflicted",
+    "timeAvailable": 50
+  },
+
+  "expectedBottlenecks": [
+    "fear_of_decision",
+    "emotional_block"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["emotion_palette"],
+      "purpose": "この問題への複雑な感情を可視化"
+    },
+    "organize": {
+      "widgets": ["card_sorting"],
+      "purpose": "感情と理由を分類"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "重視すべき要素の優先度を設定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "emotion_palette.selectedEmotions",
+        "target": "priority_slider_grid.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.map(e => ({id: e.emotion, label: e.emotion, priority: e.intensity}))"
+        },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "人生の大きな決断へのemotion活用",
+    "感情→優先度変換のJS",
+    "感情整理から意思決定へのフロー"
+  ]
+}

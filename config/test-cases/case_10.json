@@ -1,0 +1,40 @@
+{
+  "caseId": "case_10",
+  "title": "中文・人間関係（No W2WR）",
+  "complexity": "simple",
+  "hasReactivity": false,
+
+  "concernText": "同僚との関係がうまくいってない気がする。自分が悪いのか相手が悪いのか、客観的に見れてない",
+
+  "contextFactors": {
+    "category": "人間関係",
+    "urgency": "medium",
+    "emotionalState": "frustrated",
+    "timeAvailable": 30
+  },
+
+  "expectedBottlenecks": [
+    "fixed_perspective"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["question_card_chain"],
+      "purpose": "状況を深掘りする質問に答える"
+    },
+    "organize": {
+      "widgets": ["swot_analysis"],
+      "purpose": "自分と相手の強み弱みを整理"
+    },
+    "converge": {
+      "widgets": ["tradeoff_balance"],
+      "purpose": "改善策のメリデメを比較"
+    }
+  },
+
+  "evaluationCriteria": [
+    "視点固定の悩みへの適切なアプローチ",
+    "question_card_chainでの深掘り",
+    "W2WRなしでの独立フロー"
+  ]
+}

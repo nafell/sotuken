@@ -1,0 +1,40 @@
+{
+  "caseId": "case_08",
+  "title": "短文・メンタルヘルス（No W2WR）",
+  "complexity": "simple",
+  "hasReactivity": false,
+
+  "concernText": "最近なんかモヤモヤしてて気持ちが晴れない",
+
+  "contextFactors": {
+    "category": "メンタルヘルス",
+    "urgency": "medium",
+    "emotionalState": "anxious",
+    "timeAvailable": 15
+  },
+
+  "expectedBottlenecks": [
+    "emotional_block"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["emotion_palette"],
+      "purpose": "今の気持ちを色と強度で可視化"
+    },
+    "organize": {
+      "widgets": ["card_sorting"],
+      "purpose": "感情の原因を分類"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "対処したい順に優先度設定"
+    }
+  },
+
+  "evaluationCriteria": [
+    "曖昧な感情表現からのwidget選択",
+    "emotion_paletteの適切な選択",
+    "W2WRなしでの独立フロー"
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "caseId": "case_43",
+  "title": "中文・人生選択（複数Binding）",
+  "complexity": "medium",
+  "hasReactivity": true,
+
+  "concernText": "今後の人生の方向性を決めたい。選択肢を出して、整理して、2軸で評価して、最後に優先度決めるところまでやりたい",
+
+  "contextFactors": {
+    "category": "人生選択",
+    "urgency": "low",
+    "emotionalState": "thoughtful",
+    "timeAvailable": 60
+  },
+
+  "expectedBottlenecks": [
+    "multiple_issues",
+    "cannot_prioritize"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "人生の選択肢を書き出す"
+    },
+    "organize": {
+      "widgets": ["card_sorting", "matrix_placement"],
+      "purpose": "分類と2軸評価"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "最終優先度を設定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "card_sorting.cards",
+        "relationship": { "type": "passthrough" },
+        "updateMode": "realtime"
+      },
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "matrix_placement.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.map(c => ({id: c.id, text: c.text, x: 50, y: 50}))"
+        },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "1ソースから2オーガナイズWidgetへの分岐",
+    "passthrough + JS単純の組み合わせ",
+    "並列オーガナイズへのW2WR"
+  ]
+}

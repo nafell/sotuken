@@ -1,0 +1,55 @@
+{
+  "caseId": "case_29",
+  "title": "中文・生活（JS単純）",
+  "complexity": "simple",
+  "hasReactivity": true,
+
+  "concernText": "買いたいものがいっぱいあるけど予算に限りがある。優先度つけて計画的に買いたい",
+
+  "contextFactors": {
+    "category": "生活",
+    "urgency": "low",
+    "emotionalState": "practical",
+    "timeAvailable": 25
+  },
+
+  "expectedBottlenecks": [
+    "too_many_options",
+    "cannot_prioritize"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "欲しいものをリストアップ"
+    },
+    "organize": {
+      "widgets": ["matrix_placement"],
+      "purpose": "必要度×価格で配置"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "購入優先度を決定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "matrix_placement.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.map(c => ({id: c.id, text: c.text, x: 50, y: 50}))"
+        },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "購入計画へのJS変換適用",
+    "2軸評価への連携",
+    "シンプルなmap変換"
+  ]
+}

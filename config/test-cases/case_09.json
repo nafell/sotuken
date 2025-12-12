@@ -1,0 +1,40 @@
+{
+  "caseId": "case_09",
+  "title": "短文・学習（No W2WR）",
+  "complexity": "simple",
+  "hasReactivity": false,
+
+  "concernText": "TOEIC受けたいけど何から勉強すればいいかわからん",
+
+  "contextFactors": {
+    "category": "学習・自己啓発",
+    "urgency": "low",
+    "emotionalState": "confused",
+    "timeAvailable": 20
+  },
+
+  "expectedBottlenecks": [
+    "dont_know_where_to_start"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "勉強方法や教材の選択肢を出す"
+    },
+    "organize": {
+      "widgets": ["matrix_placement"],
+      "purpose": "難易度×効果で配置"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "取り組む優先順位を決定"
+    }
+  },
+
+  "evaluationCriteria": [
+    "学習系悩みへの適切なwidget選択",
+    "短文からの文脈理解",
+    "W2WRなしの独立フロー"
+  ]
+}

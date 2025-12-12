@@ -1,0 +1,51 @@
+{
+  "caseId": "case_19",
+  "title": "中文・キャリア（Passthrough）",
+  "complexity": "simple",
+  "hasReactivity": true,
+
+  "concernText": "副業の選択肢が多すぎて決められない。まずは候補を出して、自分に合うものを絞り込みたい",
+
+  "contextFactors": {
+    "category": "キャリア",
+    "urgency": "low",
+    "emotionalState": "confused",
+    "timeAvailable": 35
+  },
+
+  "expectedBottlenecks": [
+    "too_many_options"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "副業の候補を自由に出す"
+    },
+    "organize": {
+      "widgets": ["card_sorting"],
+      "purpose": "スキル要件・時間投資で分類"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "興味度・実現可能性で順位付け"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "card_sorting.cards",
+        "relationship": { "type": "passthrough" },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "選択肢過多への対応",
+    "passthrough W2WRの生成",
+    "絞り込みフローの構築"
+  ]
+}

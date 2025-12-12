@@ -1,0 +1,51 @@
+{
+  "caseId": "case_21",
+  "title": "中文・人間関係（Passthrough）",
+  "complexity": "simple",
+  "hasReactivity": true,
+
+  "concernText": "チームメンバーの不満を聞いてるんだけど、誰が何に不満持ってるか整理できてない。まとめて対策考えたい",
+
+  "contextFactors": {
+    "category": "人間関係",
+    "urgency": "high",
+    "emotionalState": "concerned",
+    "timeAvailable": 30
+  },
+
+  "expectedBottlenecks": [
+    "unorganized_info"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "メンバーの不満を書き出す"
+    },
+    "organize": {
+      "widgets": ["card_sorting"],
+      "purpose": "人別・問題別に分類"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "対処の優先順位を決定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "card_sorting.cards",
+        "relationship": { "type": "passthrough" },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "人間関係問題へのpassthrough適用",
+    "情報整理のW2WR連携",
+    "updateMode: realtimeの設定"
+  ]
+}

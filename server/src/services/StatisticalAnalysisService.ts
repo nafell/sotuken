@@ -448,7 +448,7 @@ export class StatisticalAnalysisService {
           pValue: result.pValue,
           pValueCorrected,
           significant: result.pValue < ALPHA,
-          significantCorrected: pValueCorrected < ALPHA,
+          significantCorrected: result.pValue < ALPHA_CORRECTED,
           effectSize: result.cohensH,
           effectSizeInterpretation: interpretCohensH(result.cohensH),
         });
@@ -487,7 +487,7 @@ export class StatisticalAnalysisService {
           pValue: result.pValue,
           pValueCorrected,
           significant: result.pValue < ALPHA,
-          significantCorrected: pValueCorrected < ALPHA,
+          significantCorrected: result.pValue < ALPHA_CORRECTED,
           effectSize: result.rankBiserialR,
           effectSizeInterpretation: interpretRankBiserial(result.rankBiserialR),
         });

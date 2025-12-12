@@ -612,13 +612,14 @@ export class BatchExecutionService {
 
     if (result.success && result.data) {
       const validationResult = this.validationService.validateUISpec(result.data, widgetSelectionResult);
+      // NOTE: Stage3ではW2WRエラーを分離するため summary.dslErrors を使わず独自に構築
       const summary = getErrorSummary(validationResult);
       typeErrorCount = summary.typeErrorCount;
       referenceErrorCount = summary.referenceErrorCount;
       cycleDetected = summary.cycleDetected;
 
       if (!validationResult.valid) {
-        // DSLエラーとW2WRエラーを分離
+        // DSLエラーとW2WRエラーを分離（W2WR_SR指標計算用）
         const allErrors = validationResult.errors.map(e => e.type);
         const w2wrTypes = ['CIRCULAR_DEPENDENCY', 'SELF_REFERENCE', 'INVALID_BINDING',
                            'UNKNOWN_SOURCE_WIDGET', 'UNKNOWN_TARGET_WIDGET'];
@@ -730,7 +731,7 @@ export class BatchExecutionService {
     inputId: string,
     modelConfigId: ModelConfigId,
     stages: StageResult[],
-    _success: boolean, // DSLエラーベースの成功判定は無視
+    dslSuccess: boolean,
     runtimeError: boolean
   ): TrialResult {
     return {
@@ -738,7 +739,7 @@ export class BatchExecutionService {
       inputId,
       modelConfigId,
       stages,
-      success: _success && !runtimeError, // DSLエラーまたは実行時エラーがなければ成功
+      success: dslSuccess && !runtimeError, // 全ステージDSL検証成功かつランタイムエラーなし
       runtimeError,
     };
   }

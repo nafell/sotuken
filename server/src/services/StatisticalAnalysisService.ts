@@ -450,7 +450,9 @@ export class StatisticalAnalysisService {
           pValue: result.pValue,
           pValueCorrected,
           significant: result.pValue < ALPHA,
-          significantCorrected: pValueCorrected < ALPHA_CORRECTED,
+          // Compare the Bonferroni-corrected p-value against the original alpha to
+          // avoid applying the correction factor twice (p * m < α instead of p < α / m)
+          significantCorrected: pValueCorrected < ALPHA,
           effectSize: result.cohensH,
           effectSizeInterpretation: interpretCohensH(result.cohensH),
         });
@@ -489,7 +491,9 @@ export class StatisticalAnalysisService {
           pValue: result.pValue,
           pValueCorrected,
           significant: result.pValue < ALPHA,
-          significantCorrected: pValueCorrected < ALPHA_CORRECTED,
+          // Compare the Bonferroni-corrected p-value against the original alpha to
+          // avoid applying the correction factor twice (p * m < α instead of p < α / m)
+          significantCorrected: pValueCorrected < ALPHA,
           effectSize: result.rankBiserialR,
           effectSizeInterpretation: interpretRankBiserial(result.rankBiserialR),
         });

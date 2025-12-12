@@ -580,6 +580,48 @@ batchExperimentRoutes.get('/configs', async (c) => {
 });
 
 /**
+ * W2WRカテゴリを判定
+ * A: No W2WR, B: Passthrough, C: JS単純, D: JS複合, E: 複数Binding
+ */
+function classifyW2WRCategory(testCase: {
+  hasReactivity?: boolean;
+  expectedW2WR?: {
+    bindings?: Array<{
+      relationship?: { type?: string; javascript?: string };
+    }>;
+  };
+}): 'A' | 'B' | 'C' | 'D' | 'E' {
+  if (!testCase.hasReactivity) {
+    return 'A'; // No W2WR
+  }
+
+  const bindings = testCase.expectedW2WR?.bindings ?? [];
+  if (bindings.length === 0) {
+    return 'A'; // No W2WR
+  }
+
+  if (bindings.length >= 2) {
+    return 'E'; // 複数Binding
+  }
+
+  const binding = bindings[0];
+  const relType = binding?.relationship?.type;
+
+  if (relType === 'passthrough') {
+    return 'B'; // Passthrough
+  }
+
+  if (relType === 'javascript') {
+    const js = binding?.relationship?.javascript ?? '';
+    // 複合JS判定: filter, Object.entries, flatMap などが含まれるか
+    const isComplex = /filter|Object\.entries|flatMap|reduce/.test(js);
+    return isComplex ? 'D' : 'C';
+  }
+
+  return 'A'; // デフォルト
+}
+
+/**
  * GET /api/experiment/batch/corpuses
  * 利用可能な入力コーパス一覧を取得
  */
@@ -588,17 +630,56 @@ batchExperimentRoutes.get('/corpuses', async (c) => {
     const fs = await import('fs/promises');
     const path = await import('path');
 
-    const corpuses: Array<{ corpusId: string; description: string; inputCount: number }> = [];
+    interface CorpusInfo {
+      corpusId: string;
+      description: string;
+      inputCount: number;
+      metadata?: {
+        w2wrDistribution: Record<string, number>;
+        complexityDistribution: Record<string, number>;
+        categoryDistribution: Record<string, number>;
+      };
+    }
+
+    const corpuses: CorpusInfo[] = [];
 
     // 1. test_cases コーパス（config/test-cases/*.json）
     try {
       const testCasesDir = path.join(process.cwd(), '..', 'config', 'test-cases');
       const files = await fs.readdir(testCasesDir);
-      const jsonFiles = files.filter(f => f.endsWith('.json'));
+      const jsonFiles = files.filter(f => f.endsWith('.json')).sort();
+
+      // メタ情報を集計
+      const w2wrDistribution: Record<string, number> = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+      const complexityDistribution: Record<string, number> = {};
+      const categoryDistribution: Record<string, number> = {};
+
+      for (const file of jsonFiles) {
+        const content = await fs.readFile(path.join(testCasesDir, file), 'utf-8');
+        const testCase = JSON.parse(content);
+
+        // W2WR分布
+        const w2wrCategory = classifyW2WRCategory(testCase);
+        w2wrDistribution[w2wrCategory] = (w2wrDistribution[w2wrCategory] ?? 0) + 1;
+
+        // 複雑度分布
+        const complexity = testCase.complexity ?? 'unknown';
+        complexityDistribution[complexity] = (complexityDistribution[complexity] ?? 0) + 1;
+
+        // カテゴリ分布
+        const category = testCase.contextFactors?.category ?? 'unknown';
+        categoryDistribution[category] = (categoryDistribution[category] ?? 0) + 1;
+      }
+
       corpuses.push({
         corpusId: 'test_cases',
         description: 'Expert評価用テストケース',
         inputCount: jsonFiles.length,
+        metadata: {
+          w2wrDistribution,
+          complexityDistribution,
+          categoryDistribution,
+        },
       });
     } catch {
       // test-casesディレクトリが存在しない場合はスキップ

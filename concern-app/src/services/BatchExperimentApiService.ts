@@ -138,10 +138,17 @@ export interface TrialLog {
   inputVariables?: Record<string, unknown>; // プロンプト変数
 }
 
+export interface CorpusMetadata {
+  w2wrDistribution: Record<string, number>;
+  complexityDistribution: Record<string, number>;
+  categoryDistribution: Record<string, number>;
+}
+
 export interface CorpusInfo {
   corpusId: string;
   description: string;
   inputCount: number;
+  metadata?: CorpusMetadata;
 }
 
 // ========================================

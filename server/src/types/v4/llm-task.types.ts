@@ -263,6 +263,19 @@ export interface LLMCallMetrics {
 }
 
 /**
+ * LLMエラータイプ定数
+ */
+export const LLM_ERROR_TYPES = {
+  TIMEOUT: 'timeout',
+  PARSE_ERROR: 'parse_error',
+  VALIDATION_ERROR: 'validation_error',
+  API_ERROR: 'api_error',
+  UNKNOWN: 'unknown',
+} as const;
+
+export type LLMErrorType = typeof LLM_ERROR_TYPES[keyof typeof LLM_ERROR_TYPES];
+
+/**
  * LLM呼び出し結果
  */
 export interface LLMCallResult<T = unknown> {
@@ -276,7 +289,7 @@ export interface LLMCallResult<T = unknown> {
   prompt?: string;
   /** エラー情報（失敗時） */
   error?: {
-    type: 'timeout' | 'parse_error' | 'validation_error' | 'api_error' | 'unknown';
+    type: LLMErrorType;
     message: string;
     details?: DICT<SVAL>;
   };

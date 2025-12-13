@@ -37,7 +37,7 @@ import { LLMOrchestrator } from '../services/v4/LLMOrchestrator';
 import type { PlanUISpec } from '../types/v4/ui-spec.types';
 import type { WidgetSelectionResult } from '../types/v4/widget-selection.types';
 import type { PlanORS } from '../types/v4/ors.types';
-import type { LLMCallMetrics } from '../types/v4/llm-task.types';
+import { LLM_ERROR_TYPES, type LLMCallMetrics } from '../types/v4/llm-task.types';
 
 const batchExperimentRoutes = new Hono();
 
@@ -834,15 +834,15 @@ batchExperimentRoutes.get('/:batchId/api-errors', async (c) => {
       .where(eq(experimentTrialLogs.batchId, batchId));
 
     // API_ERRORを含むログをフィルタ
+    const apiErrorType = LLM_ERROR_TYPES.API_ERROR;
     const apiErrorLogs = allLogs.filter(log => {
       if (!log.dslErrors || !Array.isArray(log.dslErrors)) {
         return false;
       }
-      // dslErrorsにAPI_ERROR/api_errorを含むものを検出（大文字小文字両対応）
-      return (log.dslErrors as string[]).some(err => {
-        const upperErr = err.toUpperCase();
-        return upperErr === 'API_ERROR' || upperErr.startsWith('API_ERROR');
-      });
+      // dslErrorsにapi_errorを含むものを検出
+      return (log.dslErrors as string[]).some(err =>
+        err === apiErrorType || err.startsWith(apiErrorType)
+      );
     });
 
     // Stage別に集計
@@ -1454,15 +1454,15 @@ batchExperimentRoutes.post('/:batchId/regenerate', async (c) => {
       .from(experimentTrialLogs)
       .where(eq(experimentTrialLogs.batchId, batchId));
 
-    // API_ERRORを含むログをフィルタ（大文字小文字両対応）
+    // API_ERRORを含むログをフィルタ
+    const apiErrorType = LLM_ERROR_TYPES.API_ERROR;
     let targetLogs = allLogs.filter(log => {
       if (!log.dslErrors || !Array.isArray(log.dslErrors)) {
         return false;
       }
-      return (log.dslErrors as string[]).some(err => {
-        const upperErr = err.toUpperCase();
-        return upperErr === 'API_ERROR' || upperErr.startsWith('API_ERROR');
-      });
+      return (log.dslErrors as string[]).some(err =>
+        err === apiErrorType || err.startsWith(apiErrorType)
+      );
     });
 
     // logIdsが指定されている場合はフィルタ

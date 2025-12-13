@@ -17,6 +17,7 @@ import {
   type LLMCallMetrics,
   type ModelConfig,
   DEFAULT_LLM_TASK_CONFIGS,
+  LLM_ERROR_TYPES,
 } from '../../types/v4/llm-task.types';
 import { GeminiService, createGeminiService } from '../GeminiService';
 import { AzureOpenAIService, createAzureOpenAIService } from '../AzureOpenAIService';
@@ -229,7 +230,7 @@ export class LLMOrchestrator {
     return {
       success: false,
       error: {
-        type: 'api_error',
+        type: LLM_ERROR_TYPES.API_ERROR,
         message: `All retries failed: ${lastError}`,
       },
       metrics,
@@ -284,7 +285,7 @@ export class LLMOrchestrator {
         rawOutput: undefined,
         prompt, // 使用されたプロンプトを記録
         error: {
-          type: 'api_error',
+          type: LLM_ERROR_TYPES.API_ERROR,
           message: response.error ?? 'Unknown error',
         },
         metrics,

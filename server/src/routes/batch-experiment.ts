@@ -496,6 +496,7 @@ batchExperimentRoutes.get('/:batchId/export', async (c) => {
       const headers = [
         'experiment_id',
         'model_config',
+        'model_router_selection',
         'stage',
         'input_tokens',
         'output_tokens',
@@ -513,6 +514,7 @@ batchExperimentRoutes.get('/:batchId/export', async (c) => {
       const rows = trialLogs.map(log => [
         log.experimentId,
         log.modelConfig,
+        log.modelRouterSelection ? JSON.stringify(log.modelRouterSelection) : '',
         log.stage,
         log.inputTokens,
         log.outputTokens,

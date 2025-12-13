@@ -26,7 +26,7 @@
 |--------|-----|------|-------------|
 | `REQ_W2WR_PRES` | binary | `hasReactivity` と `actualBindingCount > 0` の一致 | `testCase.hasReactivity === (uiSpec.reactiveBindings?.length > 0)` |
 | `REQ_BINDING_COUNT_OK` | binary | 期待カテゴリに応じたbinding本数レンジを満たす | カテゴリA:0, B:1, C:1-2, D:1-3, E:2-5 |
-| `REQ_PATTERN_MATCH` | binary | 期待されるrelationshipパターンを満たす | `expectedW2WR?.bindings[].relationship.type` との照合（`expectedW2WR`が未定義の場合は「N/A」またはスキップ） |
+| `REQ_PATTERN_MATCH` | binary | 期待されるrelationshipパターンを満たす | `expectedW2WR?.bindings[].relationship.type` との照合（`expectedW2WR`が未定義の場合は指標計算対象外とし、この試行は除外） |
 | `REQ_STAGE_FORWARD_RATE` | ratio (0-1) | bindingの向きがdiverge→organize→convergeの"前方向"になっている割合 | sourceWidget.stage < targetWidget.stageの比率 |
 
 ### 2.2 Static-Sanity（静的健全性）系
@@ -88,11 +88,11 @@ jsParseOk: boolean('js_parse_ok'),
 jsPolicyOk: boolean('js_policy_ok'),
 
 // メタデータ
-w2wrCategory: text('w2wr_category').$type<'A' | 'B' | 'C' | 'D' | 'E'>(), // CHECK制約はマイグレーションで定義
+w2wrCategory: text('w2wr_category').$type<'A' | 'B' | 'C' | 'D' | 'E'>(), // TypeScript型定義（CHECK制約は3.1のSQL側で定義）
 l1plusValidatedAt: timestamp('l1plus_validated_at', { withTimezone: true }),
 ```
 
-**注意**: Drizzle ORMではTypeScript型定義（`.$type<>()`）でカラム値を制限し、CHECK制約はマイグレーションSQLで定義します。
+**注意**: Drizzle ORMではTypeScript型定義（`.$type<>()`）でカラム値を型レベルで制限します。データベースレベルのCHECK制約は、セクション3.1のマイグレーションSQLで定義します。
 
 ---
 
@@ -159,7 +159,7 @@ class L1PlusEvaluatorService {
 // 標準AST表現ではなく、本ドキュメント内でのみ使用する短縮表記です。
 // 実装ではacorn.parse()でAST生成後、acorn-walkのビジター関数を使って実際のASTノードを検証します。
 const FORBIDDEN_CONSTRUCTS_CONCEPT = {
-  loops: ['WhileStatement', 'ForStatement'], // while, for(;;)
+  loops: ['WhileStatement', 'ForStatement'], // while, for loops (all variants: for, for-in, for-of)
   dynamicCode: [
     'CallExpression where callee.name === "eval"',
     'NewExpression where callee.name === "Function"'
@@ -202,8 +202,9 @@ function checkPolicyCompliance(code: string): { ok: boolean; violations: string[
     import { parse } from 'acorn';
     import { simple } from 'acorn-walk';
     
+    const ECMA_VERSION = 'latest'; // または 2023, 2024等。最新構文対応のため'latest'推奨
     const violations: string[] = [];
-    const ast = parse(code, { ecmaVersion: 2020 });
+    const ast = parse(code, { ecmaVersion: ECMA_VERSION });
     
     simple(ast, {
       WhileStatement(node) { 
@@ -443,10 +444,13 @@ L1+指標の統計検定結果を追加:
 **SQL条件**:
 ```sql
 -- 対象: Stage 3で基本検証済み、かつL1+未評価
-SELECT * FROM experiment_trial_logs 
+SELECT 
+  id, test_case_id, batch_id, stage, 
+  generated_ui_spec, server_validated_at, l1plus_validated_at
+FROM experiment_trial_logs 
 WHERE stage = 3 
-  AND serverValidatedAt IS NOT NULL 
-  AND l1plusValidatedAt IS NULL;
+  AND server_validated_at IS NOT NULL 
+  AND l1plus_validated_at IS NULL;
 ```
 
 **処理フロー**:

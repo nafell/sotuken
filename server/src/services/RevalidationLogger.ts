@@ -305,7 +305,7 @@ export class RevalidationLogger {
   // ========================================
 
   async writeLogFile(summary: RevalidationSummary): Promise<string> {
-    const logsDir = join(process.cwd(), 'logs', 'revalidation');
+    const logsDir = join(__dirname, '../../logs/revalidation');
     await mkdir(logsDir, { recursive: true });
 
     const timestamp = this.formatTimestamp(summary.completedAt);

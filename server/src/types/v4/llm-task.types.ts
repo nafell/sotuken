@@ -244,7 +244,7 @@ export const EXPERIMENT_PATTERNS: ExperimentPattern[] = [
 export interface LLMCallMetrics {
   /** タスク種別 */
   taskType: LLMTaskType;
-  /** 使用モデル */
+  /** 使用モデル（設定上のモデルID） */
   modelId: string;
   /** 入力トークン数 */
   inputTokens?: number;
@@ -260,6 +260,11 @@ export interface LLMCallMetrics {
   errorMessage?: string;
   /** タイムスタンプ */
   timestamp: number;
+  /**
+   * model-router使用時に選択された実際のモデル名
+   * model-router以外の名指し呼び出しの場合はundefined
+   */
+  modelRouterSelectedModel?: string;
 }
 
 /**

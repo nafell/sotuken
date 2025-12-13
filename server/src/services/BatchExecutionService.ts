@@ -770,13 +770,19 @@ export class BatchExecutionService {
     const fv = result.frontendValidation;
     const hasServerValidation = stageNum === 3 && fv !== undefined;
 
+    // model-router使用時: metricsからselectedModelを取得してDB保存
+    // 各ステージごとに1つのモデルが選択されるため、単一要素配列として保存
+    const modelRouterSelection = result.metrics.modelRouterSelectedModel
+      ? [result.metrics.modelRouterSelectedModel]
+      : null;
+
     await db.insert(experimentTrialLogs).values({
       experimentId,
       batchId,
       trialNumber,
       inputId,
       modelConfig,
-      modelRouterSelection: null, // TODO: model-router使用時に取得
+      modelRouterSelection,
       stage: stageNum,
       inputTokens: result.metrics.inputTokens ?? 0,
       outputTokens: result.metrics.outputTokens ?? 0,

@@ -56,6 +56,8 @@ export interface LLMServiceInterface {
       responseTokens: number;
       totalTokens: number;
       processingTimeMs: number;
+      /** model-router使用時に選択された実際のモデル名 */
+      selectedModel?: string;
     };
   }>;
 
@@ -71,6 +73,8 @@ export interface LLMServiceInterface {
       responseTokens: number;
       totalTokens: number;
       processingTimeMs: number;
+      /** model-router使用時に選択された実際のモデル名 */
+      selectedModel?: string;
     };
   }>;
 
@@ -277,6 +281,8 @@ export class LLMOrchestrator {
       success: response.success,
       errorMessage: response.error,
       timestamp: endTime,
+      // model-router使用時: レスポンスから選択されたモデル名を取得
+      modelRouterSelectedModel: response.metrics?.selectedModel,
     };
 
     if (!response.success) {

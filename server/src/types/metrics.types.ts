@@ -49,6 +49,8 @@ export interface GeminiResponseMetrics {
   totalTokens: number;
   /** 処理時間（ミリ秒） */
   processingTimeMs: number;
+  /** model-router使用時に選択された実際のモデル名 */
+  selectedModel?: string;
 }
 
 /**

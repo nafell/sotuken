@@ -210,6 +210,25 @@ export default function TrialLogDetail({ trial, isExpanded, onToggle }: TrialLog
                   )}
                 </div>
 
+                {/* model-router使用時: 選択されたモデルを表示 */}
+                {trial.modelRouterSelection && trial.modelRouterSelection.length > 0 && (
+                  <>
+                    <div style={{ color: '#666' }}>Router Selected:</div>
+                    <div>
+                      <span style={{
+                        padding: '2px 8px',
+                        backgroundColor: '#ede7f6',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        fontFamily: 'monospace',
+                        color: '#5e35b1',
+                      }}>
+                        {trial.modelRouterSelection.join(', ')}
+                      </span>
+                    </div>
+                  </>
+                )}
+
                 <div style={{ color: '#666' }}>Timestamp:</div>
                 <div>{new Date(trial.timestamp).toLocaleString('ja-JP')}</div>
 

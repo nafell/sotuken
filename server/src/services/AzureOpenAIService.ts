@@ -354,11 +354,16 @@ export class AzureOpenAIService {
     const responseTokens = usage.completion_tokens || 0;
     const totalTokens = usage.total_tokens || (promptTokens + responseTokens);
 
+    // model-router使用時: レスポンスのmodelフィールドに選択されたモデル名が含まれる
+    // 例: "gpt-4.1-nano-2025-04-14", "gpt-5-chat-2025-03-27" など
+    const selectedModel = this.modelId === 'model-router' ? result.model : undefined;
+
     return {
       promptTokens,
       responseTokens,
       totalTokens,
-      processingTimeMs: endTime - startTime
+      processingTimeMs: endTime - startTime,
+      selectedModel,
     };
   }
 

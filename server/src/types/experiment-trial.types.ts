@@ -164,6 +164,83 @@ export interface Layer1Metrics {
 }
 
 // ========================================
+// Layer1+ 指標（仕様適合・静的健全性）
+// @see docs/research/DEV-REQUIREMENTS-L1PLUS-METRICS.md
+// ========================================
+
+/** W2WRカテゴリ分類 */
+export type W2WRCategory = 'A' | 'B' | 'C' | 'D' | 'E';
+
+/**
+ * Layer1+ 評価指標（追加検証）
+ *
+ * Spec-Compliance（仕様適合）:
+ * - REQ_W2WR_PRES: hasReactivityとbinding存在の一致率
+ * - REQ_BINDING_COUNT_OK: 期待カテゴリに応じたbinding数充足率
+ * - REQ_PATTERN_MATCH: 期待パターンとの一致率
+ * - REQ_STAGE_FORWARD_RATE: 前方向bindingの平均比率
+ *
+ * Static-Sanity（静的健全性）:
+ * - JS_PARSE_OK: JS構文正当率
+ * - JS_POLICY_OK: ポリシー準拠率
+ */
+export interface Layer1PlusMetrics {
+  // Spec-Compliance
+  /** hasReactivityとbinding存在の一致率 */
+  REQ_W2WR_PRES: number;
+  /** 期待カテゴリに応じたbinding数充足率 */
+  REQ_BINDING_COUNT_OK: number;
+  /** 期待パターンとの一致率 */
+  REQ_PATTERN_MATCH: number;
+  /** 前方向bindingの平均比率 (0-1) */
+  REQ_STAGE_FORWARD_RATE: number;
+
+  // Static-Sanity
+  /** JS構文正当率 */
+  JS_PARSE_OK: number;
+  /** ポリシー準拠率（禁止要素なし） */
+  JS_POLICY_OK: number;
+}
+
+/**
+ * L1+評価結果（単一試行）
+ */
+export interface L1PlusEvaluationResult {
+  // Spec-Compliance
+  reqW2wrPres: boolean;
+  reqBindingCountOk: boolean;
+  reqPatternMatch: boolean;
+  reqStageForwardRate: number;
+
+  // Static-Sanity
+  jsParseOk: boolean;
+  jsPolicyOk: boolean;
+
+  // Metadata
+  w2wrCategory: W2WRCategory;
+  evaluatedAt: string; // ISO 8601
+
+  // 詳細情報
+  details: {
+    actualBindingCount: number;
+    expectedBindingRange: [number, number];
+    jsErrors: string[];
+    policyViolations: string[];
+    forwardBindings: number;
+    totalBindings: number;
+  };
+}
+
+/** W2WRカテゴリ別期待binding数レンジ */
+export const EXPECTED_BINDING_RANGES: Record<W2WRCategory, [number, number]> = {
+  'A': [0, 0],    // No W2WR
+  'B': [1, 1],    // Passthrough single
+  'C': [1, 2],    // JS simple
+  'D': [1, 3],    // JS complex
+  'E': [2, 5],    // Multiple bindings
+};
+
+// ========================================
 // Layer4 指標（実用性）
 // ========================================
 
@@ -191,6 +268,7 @@ export interface ModelStatistics {
   modelConfig: string;
   trialCount: number;
   layer1: Layer1Metrics;
+  layer1Plus?: Layer1PlusMetrics;
   layer4: Layer4Metrics;
 }
 
@@ -208,12 +286,45 @@ export interface BatchResultsSummary {
   /** 全体統計 */
   overall: {
     layer1: Layer1Metrics;
+    layer1Plus?: Layer1PlusMetrics;
     layer4: Layer4Metrics;
   };
 
   startedAt: string;
   completedAt: string;
   totalDurationMs: number;
+}
+
+/** テストケース定義（W2WR期待値参照用） */
+export interface TestCaseDefinition {
+  caseId: string;
+  title: string;
+  complexity: string;
+  hasReactivity: boolean;
+  concernText: string;
+  contextFactors: {
+    category: string;
+    urgency: string;
+    emotionalState: string;
+    timeAvailable: number;
+  };
+  expectedBottlenecks?: string[];
+  expectedW2WR?: {
+    bindings: Array<{
+      sourceWidget?: string;
+      targetWidget?: string;
+      relationship: {
+        type: 'passthrough' | 'javascript' | 'debounced';
+        javascript?: string;
+      };
+    }>;
+  };
+  expectedFlow?: {
+    diverge: { widgets: string[]; purpose?: string };
+    organize: { widgets: string[]; purpose?: string };
+    converge: { widgets: string[]; purpose?: string };
+  };
+  evaluationCriteria?: string[];
 }
 
 // ========================================

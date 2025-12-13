@@ -4,7 +4,7 @@
  * @see specs/system-design/database_schema.md
  */
 
-import { pgTable, text, integer, timestamp, uuid, jsonb, index, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, timestamp, uuid, jsonb, index, boolean, real } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 // ========================================
@@ -360,6 +360,25 @@ export const experimentTrialLogs = pgTable('experiment_trial_logs', {
 
   // 検証タイムスタンプ（LL-001対応: nullの曖昧性を解消）
   serverValidatedAt: timestamp('server_validated_at', { withTimezone: true }), // サーバー側検証完了時刻（null = 未検証）
+
+  // ========================================
+  // L1+ 追加検証指標
+  // @see docs/research/DEV-REQUIREMENTS-L1PLUS-METRICS.md
+  // ========================================
+
+  // Spec-Compliance（仕様適合）指標
+  reqW2wrPres: boolean('req_w2wr_pres'), // hasReactivityとbinding存在の一致
+  reqBindingCountOk: boolean('req_binding_count_ok'), // 期待カテゴリに応じたbinding数充足
+  reqPatternMatch: boolean('req_pattern_match'), // 期待パターンとの一致
+  reqStageForwardRate: real('req_stage_forward_rate'), // 前方向bindingの比率 (0-1)
+
+  // Static-Sanity（静的健全性）指標
+  jsParseOk: boolean('js_parse_ok'), // JS構文が正当か
+  jsPolicyOk: boolean('js_policy_ok'), // 禁止要素を含まないか
+
+  // L1+メタデータ
+  w2wrCategory: text('w2wr_category'), // 'A'|'B'|'C'|'D'|'E'
+  l1plusValidatedAt: timestamp('l1plus_validated_at', { withTimezone: true }), // L1+評価完了時刻
 
   // タイムスタンプ
   timestamp: timestamp('timestamp', { withTimezone: true }).default(sql`now()`)

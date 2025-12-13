@@ -25,7 +25,10 @@ import {
   type Layer4Metrics,
   type ModelStatistics,
   type ExperimentInput,
+  type TestCaseDefinition,
+  type L1PlusEvaluationResult,
 } from '../types/experiment-trial.types';
+import { getL1PlusEvaluatorService } from '../services/L1PlusEvaluatorService';
 import { getStatisticalAnalysisService } from '../services/StatisticalAnalysisService';
 import { exportToMarkdown, exportToCSV, exportSummaryTable } from '../services/StatisticalExportService';
 import { createValidationService, validateUISpecForFrontend, getErrorSummary } from '../services/v4/ValidationService';
@@ -1793,6 +1796,375 @@ batchExperimentRoutes.get('/:batchId/statistics/export', async (c) => {
     }
   } catch (error) {
     console.error('Failed to export statistics:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+
+// ========================================
+// L1+ 追加検証指標エンドポイント
+// ========================================
+
+/**
+ * テストケースを読み込むヘルパー関数
+ */
+async function loadTestCase(caseId: string): Promise<TestCaseDefinition | null> {
+  const fs = await import('fs/promises');
+  const path = await import('path');
+
+  try {
+    const testCasePath = path.join(process.cwd(), '..', 'config', 'test-cases', `${caseId}.json`);
+    const content = await fs.readFile(testCasePath, 'utf-8');
+    return JSON.parse(content) as TestCaseDefinition;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 全テストケースを読み込むヘルパー関数
+ */
+async function loadAllTestCases(): Promise<Map<string, TestCaseDefinition>> {
+  const fs = await import('fs/promises');
+  const path = await import('path');
+  const testCasesDir = path.join(process.cwd(), '..', 'config', 'test-cases');
+
+  const map = new Map<string, TestCaseDefinition>();
+
+  try {
+    const files = await fs.readdir(testCasesDir);
+    const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+    for (const file of jsonFiles) {
+      const content = await fs.readFile(path.join(testCasesDir, file), 'utf-8');
+      const testCase = JSON.parse(content) as TestCaseDefinition;
+      map.set(testCase.caseId, testCase);
+    }
+  } catch {
+    // ディレクトリが存在しない場合は空のマップを返す
+  }
+
+  return map;
+}
+
+/**
+ * POST /api/experiment/batch/:batchId/evaluate-l1plus
+ * L1+指標を一括評価してDBに保存
+ *
+ * Body:
+ * - logIds?: string[] - 特定のログIDのみ評価（省略時は全Stage3ログ）
+ * - forceReevaluate?: boolean - 既に評価済みでも再評価するか（デフォルト: false）
+ */
+batchExperimentRoutes.post('/:batchId/evaluate-l1plus', async (c) => {
+  try {
+    const batchId = c.req.param('batchId');
+
+    // UUID形式の検証
+    if (!isValidUUID(batchId)) {
+      return c.json({
+        success: false,
+        error: `Invalid batch ID format: "${batchId}". Expected UUID format`
+      }, 400);
+    }
+
+    const body = await c.req.json().catch(() => ({}));
+    const { logIds, forceReevaluate = false } = body as {
+      logIds?: string[];
+      forceReevaluate?: boolean;
+    };
+
+    // バッチ情報を確認
+    const [batch] = await db
+      .select()
+      .from(batchExecutions)
+      .where(eq(batchExecutions.id, batchId));
+
+    if (!batch) {
+      return c.json({
+        success: false,
+        error: 'Batch not found'
+      }, 404);
+    }
+
+    // Stage 3のログを取得
+    let targetLogs = await db
+      .select()
+      .from(experimentTrialLogs)
+      .where(
+        and(
+          eq(experimentTrialLogs.batchId, batchId),
+          eq(experimentTrialLogs.stage, 3)
+        )
+      );
+
+    // logIdsが指定されている場合はフィルタ
+    if (logIds && logIds.length > 0) {
+      targetLogs = targetLogs.filter(log => logIds.includes(log.id));
+    }
+
+    // forceReevaluateがfalseの場合、未評価のログのみ対象
+    if (!forceReevaluate) {
+      targetLogs = targetLogs.filter(log => log.l1plusValidatedAt === null);
+    }
+
+    if (targetLogs.length === 0) {
+      return c.json({
+        success: true,
+        message: 'No logs to evaluate',
+        evaluatedCount: 0,
+        skippedCount: 0,
+        failedCount: 0,
+      });
+    }
+
+    // テストケースを全て読み込み
+    const testCases = await loadAllTestCases();
+
+    // L1+評価サービスを取得
+    const evaluator = getL1PlusEvaluatorService({ debug: false });
+
+    console.log(`🔬 Evaluating L1+ metrics for ${targetLogs.length} logs in batch ${batchId.slice(0, 8)}...`);
+
+    let evaluatedCount = 0;
+    let skippedCount = 0;
+    let failedCount = 0;
+
+    const categorySummary: Record<string, { count: number; metrics: Record<string, number> }> = {};
+
+    for (const log of targetLogs) {
+      try {
+        // generatedDataがない場合はスキップ
+        if (!log.generatedData) {
+          skippedCount++;
+          continue;
+        }
+
+        // inputIdからテストケースを取得
+        const testCase = testCases.get(log.inputId);
+        if (!testCase) {
+          console.warn(`  Test case not found for inputId: ${log.inputId}`);
+          skippedCount++;
+          continue;
+        }
+
+        // L1+評価を実行
+        const uiSpec = log.generatedData as PlanUISpec;
+        const result = evaluator.evaluate({ uiSpec, testCase });
+
+        // DB更新
+        await db
+          .update(experimentTrialLogs)
+          .set({
+            reqW2wrPres: result.reqW2wrPres,
+            reqBindingCountOk: result.reqBindingCountOk,
+            reqPatternMatch: result.reqPatternMatch,
+            reqStageForwardRate: result.reqStageForwardRate,
+            jsParseOk: result.jsParseOk,
+            jsPolicyOk: result.jsPolicyOk,
+            w2wrCategory: result.w2wrCategory,
+            l1plusValidatedAt: new Date(),
+          })
+          .where(eq(experimentTrialLogs.id, log.id));
+
+        evaluatedCount++;
+
+        // カテゴリ別集計
+        const cat = result.w2wrCategory;
+        if (!categorySummary[cat]) {
+          categorySummary[cat] = {
+            count: 0,
+            metrics: {
+              reqW2wrPresOk: 0,
+              reqBindingCountOk: 0,
+              reqPatternMatch: 0,
+              jsParseOk: 0,
+              jsPolicyOk: 0,
+            },
+          };
+        }
+        categorySummary[cat].count++;
+        if (result.reqW2wrPres) categorySummary[cat].metrics.reqW2wrPresOk++;
+        if (result.reqBindingCountOk) categorySummary[cat].metrics.reqBindingCountOk++;
+        if (result.reqPatternMatch) categorySummary[cat].metrics.reqPatternMatch++;
+        if (result.jsParseOk) categorySummary[cat].metrics.jsParseOk++;
+        if (result.jsPolicyOk) categorySummary[cat].metrics.jsPolicyOk++;
+
+      } catch (err) {
+        console.error(`  Failed to evaluate log ${log.id}:`, err);
+        failedCount++;
+      }
+    }
+
+    console.log(`✅ L1+ evaluation complete: ${evaluatedCount} evaluated, ${skippedCount} skipped, ${failedCount} failed`);
+
+    // カテゴリ別サマリーを成功率に変換
+    const byCategory: Record<string, { count: number; rates: Record<string, number> }> = {};
+    for (const [cat, data] of Object.entries(categorySummary)) {
+      byCategory[cat] = {
+        count: data.count,
+        rates: {
+          reqW2wrPresRate: data.count > 0 ? data.metrics.reqW2wrPresOk / data.count : 0,
+          reqBindingCountOkRate: data.count > 0 ? data.metrics.reqBindingCountOk / data.count : 0,
+          reqPatternMatchRate: data.count > 0 ? data.metrics.reqPatternMatch / data.count : 0,
+          jsParseOkRate: data.count > 0 ? data.metrics.jsParseOk / data.count : 0,
+          jsPolicyOkRate: data.count > 0 ? data.metrics.jsPolicyOk / data.count : 0,
+        },
+      };
+    }
+
+    return c.json({
+      success: true,
+      evaluatedCount,
+      skippedCount,
+      failedCount,
+      summary: {
+        byCategory,
+      },
+    });
+  } catch (error) {
+    console.error('Failed to evaluate L1+ metrics:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+
+/**
+ * GET /api/experiment/batch/:batchId/l1plus-summary
+ * L1+指標のサマリーを取得
+ */
+batchExperimentRoutes.get('/:batchId/l1plus-summary', async (c) => {
+  try {
+    const batchId = c.req.param('batchId');
+
+    // UUID形式の検証
+    if (!isValidUUID(batchId)) {
+      return c.json({
+        success: false,
+        error: `Invalid batch ID format: "${batchId}". Expected UUID format`
+      }, 400);
+    }
+
+    // Stage 3のログを取得（L1+評価済みのみ）
+    const logs = await db
+      .select()
+      .from(experimentTrialLogs)
+      .where(
+        and(
+          eq(experimentTrialLogs.batchId, batchId),
+          eq(experimentTrialLogs.stage, 3)
+        )
+      );
+
+    const evaluatedLogs = logs.filter(log => log.l1plusValidatedAt !== null);
+
+    if (evaluatedLogs.length === 0) {
+      return c.json({
+        success: true,
+        message: 'No L1+ evaluated logs found',
+        totalLogs: logs.length,
+        evaluatedLogs: 0,
+        byModel: {},
+        byCategory: {},
+      });
+    }
+
+    // モデル別集計
+    const byModel: Record<string, {
+      count: number;
+      reqW2wrPresRate: number;
+      reqBindingCountOkRate: number;
+      reqPatternMatchRate: number;
+      reqStageForwardRateAvg: number;
+      jsParseOkRate: number;
+      jsPolicyOkRate: number;
+    }> = {};
+
+    // カテゴリ別集計
+    const byCategory: Record<string, {
+      count: number;
+      reqW2wrPresRate: number;
+      reqBindingCountOkRate: number;
+      reqPatternMatchRate: number;
+      jsParseOkRate: number;
+      jsPolicyOkRate: number;
+    }> = {};
+
+    // 集計用データ構造
+    const modelData: Record<string, { count: number; metrics: Record<string, number>; stageForwardRateSum: number }> = {};
+    const categoryData: Record<string, { count: number; metrics: Record<string, number> }> = {};
+
+    for (const log of evaluatedLogs) {
+      // モデル別
+      if (!modelData[log.modelConfig]) {
+        modelData[log.modelConfig] = {
+          count: 0,
+          metrics: { reqW2wrPres: 0, reqBindingCountOk: 0, reqPatternMatch: 0, jsParseOk: 0, jsPolicyOk: 0 },
+          stageForwardRateSum: 0,
+        };
+      }
+      modelData[log.modelConfig].count++;
+      if (log.reqW2wrPres) modelData[log.modelConfig].metrics.reqW2wrPres++;
+      if (log.reqBindingCountOk) modelData[log.modelConfig].metrics.reqBindingCountOk++;
+      if (log.reqPatternMatch) modelData[log.modelConfig].metrics.reqPatternMatch++;
+      if (log.jsParseOk) modelData[log.modelConfig].metrics.jsParseOk++;
+      if (log.jsPolicyOk) modelData[log.modelConfig].metrics.jsPolicyOk++;
+      modelData[log.modelConfig].stageForwardRateSum += log.reqStageForwardRate ?? 0;
+
+      // カテゴリ別
+      const cat = log.w2wrCategory ?? 'unknown';
+      if (!categoryData[cat]) {
+        categoryData[cat] = {
+          count: 0,
+          metrics: { reqW2wrPres: 0, reqBindingCountOk: 0, reqPatternMatch: 0, jsParseOk: 0, jsPolicyOk: 0 },
+        };
+      }
+      categoryData[cat].count++;
+      if (log.reqW2wrPres) categoryData[cat].metrics.reqW2wrPres++;
+      if (log.reqBindingCountOk) categoryData[cat].metrics.reqBindingCountOk++;
+      if (log.reqPatternMatch) categoryData[cat].metrics.reqPatternMatch++;
+      if (log.jsParseOk) categoryData[cat].metrics.jsParseOk++;
+      if (log.jsPolicyOk) categoryData[cat].metrics.jsPolicyOk++;
+    }
+
+    // 成功率に変換
+    for (const [model, data] of Object.entries(modelData)) {
+      const n = data.count;
+      byModel[model] = {
+        count: n,
+        reqW2wrPresRate: n > 0 ? data.metrics.reqW2wrPres / n : 0,
+        reqBindingCountOkRate: n > 0 ? data.metrics.reqBindingCountOk / n : 0,
+        reqPatternMatchRate: n > 0 ? data.metrics.reqPatternMatch / n : 0,
+        reqStageForwardRateAvg: n > 0 ? data.stageForwardRateSum / n : 0,
+        jsParseOkRate: n > 0 ? data.metrics.jsParseOk / n : 0,
+        jsPolicyOkRate: n > 0 ? data.metrics.jsPolicyOk / n : 0,
+      };
+    }
+
+    for (const [cat, data] of Object.entries(categoryData)) {
+      const n = data.count;
+      byCategory[cat] = {
+        count: n,
+        reqW2wrPresRate: n > 0 ? data.metrics.reqW2wrPres / n : 0,
+        reqBindingCountOkRate: n > 0 ? data.metrics.reqBindingCountOk / n : 0,
+        reqPatternMatchRate: n > 0 ? data.metrics.reqPatternMatch / n : 0,
+        jsParseOkRate: n > 0 ? data.metrics.jsParseOk / n : 0,
+        jsPolicyOkRate: n > 0 ? data.metrics.jsPolicyOk / n : 0,
+      };
+    }
+
+    return c.json({
+      success: true,
+      totalLogs: logs.length,
+      evaluatedLogs: evaluatedLogs.length,
+      byModel,
+      byCategory,
+    });
+  } catch (error) {
+    console.error('Failed to get L1+ summary:', error);
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'

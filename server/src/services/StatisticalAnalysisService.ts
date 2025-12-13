@@ -49,6 +49,20 @@ const LAYER1_METRIC_NAMES = [
   'JA_SR',
 ] as const;
 
+// Layer1+指標（binary系 - z検定）
+const LAYER1_PLUS_BINARY_METRIC_NAMES = [
+  'REQ_W2WR_PRES',
+  'REQ_BINDING_COUNT_OK',
+  'REQ_PATTERN_MATCH',
+  'JS_PARSE_OK',
+  'JS_POLICY_OK',
+] as const;
+
+// Layer1+指標（ratio系 - Mann-Whitney U検定）
+const LAYER1_PLUS_RATIO_METRIC_NAMES = [
+  'REQ_STAGE_FORWARD_RATE',
+] as const;
+
 // Layer4指標（実数値系）
 const LAYER4_METRIC_NAMES = ['LAT', 'COST'] as const;
 
@@ -304,6 +318,15 @@ interface TrialLogRecord {
   cycleDetected: boolean;
   regenerated: boolean;
   runtimeError: boolean;
+  // L1+ フィールド
+  reqW2wrPres: boolean | null;
+  reqBindingCountOk: boolean | null;
+  reqPatternMatch: boolean | null;
+  reqStageForwardRate: number | null;
+  jsParseOk: boolean | null;
+  jsPolicyOk: boolean | null;
+  w2wrCategory: string | null;
+  l1plusValidatedAt: Date | null;
 }
 
 /**
@@ -345,6 +368,22 @@ function countLayer1Successes(
       case 'JA_SR':
         isSuccess = log.jotaiAtomErrors === null;
         break;
+      // L1+ binary指標
+      case 'REQ_W2WR_PRES':
+        isSuccess = log.reqW2wrPres === true;
+        break;
+      case 'REQ_BINDING_COUNT_OK':
+        isSuccess = log.reqBindingCountOk === true;
+        break;
+      case 'REQ_PATTERN_MATCH':
+        isSuccess = log.reqPatternMatch === true;
+        break;
+      case 'JS_PARSE_OK':
+        isSuccess = log.jsParseOk === true;
+        break;
+      case 'JS_POLICY_OK':
+        isSuccess = log.jsPolicyOk === true;
+        break;
     }
     if (isSuccess) successes++;
   }
@@ -374,6 +413,38 @@ function extractLayer4Values(
     default:
       return [];
   }
+}
+
+/**
+ * L1+ ratio指標の値を抽出
+ */
+function extractL1PlusRatioValues(
+  logs: TrialLogRecord[],
+  metric: string
+): number[] {
+  // L1+評価済みのログのみフィルタ
+  const evaluatedLogs = logs.filter((log) => log.l1plusValidatedAt !== null);
+
+  switch (metric) {
+    case 'REQ_STAGE_FORWARD_RATE':
+      return evaluatedLogs
+        .map((log) => log.reqStageForwardRate)
+        .filter((v): v is number => v !== null);
+    default:
+      return [];
+  }
+}
+
+/**
+ * L1+評価済みログのみをフィルタしてカウント
+ */
+function countL1PlusSuccesses(
+  logs: TrialLogRecord[],
+  metric: string
+): { successes: number; total: number } {
+  // L1+評価済みのログのみ対象
+  const evaluatedLogs = logs.filter((log) => log.l1plusValidatedAt !== null);
+  return countLayer1Successes(evaluatedLogs, metric);
 }
 
 // ========================================
@@ -506,9 +577,111 @@ export class StatisticalAnalysisService {
       }
     }
 
+    // L1+指標のペアワイズ比較
+    const layer1PlusComparisons: StatisticalTestResult[] = [];
+
+    // L1+ binary指標（z検定）
+    for (const metric of LAYER1_PLUS_BINARY_METRIC_NAMES) {
+      for (const pair of MODEL_PAIRS) {
+        const logs1 = logsByModel[pair.model1] ?? [];
+        const logs2 = logsByModel[pair.model2] ?? [];
+
+        const count1 = countL1PlusSuccesses(logs1, metric);
+        const count2 = countL1PlusSuccesses(logs2, metric);
+
+        // L1+評価済みログがない場合はスキップ
+        if (count1.total === 0 && count2.total === 0) {
+          continue;
+        }
+
+        const result = performZTest({
+          successes1: count1.successes,
+          n1: count1.total,
+          successes2: count2.successes,
+          n2: count2.total,
+        });
+
+        const pValueCorrected = applyBonferroniCorrection(result.pValue);
+        const significantCorrected = pValueCorrected < ALPHA;
+
+        layer1PlusComparisons.push({
+          metric,
+          testType: 'z-test',
+          model1: pair.model1,
+          model2: pair.model2,
+          model1Stats: {
+            n: count1.total,
+            value: result.p1,
+            successes: count1.successes,
+          },
+          model2Stats: {
+            n: count2.total,
+            value: result.p2,
+            successes: count2.successes,
+          },
+          testStatistic: result.z,
+          pValue: result.pValue,
+          pValueCorrected,
+          significant: result.pValue < ALPHA,
+          significantCorrected,
+          effectSize: result.cohensH,
+          effectSizeInterpretation: interpretCohensH(result.cohensH),
+        });
+      }
+    }
+
+    // L1+ ratio指標（Mann-Whitney U検定）
+    for (const metric of LAYER1_PLUS_RATIO_METRIC_NAMES) {
+      for (const pair of MODEL_PAIRS) {
+        const logs1 = logsByModel[pair.model1] ?? [];
+        const logs2 = logsByModel[pair.model2] ?? [];
+
+        const values1 = extractL1PlusRatioValues(logs1, metric);
+        const values2 = extractL1PlusRatioValues(logs2, metric);
+
+        // 評価済みログがない場合はスキップ
+        if (values1.length === 0 && values2.length === 0) {
+          continue;
+        }
+
+        const result = performMannWhitneyU({ values1, values2 });
+
+        const pValueCorrected = applyBonferroniCorrection(result.pValue);
+        const significantCorrected = pValueCorrected < ALPHA;
+
+        layer1PlusComparisons.push({
+          metric,
+          testType: 'mann-whitney-u',
+          model1: pair.model1,
+          model2: pair.model2,
+          model1Stats: {
+            n: values1.length,
+            value: result.median1,
+            values: values1,
+          },
+          model2Stats: {
+            n: values2.length,
+            value: result.median2,
+            values: values2,
+          },
+          testStatistic: result.U,
+          pValue: result.pValue,
+          pValueCorrected,
+          significant: result.pValue < ALPHA,
+          significantCorrected,
+          effectSize: result.rankBiserialR,
+          effectSizeInterpretation: interpretRankBiserial(result.rankBiserialR),
+        });
+      }
+    }
+
     // サマリー集計
     const layer1Significant = layer1Comparisons.filter((c) => c.significant).length;
     const layer1SignificantCorrected = layer1Comparisons.filter(
+      (c) => c.significantCorrected
+    ).length;
+    const layer1PlusSignificant = layer1PlusComparisons.filter((c) => c.significant).length;
+    const layer1PlusSignificantCorrected = layer1PlusComparisons.filter(
       (c) => c.significantCorrected
     ).length;
     const layer4Significant = layer4Comparisons.filter((c) => c.significant).length;
@@ -525,6 +698,7 @@ export class StatisticalAnalysisService {
       correctionMethod: 'bonferroni',
       totalComparisons: BONFERRONI_COMPARISONS,
       layer1Comparisons,
+      layer1PlusComparisons: layer1PlusComparisons.length > 0 ? layer1PlusComparisons : undefined,
       layer4Comparisons,
       summary: {
         layer1: {
@@ -532,6 +706,11 @@ export class StatisticalAnalysisService {
           significantCount: layer1Significant,
           significantCorrectedCount: layer1SignificantCorrected,
         },
+        layer1Plus: layer1PlusComparisons.length > 0 ? {
+          totalTests: layer1PlusComparisons.length,
+          significantCount: layer1PlusSignificant,
+          significantCorrectedCount: layer1PlusSignificantCorrected,
+        } : undefined,
         layer4: {
           totalTests: layer4Comparisons.length,
           significantCount: layer4Significant,
@@ -551,7 +730,11 @@ export class StatisticalAnalysisService {
     const result = await this.runAllPairwiseComparisons(batchId);
     if (!result) return null;
 
-    const allComparisons = [...result.layer1Comparisons, ...result.layer4Comparisons];
+    const allComparisons = [
+      ...result.layer1Comparisons,
+      ...(result.layer1PlusComparisons ?? []),
+      ...result.layer4Comparisons,
+    ];
     return allComparisons.filter((c) => c.metric === metric);
   }
 }

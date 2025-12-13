@@ -93,12 +93,15 @@ export interface BatchStatisticsResult {
 
   /** Layer1検定結果（成功率系） */
   layer1Comparisons: StatisticalTestResult[];
+  /** Layer1+検定結果（Spec-Compliance/Static-Sanity） */
+  layer1PlusComparisons?: StatisticalTestResult[];
   /** Layer4検定結果（実数値系） */
   layer4Comparisons: StatisticalTestResult[];
 
   /** サマリー */
   summary: {
     layer1: TestSummary;
+    layer1Plus?: TestSummary;
     layer4: TestSummary;
   };
 }
@@ -203,6 +206,24 @@ export const LAYER1_METRICS = [
 ] as const;
 
 export type Layer1MetricName = typeof LAYER1_METRICS[number];
+
+/** Layer1+指標名（binary - z検定） */
+export const LAYER1_PLUS_BINARY_METRICS = [
+  'REQ_W2WR_PRES',
+  'REQ_BINDING_COUNT_OK',
+  'REQ_PATTERN_MATCH',
+  'JS_PARSE_OK',
+  'JS_POLICY_OK',
+] as const;
+
+export type Layer1PlusBinaryMetricName = typeof LAYER1_PLUS_BINARY_METRICS[number];
+
+/** Layer1+指標名（ratio - Mann-Whitney U検定） */
+export const LAYER1_PLUS_RATIO_METRICS = [
+  'REQ_STAGE_FORWARD_RATE',
+] as const;
+
+export type Layer1PlusRatioMetricName = typeof LAYER1_PLUS_RATIO_METRICS[number];
 
 /** Layer4指標名 */
 export const LAYER4_METRICS = ['LAT', 'COST'] as const;

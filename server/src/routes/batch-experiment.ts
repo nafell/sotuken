@@ -1141,13 +1141,14 @@ async function regenerateTrialAndUpdateLogs(
       stage1DslErrors = [stage1Result.error?.type ?? 'WIDGET_SELECTION_FAILED'];
     }
 
-    // Stage 1ログを更新
-    if (existingLogIds.stage1) {
+    // Stage 1ログを更新または新規作成
+    let stage1LogId = existingLogIds.stage1;
+    if (stage1LogId) {
       await db.update(experimentTrialLogs)
         .set({
           inputTokens: stage1Result.metrics.inputTokens ?? 0,
           outputTokens: stage1Result.metrics.outputTokens ?? 0,
-          latencyMs: stage1Result.metrics.latencyMs,
+          latencyMs: stage1Result.metrics.latencyMs ?? 0,
           dslErrors: stage1DslErrors,
           typeErrorCount: stage1TypeErrorCount,
           referenceErrorCount: stage1ReferenceErrorCount,
@@ -1158,13 +1159,40 @@ async function regenerateTrialAndUpdateLogs(
           inputVariables: { concernText: input.concernText, bottleneckType },
           timestamp: new Date(),
         })
-        .where(eq(experimentTrialLogs.id, existingLogIds.stage1));
+        .where(eq(experimentTrialLogs.id, stage1LogId));
+    } else {
+      const [inserted] = await db.insert(experimentTrialLogs)
+        .values({
+          experimentId,
+          batchId,
+          trialNumber,
+          inputId,
+          modelConfig: modelConfigId,
+          modelRouterSelection: null,
+          stage: 1,
+          inputTokens: stage1Result.metrics.inputTokens ?? 0,
+          outputTokens: stage1Result.metrics.outputTokens ?? 0,
+          latencyMs: stage1Result.metrics.latencyMs ?? 0,
+          dslErrors: stage1DslErrors,
+          typeErrorCount: stage1TypeErrorCount,
+          referenceErrorCount: stage1ReferenceErrorCount,
+          cycleDetected: stage1CycleDetected,
+          regenerated: true,
+          runtimeError: false,
+          generatedData: stage1Result.data ?? null,
+          promptData: stage1Result.prompt ?? null,
+          inputVariables: { concernText: input.concernText, bottleneckType },
+          serverValidatedAt: null,
+          timestamp: new Date(),
+        })
+        .returning({ id: experimentTrialLogs.id });
+      stage1LogId = inserted.id;
     }
 
     stageResults.push({
       stage: 1,
       success: stage1Result.success && stage1DslErrors === null,
-      logId: existingLogIds.stage1,
+      logId: stage1LogId,
     });
 
     if (!stage1Result.success || stage1DslErrors !== null) {
@@ -1199,13 +1227,14 @@ async function regenerateTrialAndUpdateLogs(
       stage2DslErrors = [stage2Result.error?.type ?? 'ORS_GENERATION_FAILED'];
     }
 
-    // Stage 2ログを更新
-    if (existingLogIds.stage2) {
+    // Stage 2ログを更新または新規作成
+    let stage2LogId = existingLogIds.stage2;
+    if (stage2LogId) {
       await db.update(experimentTrialLogs)
         .set({
           inputTokens: stage2Result.metrics.inputTokens ?? 0,
           outputTokens: stage2Result.metrics.outputTokens ?? 0,
-          latencyMs: stage2Result.metrics.latencyMs,
+          latencyMs: stage2Result.metrics.latencyMs ?? 0,
           dslErrors: stage2DslErrors,
           typeErrorCount: stage2TypeErrorCount,
           referenceErrorCount: stage2ReferenceErrorCount,
@@ -1216,13 +1245,40 @@ async function regenerateTrialAndUpdateLogs(
           inputVariables: { concernText: input.concernText, bottleneckType },
           timestamp: new Date(),
         })
-        .where(eq(experimentTrialLogs.id, existingLogIds.stage2));
+        .where(eq(experimentTrialLogs.id, stage2LogId));
+    } else {
+      const [inserted] = await db.insert(experimentTrialLogs)
+        .values({
+          experimentId,
+          batchId,
+          trialNumber,
+          inputId,
+          modelConfig: modelConfigId,
+          modelRouterSelection: null,
+          stage: 2,
+          inputTokens: stage2Result.metrics.inputTokens ?? 0,
+          outputTokens: stage2Result.metrics.outputTokens ?? 0,
+          latencyMs: stage2Result.metrics.latencyMs ?? 0,
+          dslErrors: stage2DslErrors,
+          typeErrorCount: stage2TypeErrorCount,
+          referenceErrorCount: stage2ReferenceErrorCount,
+          cycleDetected: stage2CycleDetected,
+          regenerated: true,
+          runtimeError: false,
+          generatedData: stage2Result.data ?? null,
+          promptData: stage2Result.prompt ?? null,
+          inputVariables: { concernText: input.concernText, bottleneckType },
+          serverValidatedAt: null,
+          timestamp: new Date(),
+        })
+        .returning({ id: experimentTrialLogs.id });
+      stage2LogId = inserted.id;
     }
 
     stageResults.push({
       stage: 2,
       success: stage2Result.success && stage2DslErrors === null,
-      logId: existingLogIds.stage2,
+      logId: stage2LogId,
     });
 
     if (!stage2Result.success || stage2DslErrors !== null) {
@@ -1273,13 +1329,14 @@ async function regenerateTrialAndUpdateLogs(
       ? validateUISpecForFrontend(stage3Result.data as PlanUISpec)
       : undefined;
 
-    // Stage 3ログを更新
-    if (existingLogIds.stage3) {
+    // Stage 3ログを更新または新規作成
+    let stage3LogId = existingLogIds.stage3;
+    if (stage3LogId) {
       await db.update(experimentTrialLogs)
         .set({
           inputTokens: stage3Result.metrics.inputTokens ?? 0,
           outputTokens: stage3Result.metrics.outputTokens ?? 0,
-          latencyMs: stage3Result.metrics.latencyMs,
+          latencyMs: stage3Result.metrics.latencyMs ?? 0,
           dslErrors: stage3DslErrors,
           w2wrErrors: stage3W2wrErrors,
           renderErrors: frontendValidation?.renderErrors ?? null,
@@ -1295,13 +1352,44 @@ async function regenerateTrialAndUpdateLogs(
           serverValidatedAt: frontendValidation ? new Date(frontendValidation.serverValidatedAt) : null,
           timestamp: new Date(),
         })
-        .where(eq(experimentTrialLogs.id, existingLogIds.stage3));
+        .where(eq(experimentTrialLogs.id, stage3LogId));
+    } else {
+      const [inserted] = await db.insert(experimentTrialLogs)
+        .values({
+          experimentId,
+          batchId,
+          trialNumber,
+          inputId,
+          modelConfig: modelConfigId,
+          modelRouterSelection: null,
+          stage: 3,
+          inputTokens: stage3Result.metrics.inputTokens ?? 0,
+          outputTokens: stage3Result.metrics.outputTokens ?? 0,
+          latencyMs: stage3Result.metrics.latencyMs ?? 0,
+          dslErrors: stage3DslErrors,
+          w2wrErrors: stage3W2wrErrors,
+          renderErrors: frontendValidation?.renderErrors ?? null,
+          reactComponentErrors: frontendValidation?.reactComponentErrors ?? null,
+          jotaiAtomErrors: frontendValidation?.jotaiAtomErrors ?? null,
+          typeErrorCount: frontendValidation?.typeErrorCount ?? stage3TypeErrorCount,
+          referenceErrorCount: frontendValidation?.referenceErrorCount ?? stage3ReferenceErrorCount,
+          cycleDetected: frontendValidation?.cycleDetected ?? stage3CycleDetected,
+          regenerated: true,
+          runtimeError: false,
+          generatedData: stage3Result.data ?? null,
+          promptData: stage3Result.prompt ?? null,
+          inputVariables: { concernText: input.concernText, enableReactivity: true },
+          serverValidatedAt: frontendValidation ? new Date(frontendValidation.serverValidatedAt) : null,
+          timestamp: new Date(),
+        })
+        .returning({ id: experimentTrialLogs.id });
+      stage3LogId = inserted.id;
     }
 
     stageResults.push({
       stage: 3,
       success: stage3Result.success && stage3DslErrors === null,
-      logId: existingLogIds.stage3,
+      logId: stage3LogId,
     });
 
     const overallSuccess = stageResults.every(s => s.success);

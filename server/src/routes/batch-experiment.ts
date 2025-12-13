@@ -29,6 +29,7 @@ import {
 import { getStatisticalAnalysisService } from '../services/StatisticalAnalysisService';
 import { exportToMarkdown, exportToCSV, exportSummaryTable } from '../services/StatisticalExportService';
 import { createValidationService, validateUISpecForFrontend, getErrorSummary } from '../services/v4/ValidationService';
+import { RevalidationLogger } from '../services/RevalidationLogger';
 import { createExperimentOrchestrator } from '../services/ModelConfigurationService';
 import { WidgetSelectionService } from '../services/v4/WidgetSelectionService';
 import { ORSGeneratorService } from '../services/v4/ORSGeneratorService';
@@ -889,9 +890,12 @@ batchExperimentRoutes.get('/:batchId/api-errors', async (c) => {
  * POST /api/experiment/batch/:batchId/revalidate
  * 未検証ログを再検証
  *
+ * 機能美を重視したCLI出力で実行過程と差分を可視化
+ *
  * Body:
  * - logIds?: string[] - 特定のログIDのみ再検証（省略時は全未検証を対象）
  * - rerunBackendValidation?: boolean - バックエンド検証も再実行するか（デフォルト: false）
+ * - writeLogFile?: boolean - ログファイルを出力するか（デフォルト: true）
  */
 batchExperimentRoutes.post('/:batchId/revalidate', async (c) => {
   try {
@@ -906,10 +910,17 @@ batchExperimentRoutes.post('/:batchId/revalidate', async (c) => {
     }
 
     const body = await c.req.json().catch(() => ({}));
-    const { logIds, rerunBackendValidation = false } = body as {
+    const { logIds, rerunBackendValidation = false, writeLogFile = true } = body as {
       logIds?: string[];
       rerunBackendValidation?: boolean;
+      writeLogFile?: boolean;
     };
+
+    // バッチ情報を取得
+    const [batch] = await db
+      .select()
+      .from(batchExecutions)
+      .where(eq(batchExecutions.id, batchId));
 
     // 対象ログを取得
     let targetLogs = await db
@@ -931,6 +942,7 @@ batchExperimentRoutes.post('/:batchId/revalidate', async (c) => {
     }
 
     if (targetLogs.length === 0) {
+      console.log(`  ─ No logs to revalidate for batch ${batchId.slice(0, 8)}...`);
       return c.json({
         success: true,
         message: 'No logs to revalidate',
@@ -938,7 +950,13 @@ batchExperimentRoutes.post('/:batchId/revalidate', async (c) => {
       });
     }
 
-    console.log(`🔄 Revalidating ${targetLogs.length} logs for batch ${batchId}`);
+    // ロガー初期化
+    const logger = new RevalidationLogger(batchId);
+    logger.logHeader(targetLogs.length, {
+      experimentId: batch?.experimentId,
+      modelConfigs: batch?.modelConfigs as string[] | undefined,
+      rerunBackendValidation,
+    });
 
     const results: Array<{
       logId: string;
@@ -947,8 +965,11 @@ batchExperimentRoutes.post('/:batchId/revalidate', async (c) => {
     }> = [];
 
     for (const log of targetLogs) {
+      const startTime = Date.now();
+
       try {
         if (!log.generatedData) {
+          logger.logSkipped(log.id, 'No generated data available');
           results.push({
             logId: log.id,
             success: false,
@@ -957,8 +978,40 @@ batchExperimentRoutes.post('/:batchId/revalidate', async (c) => {
           continue;
         }
 
+        // 再検証前の値を保存
+        const beforeState = {
+          renderErrors: log.renderErrors,
+          reactComponentErrors: log.reactComponentErrors,
+          jotaiAtomErrors: log.jotaiAtomErrors,
+          typeErrorCount: log.typeErrorCount,
+          referenceErrorCount: log.referenceErrorCount,
+          cycleDetected: log.cycleDetected,
+          serverValidatedAt: log.serverValidatedAt,
+        };
+
         // フロントエンド互換検証を実行
         const frontendValidation = validateUISpecForFrontend(log.generatedData as PlanUISpec);
+
+        // 再検証後の値
+        const afterState = {
+          renderErrors: frontendValidation.renderErrors,
+          reactComponentErrors: frontendValidation.reactComponentErrors,
+          jotaiAtomErrors: frontendValidation.jotaiAtomErrors,
+          typeErrorCount: frontendValidation.typeErrorCount,
+          referenceErrorCount: frontendValidation.referenceErrorCount,
+          cycleDetected: frontendValidation.cycleDetected,
+          serverValidatedAt: frontendValidation.serverValidatedAt,
+        };
+
+        // 差分を計算
+        const diffs = [
+          RevalidationLogger.createDiff('renderErrors', beforeState.renderErrors, afterState.renderErrors),
+          RevalidationLogger.createDiff('reactComponentErrors', beforeState.reactComponentErrors, afterState.reactComponentErrors),
+          RevalidationLogger.createDiff('jotaiAtomErrors', beforeState.jotaiAtomErrors, afterState.jotaiAtomErrors),
+          RevalidationLogger.createDiff('typeErrorCount', beforeState.typeErrorCount, afterState.typeErrorCount),
+          RevalidationLogger.createDiff('referenceErrorCount', beforeState.referenceErrorCount, afterState.referenceErrorCount),
+          RevalidationLogger.createDiff('cycleDetected', beforeState.cycleDetected, afterState.cycleDetected),
+        ];
 
         // DB更新
         await db
@@ -974,28 +1027,70 @@ batchExperimentRoutes.post('/:batchId/revalidate', async (c) => {
           })
           .where(eq(experimentTrialLogs.id, log.id));
 
+        const processingTimeMs = Date.now() - startTime;
+
+        // 進捗をログ
+        logger.logProgress({
+          logId: log.id,
+          trialNumber: log.trialNumber,
+          inputId: log.inputId,
+          modelConfig: log.modelConfig,
+          success: true,
+          diffs,
+          processingTimeMs,
+        });
+
         results.push({
           logId: log.id,
           success: true,
         });
       } catch (err) {
+        const processingTimeMs = Date.now() - startTime;
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+
+        logger.logProgress({
+          logId: log.id,
+          trialNumber: log.trialNumber,
+          inputId: log.inputId,
+          modelConfig: log.modelConfig,
+          success: false,
+          error: errorMessage,
+          diffs: [],
+          processingTimeMs,
+        });
+
         results.push({
           logId: log.id,
           success: false,
-          error: err instanceof Error ? err.message : 'Unknown error',
+          error: errorMessage,
         });
       }
+    }
+
+    // サマリー出力
+    const summary = logger.logSummary();
+
+    // ログファイル出力
+    let logFilePath: string | undefined;
+    if (writeLogFile) {
+      logFilePath = await logger.writeLogFile(summary);
     }
 
     const successCount = results.filter(r => r.success).length;
     const failCount = results.filter(r => !r.success).length;
 
-    console.log(`✅ Revalidation complete: ${successCount} success, ${failCount} failed`);
-
     return c.json({
       success: true,
       revalidatedCount: successCount,
       failedCount: failCount,
+      changedCount: summary.changedCount,
+      unchangedCount: summary.unchangedCount,
+      totalProcessingTimeMs: summary.totalProcessingTimeMs,
+      logFilePath,
+      diffSummary: summary.diffSummary.map(d => ({
+        field: d.field,
+        changedCount: d.changedCount,
+      })),
       results,
     });
   } catch (error) {

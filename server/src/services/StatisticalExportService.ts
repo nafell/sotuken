@@ -48,6 +48,11 @@ export function exportToMarkdown(
   lines.push(
     `| Layer1 (構造健全性) | ${result.summary.layer1.totalTests} | ${result.summary.layer1.significantCount} | ${result.summary.layer1.significantCorrectedCount} |`
   );
+  if (result.summary.layer1Plus) {
+    lines.push(
+      `| Layer1+ (仕様適合・静的健全性) | ${result.summary.layer1Plus.totalTests} | ${result.summary.layer1Plus.significantCount} | ${result.summary.layer1Plus.significantCorrectedCount} |`
+    );
+  }
   lines.push(
     `| Layer4 (実用性) | ${result.summary.layer4.totalTests} | ${result.summary.layer4.significantCount} | ${result.summary.layer4.significantCorrectedCount} |`
   );
@@ -64,6 +69,22 @@ export function exportToMarkdown(
     lines.push('');
     lines.push(formatComparisonTable(comparisons, 'z-test', decimalPlaces, includeEffectSize));
     lines.push('');
+  }
+
+  // Layer1+ 検定結果（指標ごと）
+  if (result.layer1PlusComparisons && result.layer1PlusComparisons.length > 0) {
+    lines.push('## Layer1+: 仕様適合・静的健全性 - ペアワイズ比較');
+    lines.push('');
+
+    const layer1PlusMetrics = [...new Set(result.layer1PlusComparisons.map((c) => c.metric))];
+    for (const metric of layer1PlusMetrics) {
+      const comparisons = result.layer1PlusComparisons.filter((c) => c.metric === metric);
+      const testType = comparisons[0]?.testType ?? 'z-test';
+      lines.push(`### ${metric} (${getMetricDescription(metric)})`);
+      lines.push('');
+      lines.push(formatComparisonTable(comparisons, testType, decimalPlaces, includeEffectSize));
+      lines.push('');
+    }
   }
 
   // Layer4 検定結果（指標ごと）
@@ -171,6 +192,7 @@ function formatPValue(p: number, decimalPlaces: number): string {
  */
 function getMetricDescription(metric: string): string {
   const descriptions: Record<string, string> = {
+    // Layer1 指標
     VR: 'DSL妥当率',
     TCR: '型整合率',
     RRR: '参照整合率',
@@ -179,6 +201,15 @@ function getMetricDescription(metric: string): string {
     W2WR_SR: 'W2WR成功率',
     RC_SR: 'React変換成功率',
     JA_SR: 'Jotai Atom成功率',
+    // Layer1+ Spec-Compliance 指標
+    REQ_W2WR_PRES: 'W2WR存在整合率',
+    REQ_BINDING_COUNT_OK: 'Binding数適合率',
+    REQ_PATTERN_MATCH: 'パターン一致率',
+    REQ_STAGE_FORWARD_RATE: '前方向Binding率',
+    // Layer1+ Static-Sanity 指標
+    JS_PARSE_OK: 'JS構文妥当率',
+    JS_POLICY_OK: 'JSポリシー準拠率',
+    // Layer4 指標
     LAT: '平均レイテンシ',
     COST: '推定APIコスト',
   };
@@ -244,6 +275,31 @@ export function exportToCSV(
     ].join(','));
   }
 
+  // Layer1+データ
+  if (result.layer1PlusComparisons) {
+    for (const c of result.layer1PlusComparisons) {
+      lines.push([
+        c.metric,
+        c.testType,
+        c.model1,
+        c.model2,
+        c.model1Stats.n,
+        c.model1Stats.value.toFixed(decimalPlaces),
+        c.model1Stats.successes ?? '',
+        c.model2Stats.n,
+        c.model2Stats.value.toFixed(decimalPlaces),
+        c.model2Stats.successes ?? '',
+        c.testStatistic.toFixed(decimalPlaces),
+        c.pValue.toFixed(decimalPlaces),
+        c.pValueCorrected.toFixed(decimalPlaces),
+        c.significant,
+        c.significantCorrected,
+        c.effectSize.toFixed(decimalPlaces),
+        c.effectSizeInterpretation,
+      ].join(','));
+    }
+  }
+
   // Layer4データ
   for (const c of result.layer4Comparisons) {
     lines.push([
@@ -290,6 +346,7 @@ export function exportSummaryTable(
   // 有意な結果のみ抽出
   const significantResults = [
     ...result.layer1Comparisons,
+    ...(result.layer1PlusComparisons ?? []),
     ...result.layer4Comparisons,
   ].filter((c) => c.significantCorrected);
 

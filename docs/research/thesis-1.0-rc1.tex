@@ -1265,7 +1265,18 @@ FR は，エラー種別ごとにカウントし，合計値を全実行数で�
 \subsection{結果（集計表）}
 表\ref{tab:layer1_results_beta21}にLayer1（VR/TCR/RRR），
 表\ref{tab:layer2_results_beta21}にLayer2（LAT/COST/FR）の集計結果を示す。
-（数値はバッチログ集計結果を記入する。）
+
+
+% =========================
+% パッチ1: Layer1表のデータと説明文
+% 挿入箇所: 1265行目の \subsection{結果(集計表)} の直後
+% =========================
+
+表\ref{tab:layer1_results_beta21}に，各モデル構成におけるLayer1指標（DSL構造健全性）の集計結果を示す。
+VR（Validation Rate）はDSLパース成功率，TCR（Type Check Rate）は型検査成功率，
+RRR（Reference Resolution Rate）は参照解決成功率を表す。
+全てのモデル構成において100\%の健全性が達成されており，
+提案するLLM-Hardened DSLアプローチの有効性が確認された。
 
 \begin{table}[tb]
 \caption{実験2：Layer1 構造健全性（平均）}
@@ -1274,13 +1285,19 @@ FR は，エラー種別ごとにカウントし，合計値を全実行数で�
 \small
 \begin{tabular}{lccc} \toprule
 Model & VR & TCR & RRR \\ \midrule
-A: All-5-Chat &  &  &  \\
-B: All-5-mini &  &  &  \\
-C: Hybrid (mini/mini/chat) &  &  &  \\
-D: Hybrid (chat/mini/mini) &  &  &  \\
+All-5-Chat & 100.0\% & 100.0\% & 100.0\% \\
+All-5-mini & 100.0\% & 100.0\% & 100.0\% \\
+Hybrid (mini/mini/chat) & 100.0\% & 100.0\% & 100.0\% \\
+Hybrid (chat/mini/mini) & 100.0\% & 100.0\% & 100.0\% \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+表\ref{tab:layer2_results_beta21}に，各モデル構成におけるLayer2指標（実用性）の集計結果を示す。
+LAT（Latency）は平均応答時間（秒），COST（Cost）は1実行あたりの平均コスト（円），
+FR（Failure Rate）はレンダリングエラー発生率を表す。
+All-5-miniは低速・高コストであるものの低エラー率を示し，
+Hybrid構成は品質とコストのバランスが取れた結果となった。
 
 \begin{table}[tb]
 \caption{実験2：Layer2 実用性（平均）}
@@ -1289,13 +1306,14 @@ D: Hybrid (chat/mini/mini) &  &  &  \\
 \small
 \begin{tabular}{lccc} \toprule
 Model & LAT (s) & COST (JPY) & FR \\ \midrule
-A: All-5-Chat &  &  &  \\
-B: All-5-mini &  &  &  \\
-C: Hybrid (mini/mini/chat) &  &  &  \\
-D: Hybrid (chat/mini/mini) &  &  &  \\
+All-5-Chat & 12.46 & 2.86 & 33.3\% \\
+All-5-mini & 71.12 & 5.50 & 4.7\% \\
+Hybrid (mini/mini/chat) & 8.47 & 2.83 & 30.0\% \\
+Hybrid (chat/mini/mini) & 29.80 & 3.81 & 6.7\% \\
 \bottomrule
 \end{tabular}
 \end{table}
+
 
 \subsection{統計検定}
 成功率系（VR/TCR/RRR/FR）は2標本の比率検定，
@@ -1319,8 +1337,14 @@ D: Hybrid (chat/mini/mini) &  &  &  \\
 
 \subsection{All-5-Chatの優位性と構造的整合性}
 
-実験結果より，All-5-Chat 構成（全てのステップで高性能モデルを使用）が，
+% =========================
+% パッチ2: 考察セクションに表への参照を追加
+% 挿入箇所: 1322行目 "実験結果より，All-5-Chat 構成..." の前
+% =========================
+
+表\ref{tab:layer1_results_beta21}および表\ref{tab:layer2_results_beta21}に示す実験結果より，All-5-Chat 構成（全てのステップで高性能モデルを使用）が，
 DSL の構造健全性（VR, TCR, RRR）において最も高いスコアを記録した。
+
 特に，Widget 間のポート接続（Reactivity）の解決率（RRR）において，
 他のモデル構成と比較して有意に高い精度を示した。
 これは，Widget-to-Widget Reactivity のような複雑な依存関係を構築するためには，

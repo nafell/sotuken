@@ -13,6 +13,10 @@ import {
   type BatchStatisticsResult,
   type StatisticalTestResult,
 } from '../../../services/BatchExperimentApiService';
+import {
+  LatexTableExporter,
+  type LatexColumn,
+} from './LatexTableExporter';
 
 interface StatisticsTabProps {
   batchId: string;
@@ -281,6 +285,52 @@ export default function StatisticsTab({ batchId }: StatisticsTabProps) {
         </div>
       </section>
 
+      {/* 研究ユーティリティ（分布図などの将来機能置き場） */}
+      <section
+        style={{
+          marginTop: '24px',
+          padding: '16px',
+          backgroundColor: '#eef2f7',
+          borderRadius: '6px',
+          border: '1px dashed #90a4ae',
+        }}
+      >
+        <h3 style={{ fontSize: '16px', marginBottom: '8px' }}>研究ユーティリティ</h3>
+        <p style={{ fontSize: '13px', color: '#546e7a', marginTop: 0 }}>
+          分布図や分布統計の出力ボタンをここに配置できます。追加機能のためのスペースとして確保しています。
+        </p>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            disabled
+            style={{
+              padding: '10px 14px',
+              backgroundColor: '#cfd8dc',
+              border: '1px solid #b0bec5',
+              borderRadius: '4px',
+              color: '#546e7a',
+              cursor: 'not-allowed',
+            }}
+          >
+            分布図（準備中）
+          </button>
+          <button
+            type="button"
+            disabled
+            style={{
+              padding: '10px 14px',
+              backgroundColor: '#cfd8dc',
+              border: '1px solid #b0bec5',
+              borderRadius: '4px',
+              color: '#546e7a',
+              cursor: 'not-allowed',
+            }}
+          >
+            分布統計（準備中）
+          </button>
+        </div>
+      </section>
+
       {/* 凡例 */}
       <section
         style={{
@@ -342,137 +392,193 @@ function ComparisonTable({ comparisons, testType }: ComparisonTableProps) {
     return {};
   };
 
+  const latexColumns: LatexColumn<StatisticalTestResult>[] = [
+    {
+      key: 'comparison',
+      label: '比較',
+      align: 'l',
+      formatter: c => `${c.model1} vs ${c.model2}`,
+    },
+    {
+      key: 'm1',
+      label: testType === 'z-test' ? 'M1 (n)' : 'M1 Mdn (n)',
+      formatter: c =>
+        testType === 'z-test'
+          ? `${(c.model1Stats.value * 100).toFixed(1)}% (${c.model1Stats.n})`
+          : `${c.model1Stats.value.toFixed(0)} (${c.model1Stats.n})`,
+    },
+    {
+      key: 'm2',
+      label: testType === 'z-test' ? 'M2 (n)' : 'M2 Mdn (n)',
+      formatter: c =>
+        testType === 'z-test'
+          ? `${(c.model2Stats.value * 100).toFixed(1)}% (${c.model2Stats.n})`
+          : `${c.model2Stats.value.toFixed(0)} (${c.model2Stats.n})`,
+    },
+    {
+      key: 'stat',
+      label: testType === 'z-test' ? 'z' : 'U',
+      formatter: c => (testType === 'z-test' ? c.testStatistic.toFixed(2) : c.testStatistic.toFixed(0)),
+    },
+    {
+      key: 'p',
+      label: 'p値',
+      formatter: c => formatPValue(c.pValue),
+    },
+    {
+      key: 'sig',
+      label: '有意',
+      align: 'c',
+      formatter: c => (c.significantCorrected ? '**' : c.significant ? '*' : '-'),
+    },
+    {
+      key: 'effect',
+      label: '効果量',
+      formatter: c => `${c.effectSize.toFixed(2)} (${getEffectSizeLabel(c.effectSizeInterpretation)})`,
+    },
+  ];
+
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table
-        style={{
-          width: '100%',
-          borderCollapse: 'collapse',
-          fontSize: '13px',
-        }}
-      >
-        <thead>
-          <tr style={{ backgroundColor: '#e0e0e0' }}>
-            <th style={{ padding: '10px', textAlign: 'left' }}>比較</th>
-            <th style={{ padding: '10px', textAlign: 'right' }}>
-              {testType === 'z-test' ? 'M1 (n)' : 'M1 Mdn (n)'}
-            </th>
-            <th style={{ padding: '10px', textAlign: 'right' }}>
-              {testType === 'z-test' ? 'M2 (n)' : 'M2 Mdn (n)'}
-            </th>
-            <th style={{ padding: '10px', textAlign: 'right' }}>
-              {testType === 'z-test' ? 'z' : 'U'}
-            </th>
-            <th style={{ padding: '10px', textAlign: 'right' }}>p値</th>
-            <th style={{ padding: '10px', textAlign: 'center' }}>有意</th>
-            <th style={{ padding: '10px', textAlign: 'right' }}>効果量</th>
-          </tr>
-        </thead>
-        <tbody>
-          {comparisons.map((c, idx) => {
-            const comparison = `${c.model1} vs ${c.model2}`;
-            const sig = c.significantCorrected ? '**' : c.significant ? '*' : '-';
+    <>
+      <div style={{ overflowX: 'auto' }}>
+        <table
+          style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            fontSize: '13px',
+          }}
+        >
+          <thead>
+            <tr style={{ backgroundColor: '#e0e0e0' }}>
+              <th style={{ padding: '10px', textAlign: 'left' }}>比較</th>
+              <th style={{ padding: '10px', textAlign: 'right' }}>
+                {testType === 'z-test' ? 'M1 (n)' : 'M1 Mdn (n)'}
+              </th>
+              <th style={{ padding: '10px', textAlign: 'right' }}>
+                {testType === 'z-test' ? 'M2 (n)' : 'M2 Mdn (n)'}
+              </th>
+              <th style={{ padding: '10px', textAlign: 'right' }}>
+                {testType === 'z-test' ? 'z' : 'U'}
+              </th>
+              <th style={{ padding: '10px', textAlign: 'right' }}>p値</th>
+              <th style={{ padding: '10px', textAlign: 'center' }}>有意</th>
+              <th style={{ padding: '10px', textAlign: 'right' }}>効果量</th>
+            </tr>
+          </thead>
+          <tbody>
+            {comparisons.map((c, idx) => {
+              const comparison = `${c.model1} vs ${c.model2}`;
+              const sig = c.significantCorrected ? '**' : c.significant ? '*' : '-';
 
-            let m1Value: string;
-            let m2Value: string;
-            if (testType === 'z-test') {
-              m1Value = `${(c.model1Stats.value * 100).toFixed(1)}% (${c.model1Stats.n})`;
-              m2Value = `${(c.model2Stats.value * 100).toFixed(1)}% (${c.model2Stats.n})`;
-            } else {
-              m1Value = `${c.model1Stats.value.toFixed(0)} (${c.model1Stats.n})`;
-              m2Value = `${c.model2Stats.value.toFixed(0)} (${c.model2Stats.n})`;
-            }
+              let m1Value: string;
+              let m2Value: string;
+              if (testType === 'z-test') {
+                m1Value = `${(c.model1Stats.value * 100).toFixed(1)}% (${c.model1Stats.n})`;
+                m2Value = `${(c.model2Stats.value * 100).toFixed(1)}% (${c.model2Stats.n})`;
+              } else {
+                m1Value = `${c.model1Stats.value.toFixed(0)} (${c.model1Stats.n})`;
+                m2Value = `${c.model2Stats.value.toFixed(0)} (${c.model2Stats.n})`;
+              }
 
-            return (
-              <tr key={`${c.model1}-${c.model2}`} style={getRowStyle(c)}>
-                <td style={{ padding: '10px', borderBottom: '1px solid #eee' }}>
-                  {comparison}
-                </td>
-                <td
-                  style={{
-                    padding: '10px',
-                    textAlign: 'right',
-                    borderBottom: '1px solid #eee',
-                  }}
-                >
-                  {m1Value}
-                </td>
-                <td
-                  style={{
-                    padding: '10px',
-                    textAlign: 'right',
-                    borderBottom: '1px solid #eee',
-                  }}
-                >
-                  {m2Value}
-                </td>
-                <td
-                  style={{
-                    padding: '10px',
-                    textAlign: 'right',
-                    borderBottom: '1px solid #eee',
-                    fontFamily: 'monospace',
-                  }}
-                >
-                  {testType === 'z-test'
-                    ? c.testStatistic.toFixed(2)
-                    : c.testStatistic.toFixed(0)}
-                </td>
-                <td
-                  style={{
-                    padding: '10px',
-                    textAlign: 'right',
-                    borderBottom: '1px solid #eee',
-                    fontFamily: 'monospace',
-                  }}
-                >
-                  {formatPValue(c.pValue)}
-                </td>
-                <td
-                  style={{
-                    padding: '10px',
-                    textAlign: 'center',
-                    borderBottom: '1px solid #eee',
-                    fontWeight: 'bold',
-                    color: c.significantCorrected
-                      ? '#4caf50'
-                      : c.significant
-                      ? '#ffc107'
-                      : '#999',
-                  }}
-                >
-                  {sig}
-                </td>
-                <td
-                  style={{
-                    padding: '10px',
-                    textAlign: 'right',
-                    borderBottom: '1px solid #eee',
-                  }}
-                >
-                  {c.effectSize.toFixed(2)}
-                  <span
+              return (
+                <tr key={`${c.model1}-${c.model2}`} style={getRowStyle(c)}>
+                  <td style={{ padding: '10px', borderBottom: '1px solid #eee' }}>
+                    {comparison}
+                  </td>
+                  <td
                     style={{
-                      marginLeft: '4px',
-                      padding: '2px 6px',
-                      backgroundColor:
-                        c.effectSizeInterpretation === 'large'
-                          ? '#e3f2fd'
-                          : c.effectSizeInterpretation === 'medium'
-                          ? '#f3e5f5'
-                          : '#f5f5f5',
-                      borderRadius: '4px',
-                      fontSize: '11px',
+                      padding: '10px',
+                      textAlign: 'right',
+                      borderBottom: '1px solid #eee',
                     }}
                   >
-                    {getEffectSizeLabel(c.effectSizeInterpretation)}
-                  </span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+                    {m1Value}
+                  </td>
+                  <td
+                    style={{
+                      padding: '10px',
+                      textAlign: 'right',
+                      borderBottom: '1px solid #eee',
+                    }}
+                  >
+                    {m2Value}
+                  </td>
+                  <td
+                    style={{
+                      padding: '10px',
+                      textAlign: 'right',
+                      borderBottom: '1px solid #eee',
+                      fontFamily: 'monospace',
+                    }}
+                  >
+                    {testType === 'z-test'
+                      ? c.testStatistic.toFixed(2)
+                      : c.testStatistic.toFixed(0)}
+                  </td>
+                  <td
+                    style={{
+                      padding: '10px',
+                      textAlign: 'right',
+                      borderBottom: '1px solid #eee',
+                      fontFamily: 'monospace',
+                    }}
+                  >
+                    {formatPValue(c.pValue)}
+                  </td>
+                  <td
+                    style={{
+                      padding: '10px',
+                      textAlign: 'center',
+                      borderBottom: '1px solid #eee',
+                      fontWeight: 'bold',
+                      color: c.significantCorrected
+                        ? '#4caf50'
+                        : c.significant
+                        ? '#ffc107'
+                        : '#999',
+                    }}
+                  >
+                    {sig}
+                  </td>
+                  <td
+                    style={{
+                      padding: '10px',
+                      textAlign: 'right',
+                      borderBottom: '1px solid #eee',
+                    }}
+                  >
+                    {c.effectSize.toFixed(2)}
+                    <span
+                      style={{
+                        marginLeft: '4px',
+                        padding: '2px 6px',
+                        backgroundColor:
+                          c.effectSizeInterpretation === 'large'
+                            ? '#e3f2fd'
+                            : c.effectSizeInterpretation === 'medium'
+                            ? '#f3e5f5'
+                            : '#f5f5f5',
+                        borderRadius: '4px',
+                        fontSize: '11px',
+                      }}
+                    >
+                      {getEffectSizeLabel(c.effectSizeInterpretation)}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <LatexTableExporter<StatisticalTestResult>
+        title={testType === 'z-test' ? 'z検定結果' : 'Mann-Whitney U検定結果'}
+        caption={testType === 'z-test' ? 'Layer1 z-test results' : 'Layer4 Mann-Whitney U results'}
+        label={testType === 'z-test' ? 'tab:ztest-results' : 'tab:mannwhitney-results'}
+        helperText="booktabs向けのTeXコードです。列を選択してコピーできます。"
+        columns={latexColumns}
+        rows={comparisons}
+      />
+    </>
   );
 }

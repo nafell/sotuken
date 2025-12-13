@@ -19,6 +19,10 @@ import {
 } from '../../services/BatchExperimentApiService';
 import TrialLogDetail from './components/TrialLogDetail';
 import StatisticsTab from './components/StatisticsTab';
+import {
+  LatexTableExporter,
+  type LatexColumn,
+} from './components/LatexTableExporter';
 
 type TabId = 'results' | 'statistics';
 
@@ -88,6 +92,7 @@ export default function BatchResults() {
   const formatPercent = (value: number) => `${(value * 100).toFixed(1)}%`;
   const formatMs = (value: number) => `${value.toLocaleString()}`;
   const formatCost = (value: number) => `${value.toFixed(2)}`;
+  const formatPercentLatex = (value: number) => `${(value * 100).toFixed(1)}%`;
 
   // 時間フォーマット
   const formatDuration = (ms: number) => {
@@ -284,6 +289,24 @@ export default function BatchResults() {
       <div style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
         VR: DSL妥当率 / TCR: 型整合率 / RRR: 参照整合率 / CDR: 循環依存率 / RGR: 再生成率 / W2R: W2WR成功率 / RCR: React変換成功率 / JAR: Jotai Atom変換成功率
       </div>
+      <LatexTableExporter<ModelStatistics>
+        title="Layer1 評価指標"
+        caption={`Layer1 metrics for batch ${batchId ?? ''}`}
+        label="tab:layer1-metrics"
+        helperText="booktabs向けのフォーマットです。列をオン/オフできます。"
+        columns={[
+          { key: 'model', label: 'Model', align: 'l', formatter: row => row.modelConfig },
+          { key: 'vr', label: 'VR', formatter: row => formatPercentLatex(row.layer1.VR) },
+          { key: 'tcr', label: 'TCR', formatter: row => formatPercentLatex(row.layer1.TCR) },
+          { key: 'rrr', label: 'RRR', formatter: row => formatPercentLatex(row.layer1.RRR) },
+          { key: 'cdr', label: 'CDR', formatter: row => formatPercentLatex(row.layer1.CDR) },
+          { key: 'rgr', label: 'RGR', formatter: row => formatPercentLatex(row.layer1.RGR) },
+          { key: 'w2wr', label: 'W2R', formatter: row => formatPercentLatex(row.layer1.W2WR_SR ?? 0) },
+          { key: 'rc', label: 'RCR', formatter: row => formatPercentLatex(row.layer1.RC_SR ?? 0) },
+          { key: 'ja', label: 'JAR', formatter: row => formatPercentLatex(row.layer1.JA_SR ?? 0) },
+        ] satisfies LatexColumn<ModelStatistics>[]}
+        rows={summary?.byModel ?? []}
+      />
     </section>
   );
 
@@ -316,6 +339,19 @@ export default function BatchResults() {
       <div style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
         LAT: 平均レイテンシ / COST: 推定APIコスト / FR: 異常終了率
       </div>
+      <LatexTableExporter<ModelStatistics>
+        title="Layer4 評価指標"
+        caption={`Layer4 metrics for batch ${batchId ?? ''}`}
+        label="tab:layer4-metrics"
+        helperText="booktabs向けのフォーマットです。列をオン/オフできます。"
+        columns={[
+          { key: 'model', label: 'Model', align: 'l', formatter: row => row.modelConfig },
+          { key: 'lat', label: 'LAT (ms)', formatter: row => formatMs(row.layer4.LAT) },
+          { key: 'cost', label: 'COST (JPY)', formatter: row => formatCost(row.layer4.COST) },
+          { key: 'fr', label: 'FR', formatter: row => formatPercentLatex(row.layer4.FR) },
+        ] satisfies LatexColumn<ModelStatistics>[]}
+        rows={summary?.byModel ?? []}
+      />
     </section>
   );
 
@@ -381,6 +417,52 @@ export default function BatchResults() {
     </section>
   );
 
+  const ResearchUtilitySection = () => (
+    <section
+      style={{
+        padding: '16px',
+        backgroundColor: '#eef2f7',
+        borderRadius: '6px',
+        border: '1px dashed #90a4ae',
+      }}
+    >
+      <h2 style={{ fontSize: '18px', marginBottom: '8px' }}>研究ユーティリティ</h2>
+      <p style={{ fontSize: '13px', color: '#546e7a', marginTop: 0 }}>
+        分布図や追加のエクスポート機能をここに配置できます。将来のボタン配置用に空きスペースを確保しています。
+      </p>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          disabled
+          style={{
+            padding: '10px 14px',
+            backgroundColor: '#cfd8dc',
+            border: '1px solid #b0bec5',
+            borderRadius: '4px',
+            color: '#546e7a',
+            cursor: 'not-allowed',
+          }}
+        >
+          分布図エクスポート（準備中）
+        </button>
+        <button
+          type="button"
+          disabled
+          style={{
+            padding: '10px 14px',
+            backgroundColor: '#cfd8dc',
+            border: '1px solid #b0bec5',
+            borderRadius: '4px',
+            color: '#546e7a',
+            cursor: 'not-allowed',
+          }}
+        >
+          分布統計プレビュー（準備中）
+        </button>
+      </div>
+    </section>
+  );
+
   return (
     <div style={{ padding: '24px', maxWidth: '1100px', margin: '0 auto' }}>
       <h1 style={{ marginBottom: '16px' }}>実験結果サマリー</h1>
@@ -399,6 +481,7 @@ export default function BatchResults() {
             <Layer1Section />
             <Layer4Section />
             <TrialsSection />
+            <ResearchUtilitySection />
           </div>
         )}
         {activeTab === 'statistics' && batchId && <StatisticsTab batchId={batchId} />}

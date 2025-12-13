@@ -206,6 +206,49 @@ export interface BatchStatisticsResult {
 export type StatisticsExportFormat = 'markdown' | 'csv' | 'summary';
 
 // ========================================
+// API Error / Regenerate Types
+// ========================================
+
+export interface ApiErrorLog {
+  id: string;
+  trialNumber: number;
+  inputId: string;
+  modelConfig: string;
+  stage: number;
+  dslErrors: string[] | null;
+  latencyMs: number;
+  inputTokens: number;
+  outputTokens: number;
+  timestamp: string;
+}
+
+export interface ApiErrorsResult {
+  apiErrorCount: number;
+  totalLogCount: number;
+  affectedInputCount: number;
+  stageDistribution: Record<number, number>;
+  modelConfigDistribution: Record<string, number>;
+  apiErrorLogs: ApiErrorLog[];
+}
+
+export interface RegenerateResult {
+  regeneratedCount: number;
+  failedCount?: number;
+  results?: Array<{
+    trialNumber: number;
+    modelConfig: string;
+    status: 'success' | 'error';
+    error?: string;
+  }>;
+  message?: string;
+  // dryRun時の追加情報
+  targetTrialCount?: number;
+  affectedInputCount?: number;
+  stageDistribution?: Record<number, number>;
+  modelConfigDistribution?: Record<string, number>;
+}
+
+// ========================================
 // API Service
 // ========================================
 
@@ -458,6 +501,65 @@ export class BatchExperimentApiService {
     format: StatisticsExportFormat = 'markdown'
   ): string {
     return `${this.baseUrl}/api/experiment/batch/${batchId}/statistics/export?format=${format}`;
+  }
+
+  // ========================================
+  // API Error / Regenerate API
+  // ========================================
+
+  /**
+   * API_ERRORログ一覧を取得
+   */
+  async getApiErrors(batchId: string): Promise<ApiErrorsResult> {
+    const response = await fetch(
+      `${this.baseUrl}/api/experiment/batch/${batchId}/api-errors`
+    );
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.error ?? 'Failed to get API errors');
+    }
+    return {
+      apiErrorCount: data.apiErrorCount,
+      totalLogCount: data.totalLogCount,
+      affectedInputCount: data.affectedInputCount,
+      stageDistribution: data.stageDistribution,
+      modelConfigDistribution: data.modelConfigDistribution,
+      apiErrorLogs: data.apiErrorLogs,
+    };
+  }
+
+  /**
+   * API_ERRORログを再生成
+   */
+  async regenerateTrials(
+    batchId: string,
+    options?: {
+      logIds?: string[];
+      dryRun?: boolean;
+    }
+  ): Promise<RegenerateResult> {
+    const response = await fetch(
+      `${this.baseUrl}/api/experiment/batch/${batchId}/regenerate`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(options ?? {}),
+      }
+    );
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.error ?? 'Failed to regenerate trials');
+    }
+    return {
+      regeneratedCount: data.regeneratedCount,
+      failedCount: data.failedCount,
+      results: data.results,
+      message: data.message,
+      targetTrialCount: data.targetTrialCount,
+      affectedInputCount: data.affectedInputCount,
+      stageDistribution: data.stageDistribution,
+      modelConfigDistribution: data.modelConfigDistribution,
+    };
   }
 }
 

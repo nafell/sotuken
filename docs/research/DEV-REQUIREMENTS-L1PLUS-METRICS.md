@@ -33,7 +33,7 @@
 
 | 指標ID | 型 | 定義 | 計算ロジック |
 |--------|-----|------|-------------|
-| `JS_PARSE_OK` | binary | relationship.type=javascriptのコードがパース可能 | `acorn.parse()` での構文検証 |
+| `JS_PARSE_OK` | binary | relationship.type=javascriptのコードがパース可能 | `acorn.parse()` での構文検証（パース失敗時は `false`） |
 | `JS_POLICY_OK` | binary | 禁止要素を含まない | 禁止トークン: `while`, `for(;;)`, `fetch`, `Date.now`, `Math.random`, `eval`, `setTimeout`, `setInterval` |
 | `DG_ACYCLIC` | binary | dependency graphが巡回を含まない（任意） | 既存の `cycleDetected` を流用可能 |
 
@@ -154,25 +154,18 @@ class L1PlusEvaluatorService {
 **ファイル**: `server/src/services/JSValidationHelper.ts`
 
 ```typescript
-// 禁止トークン定義
-// 注意: acorn.parse() でAST解析後、ノードタイプで判定するため、
-// 以下は説明用の概念的リストです。実装ではASTノードタイプで検証します。
-const FORBIDDEN_CONSTRUCTS = [
-  'WhileStatement',     // while ループ
-  'ForStatement',       // for(;;) ループ
-  'CallExpression:eval', // eval() 呼び出し
-  'NewExpression:Function', // new Function() 呼び出し
-  'CallExpression:fetch', // fetch() 呼び出し
-  'Identifier:XMLHttpRequest', // XMLHttpRequest参照
-  'MemberExpression:Date.now', // Date.now 呼び出し
-  'MemberExpression:Math.random', // Math.random 呼び出し
-  'CallExpression:setTimeout', // setTimeout()
-  'CallExpression:setInterval', // setInterval()
-  'CallExpression:setImmediate', // setImmediate()
-  'Identifier:process', // process 参照（Node.js）
-  'CallExpression:require', // require() 呼び出し
-  'ImportExpression', // import() 動的インポート（静的importはパース時に検出）
-];
+// 禁止構造の定義（概念的表現）
+// 注意: 以下は説明用の概念的リストです。実装ではacorn.parse()でAST生成後、
+// walk()等のビジター関数を使ってASTノードを走査し、禁止パターンを検出します。
+// 実際のコードではEstree ASTのノードタイプと、必要に応じてノードプロパティを検証します。
+const FORBIDDEN_CONSTRUCTS = {
+  loops: ['WhileStatement', 'ForStatement'], // while, for(;;)
+  dynamicCode: ['CallExpression:eval', 'NewExpression:Function'], // eval(), new Function()
+  network: ['CallExpression:fetch', 'Identifier:XMLHttpRequest'], // fetch(), XMLHttpRequest
+  nonDeterministic: ['MemberExpression:Date.now', 'MemberExpression:Math.random'],
+  timers: ['CallExpression:setTimeout', 'CallExpression:setInterval', 'CallExpression:setImmediate'],
+  nodeRuntime: ['Identifier:process', 'CallExpression:require', 'ImportExpression'], // process, require(), import()
+};
 
 // 安全なJSパターン（許可）
 const SAFE_PATTERNS = [
@@ -187,9 +180,27 @@ function checkPolicyCompliance(code: string): { ok: boolean; violations: string[
 
 **実装方針**:
 - `parseJavaScript()`: `acorn.parse()` で構文検証（実行せずAST生成のみ）
+  - 例外キャッチ: パース失敗時は `{ success: false, error: e.message }` を返す
 - `checkPolicyCompliance()`: ASTをトラバースして禁止ノードタイプを検出
-  - 例: `node.type === 'WhileStatement'` → 違反
-  - 例: `node.type === 'CallExpression' && node.callee.name === 'eval'` → 違反
+  - ASTウォーカーの例（acorn-walkを使用）:
+    ```typescript
+    import { parse } from 'acorn';
+    import { simple } from 'acorn-walk';
+    
+    const violations: string[] = [];
+    simple(ast, {
+      WhileStatement(node) { violations.push('while loop detected'); },
+      CallExpression(node) {
+        if (node.callee.type === 'Identifier' && node.callee.name === 'eval') {
+          violations.push('eval() detected');
+        }
+        // MemberExpression の場合も考慮
+        if (node.callee.type === 'MemberExpression') {
+          // 例: Date.now() の検出ロジック
+        }
+      },
+    });
+    ```
   - これにより、変数名に 'for' を含むケース（例: 'format', 'information'）は誤検出されません。
 
 ---
@@ -395,8 +406,17 @@ L1+指標の統計検定結果を追加:
 
 ### 8.2 統合ワークフロー
 
+**SQL条件**:
+```sql
+-- 対象: Stage 3で基本検証済み、かつL1+未評価
+SELECT * FROM experiment_trial_logs 
+WHERE stage = 3 
+  AND serverValidatedAt IS NOT NULL 
+  AND l1plusValidatedAt IS NULL;
 ```
-1. 対象ログ取得（Stage 3, serverValidatedAt IS NOT NULL AND l1plusValidatedAt IS NULL）
+
+**処理フロー**:
+1. 対象ログ取得（上記SQL条件）
 2. フロントエンド互換検証（既存）
 3. L1+評価（NEW）
    - テストケース読み込み
@@ -404,7 +424,6 @@ L1+指標の統計検定結果を追加:
    - Static-Sanity評価
 4. DB更新（既存フィールド + L1+フィールド）
 5. サマリー出力
-```
 
 **注意**: L1+評価は基本検証（serverValidatedAt）が完了したログに対してのみ実行します。これにより、基本的な妥当性が確認されたUISpecに対してのみ詳細検証を行います。
 

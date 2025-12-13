@@ -78,6 +78,9 @@ const ICONS = {
   SEPARATOR: '─',
 } as const;
 
+// ログ出力のプレフィックス（HTTPログとの区別用）
+const LOG_PREFIX = '[revalidate]';
+
 // ========================================
 // RevalidationLogger Class
 // ========================================
@@ -106,25 +109,25 @@ export class RevalidationLogger {
   } = {}): void {
     this.totalTargets = totalTargets;
 
-    const width = 60;
+    const width = 56;
     const hr = ICONS.SEPARATOR.repeat(width);
 
     const lines = [
       '',
-      `${BOX.TOP_LEFT}${hr}${BOX.TOP_RIGHT}`,
-      `${BOX.VERTICAL}  ${ICONS.REVALIDATE} REVALIDATION SESSION                                  ${BOX.VERTICAL}`,
-      `${BOX.T_RIGHT}${hr}${BOX.T_LEFT}`,
-      `${BOX.VERTICAL}  Batch   : ${this.batchId.slice(0, 8)}...                         ${BOX.VERTICAL}`,
-      `${BOX.VERTICAL}  Targets : ${String(totalTargets).padEnd(4)} Stage 3 logs                      ${BOX.VERTICAL}`,
-      `${BOX.VERTICAL}  Started : ${this.formatTime(this.startedAt)}                             ${BOX.VERTICAL}`,
+      `${LOG_PREFIX} ${BOX.TOP_LEFT}${hr}${BOX.TOP_RIGHT}`,
+      `${LOG_PREFIX} ${BOX.VERTICAL}  ${ICONS.REVALIDATE} REVALIDATION SESSION                              ${BOX.VERTICAL}`,
+      `${LOG_PREFIX} ${BOX.T_RIGHT}${hr}${BOX.T_LEFT}`,
+      `${LOG_PREFIX} ${BOX.VERTICAL}  Batch   : ${this.batchId.slice(0, 8)}...                     ${BOX.VERTICAL}`,
+      `${LOG_PREFIX} ${BOX.VERTICAL}  Targets : ${String(totalTargets).padEnd(4)} Stage 3 logs                  ${BOX.VERTICAL}`,
+      `${LOG_PREFIX} ${BOX.VERTICAL}  Started : ${this.formatTime(this.startedAt)}                         ${BOX.VERTICAL}`,
     ];
 
     if (options.experimentId) {
-      lines.push(`${BOX.VERTICAL}  Exp ID  : ${options.experimentId.slice(0, 36).padEnd(36)}       ${BOX.VERTICAL}`);
+      lines.push(`${LOG_PREFIX} ${BOX.VERTICAL}  Exp ID  : ${options.experimentId.slice(0, 32).padEnd(32)}   ${BOX.VERTICAL}`);
     }
 
-    lines.push(`${BOX.BOTTOM_LEFT}${hr}${BOX.BOTTOM_RIGHT}`);
-    lines.push('');
+    lines.push(`${LOG_PREFIX} ${BOX.BOTTOM_LEFT}${hr}${BOX.BOTTOM_RIGHT}`);
+    lines.push(`${LOG_PREFIX}`);
 
     for (const line of lines) {
       console.log(line);
@@ -141,7 +144,7 @@ export class RevalidationLogger {
     this.processedCount++;
 
     const progressPct = Math.round((this.processedCount / this.totalTargets) * 100);
-    const progressBar = this.createProgressBar(progressPct, 20);
+    const progressBar = this.createProgressBar(progressPct, 16);
 
     const statusIcon = result.success ? ICONS.CHECK : ICONS.CROSS;
     const changedCount = result.diffs.filter(d => d.changed).length;
@@ -149,7 +152,7 @@ export class RevalidationLogger {
       ? `${ICONS.DELTA}${changedCount}`
       : '  ';
 
-    const line = `  [${progressBar}] ${String(progressPct).padStart(3)}%  ${statusIcon} #${String(result.trialNumber).padStart(3)} ${result.inputId.padEnd(12).slice(0, 12)} ${diffIndicator} ${result.processingTimeMs}ms`;
+    const line = `${LOG_PREFIX} [${progressBar}] ${String(progressPct).padStart(3)}%  ${statusIcon} #${String(result.trialNumber).padStart(3)} ${result.inputId.padEnd(10).slice(0, 10)} ${diffIndicator} ${result.processingTimeMs}ms`;
 
     console.log(line);
     this.logBuffer.push(line);
@@ -166,20 +169,20 @@ export class RevalidationLogger {
     for (const diff of changedDiffs) {
       const beforeStr = this.formatValue(diff.before);
       const afterStr = this.formatValue(diff.after);
-      const line = `       ${ICONS.BULLET} ${diff.field}: ${beforeStr} ${ICONS.ARROW} ${afterStr}`;
+      const line = `${LOG_PREFIX}     ${ICONS.BULLET} ${diff.field}: ${beforeStr} ${ICONS.ARROW} ${afterStr}`;
       console.log(line);
       this.logBuffer.push(line);
     }
   }
 
   logSkipped(logId: string, reason: string): void {
-    const line = `  ${ICONS.DOT} ${logId.slice(0, 8)}... skipped: ${reason}`;
+    const line = `${LOG_PREFIX} ${ICONS.DOT} ${logId.slice(0, 8)}... skipped: ${reason}`;
     console.log(line);
     this.logBuffer.push(line);
   }
 
   logError(logId: string, error: string): void {
-    const line = `  ${ICONS.CROSS} ${logId.slice(0, 8)}... error: ${error}`;
+    const line = `${LOG_PREFIX} ${ICONS.CROSS} ${logId.slice(0, 8)}... error: ${error}`;
     console.error(line);
     this.logBuffer.push(line);
   }
@@ -253,43 +256,43 @@ export class RevalidationLogger {
   }
 
   private printSummary(summary: RevalidationSummary): void {
-    const width = 60;
+    const width = 56;
     const hr = ICONS.SEPARATOR.repeat(width);
 
     const lines = [
-      '',
-      `${BOX.TOP_LEFT}${hr}${BOX.TOP_RIGHT}`,
-      `${BOX.VERTICAL}  ${ICONS.CHECK} REVALIDATION COMPLETE                                  ${BOX.VERTICAL}`,
-      `${BOX.T_RIGHT}${hr}${BOX.T_LEFT}`,
+      `${LOG_PREFIX}`,
+      `${LOG_PREFIX} ${BOX.TOP_LEFT}${hr}${BOX.TOP_RIGHT}`,
+      `${LOG_PREFIX} ${BOX.VERTICAL}  ${ICONS.CHECK} REVALIDATION COMPLETE                              ${BOX.VERTICAL}`,
+      `${LOG_PREFIX} ${BOX.T_RIGHT}${hr}${BOX.T_LEFT}`,
     ];
 
     // 結果サマリー
-    lines.push(`${BOX.VERTICAL}                                                            ${BOX.VERTICAL}`);
-    lines.push(`${BOX.VERTICAL}  Results:                                                  ${BOX.VERTICAL}`);
-    lines.push(`${BOX.VERTICAL}    ${ICONS.CHECK} Success   : ${String(summary.successCount).padStart(4)}                                 ${BOX.VERTICAL}`);
-    lines.push(`${BOX.VERTICAL}    ${ICONS.CROSS} Failed    : ${String(summary.failCount).padStart(4)}                                 ${BOX.VERTICAL}`);
-    lines.push(`${BOX.VERTICAL}    ${ICONS.DELTA} Changed   : ${String(summary.changedCount).padStart(4)}                                 ${BOX.VERTICAL}`);
-    lines.push(`${BOX.VERTICAL}    ${ICONS.DOT} Unchanged : ${String(summary.unchangedCount).padStart(4)}                                 ${BOX.VERTICAL}`);
-    lines.push(`${BOX.VERTICAL}                                                            ${BOX.VERTICAL}`);
+    lines.push(`${LOG_PREFIX} ${BOX.VERTICAL}                                                        ${BOX.VERTICAL}`);
+    lines.push(`${LOG_PREFIX} ${BOX.VERTICAL}  Results:                                              ${BOX.VERTICAL}`);
+    lines.push(`${LOG_PREFIX} ${BOX.VERTICAL}    ${ICONS.CHECK} Success   : ${String(summary.successCount).padStart(4)}                             ${BOX.VERTICAL}`);
+    lines.push(`${LOG_PREFIX} ${BOX.VERTICAL}    ${ICONS.CROSS} Failed    : ${String(summary.failCount).padStart(4)}                             ${BOX.VERTICAL}`);
+    lines.push(`${LOG_PREFIX} ${BOX.VERTICAL}    ${ICONS.DELTA} Changed   : ${String(summary.changedCount).padStart(4)}                             ${BOX.VERTICAL}`);
+    lines.push(`${LOG_PREFIX} ${BOX.VERTICAL}    ${ICONS.DOT} Unchanged : ${String(summary.unchangedCount).padStart(4)}                             ${BOX.VERTICAL}`);
+    lines.push(`${LOG_PREFIX} ${BOX.VERTICAL}                                                        ${BOX.VERTICAL}`);
 
     // 差分サマリー
     if (summary.diffSummary.length > 0) {
-      lines.push(`${BOX.T_RIGHT}${hr}${BOX.T_LEFT}`);
-      lines.push(`${BOX.VERTICAL}  Diff Summary:                                             ${BOX.VERTICAL}`);
+      lines.push(`${LOG_PREFIX} ${BOX.T_RIGHT}${hr}${BOX.T_LEFT}`);
+      lines.push(`${LOG_PREFIX} ${BOX.VERTICAL}  Diff Summary:                                         ${BOX.VERTICAL}`);
 
       for (const diff of summary.diffSummary.slice(0, 6)) {
-        const fieldName = diff.field.padEnd(22).slice(0, 22);
-        lines.push(`${BOX.VERTICAL}    ${fieldName} : ${String(diff.changedCount).padStart(4)} changes              ${BOX.VERTICAL}`);
+        const fieldName = diff.field.padEnd(20).slice(0, 20);
+        lines.push(`${LOG_PREFIX} ${BOX.VERTICAL}    ${fieldName} : ${String(diff.changedCount).padStart(4)} changes          ${BOX.VERTICAL}`);
       }
-      lines.push(`${BOX.VERTICAL}                                                            ${BOX.VERTICAL}`);
+      lines.push(`${LOG_PREFIX} ${BOX.VERTICAL}                                                        ${BOX.VERTICAL}`);
     }
 
     // タイミング
-    lines.push(`${BOX.T_RIGHT}${hr}${BOX.T_LEFT}`);
-    lines.push(`${BOX.VERTICAL}  Duration : ${this.formatDuration(summary.totalProcessingTimeMs).padEnd(46)} ${BOX.VERTICAL}`);
-    lines.push(`${BOX.VERTICAL}  Finished : ${this.formatTime(summary.completedAt)}                             ${BOX.VERTICAL}`);
-    lines.push(`${BOX.BOTTOM_LEFT}${hr}${BOX.BOTTOM_RIGHT}`);
-    lines.push('');
+    lines.push(`${LOG_PREFIX} ${BOX.T_RIGHT}${hr}${BOX.T_LEFT}`);
+    lines.push(`${LOG_PREFIX} ${BOX.VERTICAL}  Duration : ${this.formatDuration(summary.totalProcessingTimeMs).padEnd(42)} ${BOX.VERTICAL}`);
+    lines.push(`${LOG_PREFIX} ${BOX.VERTICAL}  Finished : ${this.formatTime(summary.completedAt)}                     ${BOX.VERTICAL}`);
+    lines.push(`${LOG_PREFIX} ${BOX.BOTTOM_LEFT}${hr}${BOX.BOTTOM_RIGHT}`);
+    lines.push(`${LOG_PREFIX}`);
 
     for (const line of lines) {
       console.log(line);
@@ -314,7 +317,7 @@ export class RevalidationLogger {
 
     await writeFile(filepath, logContent, 'utf-8');
 
-    const line = `  ${ICONS.BULLET} Log file: ${filepath}`;
+    const line = `${LOG_PREFIX} ${ICONS.BULLET} Log file: ${filepath}`;
     console.log(line);
     this.logBuffer.push(line);
 

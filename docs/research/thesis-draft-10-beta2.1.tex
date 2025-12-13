@@ -407,6 +407,37 @@ Level 4 以降，とくに Widget 間のリアクティブな連動を伴う UI 
 \section{設計方針の全体像}
 
 % =========================
+% [REPLACE] Chapter3冒頭の導入（結論先出し）
+% REPLACE FIRST PARAGRAPH OF: \section{設計方針の全体像}
+% =========================
+第\ref{chap:introduction}章および第\ref{chap:related_work}章で述べた課題は，
+LLMによる動的UI生成において「構造の安定性」と「文脈適応」を同時に満たすことが難しい点にある。
+そこで本研究は，思考整理ドメインの \textbf{Plan Phase} に着目し，
+その中でも \textbf{Stage4（意思決定・収束に相当）}で有効な
+\textbf{動的UI度 Level4（Widget間連動）}を実現する設計パラダイムを提案する。
+本章では，そのための設計判断と，後続章で実装・評価できる形への落とし込みを述べる。
+
+
+% =========================
+% [ADD] 用語整理（Level / Phase / Stage / Step）
+% INSERT INSIDE: \section{設計方針の全体像} 冒頭段落の直後
+% =========================
+\subsection{用語の整理（Level / Phase / Stage / Step）}
+本論文では，複数の「段階」を扱うため，用語を以下のように統一する。
+
+\begin{itemize}
+  \item \textbf{Level}：動的UI度の分類枠組み（例：Level4＝Widget間連動）。
+  \item \textbf{Phase}：思考整理アプリ全体の大区分（全3 Phase）。
+  \item \textbf{Stage}：各Phase内の手順段階（Capture Phaseは2 Stage，Plan Phaseは4 Stage）。
+  \item \textbf{Step}：LLM呼び出しパイプラインの段階（Step1--Step3）。
+\end{itemize}
+
+以降，旧称の「Stage4（動的UI度）」は \textbf{Level4} と表記し，
+LLM呼び出し段階は \textbf{Step} と表記することで混同を避ける。
+
+
+
+% =========================
 % [ADD][NEW] Chapter3: 思考整理プロセスの4フェーズ（ドメインモデル）
 % INSERT AFTER: \section{設計方針の全体像}
 % =========================
@@ -423,8 +454,9 @@ Level 4 以降，とくに Widget 間のリアクティブな連動を伴う UI 
   \item[Summary（まとめ）] 結果を言語化し，次の一歩へ接続するフェーズ。
 \end{description}
 
-ここでのフェーズ（ドメイン側の段階）は，第\ref{chap:implementation}章で述べる
-Stage1--Stage3（LLMパイプラインの段階）とは異なる概念である点に注意する。
+% 用語整理を追加したので，以下はいらない
+% ここでのフェーズ（ドメイン側の段階）は，第\ref{chap:implementation}章で述べる
+% Stage1--Stage3（LLMパイプラインの段階）とは異なる概念である点に注意する。
 提案システムは，UI全体をこのフェーズ構造に沿わせつつ，
 各フェーズ内部のWidget構成およびStage4（Widget間連動）を文脈に応じて生成することで，
 「迷わせない型」と「状況適応」を両立させる。
@@ -561,6 +593,9 @@ Widget間連動（Stage4） & 動的 &
 \end{tabular}
 \end{table}
 
+% --- 末尾追記：宣言型UI節の末尾 ---
+以上より，本研究では宣言型JSON DSLを採用し，生成結果の検証可能性と再現性を確保する。 次節では，このDSL上で扱うUI構成単位として，なぜAtomではなくWidgetを採用するのかを述べる。
+
 \section{Widget 方式と Widget-to-Widget Reactivity}
 
 \subsection{UX 的観点からの必要性}
@@ -613,6 +648,9 @@ DSL は，どの Widget のどのポートが，どの Widget のどのポート
 を分離できる。
 ポート抽象の詳細な実装方法は第\ref{chap:implementation}章で述べる。
 
+% --- 末尾追記：Widget方式節の末尾 ---
+以上の設計判断により，LLMの自由度は「Widgetの選択と接続」に集約され， Level4（Widget間連動）の実現が本研究の焦点となる。 次節では，実運用上の障壁となるCold Start Problemと，generatedValueによる対処を示す。
+
 \section{generatedValue と Cold Start Problem}
 
 \subsection{Cold Start Problem の位置づけ}
@@ -653,6 +691,9 @@ Widget が必要とするデータ構造に応じて柔軟に定義できる。
 ユーザーが自由に削除・編集できる UI を採用するに留めた。
 より精密にバイアスを制御することは，今後の課題である（第\ref{chap:future_work}章参照）。
 
+% --- 末尾追記：generatedValue節の末尾 ---
+以上より，generatedValueは「空欄を埋める」ためではなく，「思考開始点を与える」ための設計要素として位置づけられる。 最後に，本研究が扱う設計空間を整理し，本論文の貢献範囲を明確化する。
+
 \section{設計空間の整理と本研究のフォーカス}
 
 以上の議論を踏まえると，本研究が対象とする設計空間は，
@@ -680,12 +721,22 @@ generatedValue によるコンテンツ初期化は，
 
 \section{思考整理支援アプリケーションの概要}
 
+% =========================
+% [REPLACE] Chapter4冒頭：対象範囲を断定（Phase/Stage/Levelの整列）
+% REPLACE FIRST PARAGRAPH OF: \section{思考整理支援アプリケーションの概要}
+% =========================
 本章では，第\ref{chap:system_design}章で述べた設計方針にもとづき，
-思考整理支援ドメインに特化した LLM-Hardened DSL システムの実装について述べる。
-本実装は，ユーザーが自然言語で現状や悩みを入力する Plan フェーズを対象とし，
-その入力内容に応じた動的 UI を生成・表示する。
-タスク実行フェーズや長期的な履歴管理は本研究の範囲外とし，
-Plan フェーズにおける Stage4 の動的 UI を検証する基盤として実装している。
+思考整理支援ドメインに特化した LLM-Hardened DSL システムの実装を述べる。
+本アプリケーションは全体を3 Phaseから構成し，
+\textbf{Capture Phase（2 Stage）}と\textbf{Plan Phase（4 Stage）}を想定する。
+本研究の評価対象は，Plan Phase内で特に効果が大きい
+\textbf{動的UI度 Level4（Widget間連動）}であり，
+タスク実行フェーズや長期的な履歴管理は範囲外とする。
+
+なお，Capture PhaseのStage2（ボトルネック診断）は，
+本研究のRQと関連が薄いため現時点では未実装とし，
+評価ではテストケース側でボトルネック種別を決め打ちして与える。
+
 
 \section{システム構成と技術スタック}
 
@@ -994,6 +1045,15 @@ generatedValue により，ユーザーは初回利用時でも
 思考整理支援ドメインにおける Stage4 の動的 UI を支えることを示した。
 次章では，これらの設計にもとづく実験設計と評価方法について述べる。
 
+% =========================
+% [ADD] Chapter4末尾：評価章への橋渡し
+% INSERT AT END OF: \section{本章のまとめ}
+% =========================
+以上により，提案要素（宣言型JSON DSL，Level4の実行エンジン，generatedValue）は，
+Step1--Step3の段階的生成と，実行時の決定論的伝播として実装に落とし込まれた。
+次章では，これらが「構造として破綻しないか（Layer1）」，
+および「実用上の速度・コストに耐えるか（Layer2）」を評価する。
+
 
 % =========================================
 % 第5章 実験と評価
@@ -1058,6 +1118,16 @@ Layer1 および Layer2 の指標を統計的に比較する。
     \bottomrule
   \end{tabular}
 \end{table}
+
+% =========================
+% [ADD] 評価条件：Capture Stage2未実装の扱い（決め打ち）
+% INSERT INSIDE: \section{評価データと共通条件} （入力テキストの準備の後）
+% =========================
+\subsection{Capture Phase Stage2（ボトルネック診断）の扱い}
+Capture PhaseのStage2（ボトルネック診断）は本研究のRQと関連が薄いため未実装とし，
+評価では入力テキストに対してボトルネック種別をテストケース側で付与する。
+これにより，本研究の焦点であるLevel4（Widget間連動）の生成・実行に評価を集中させる。
+
 
 \subsection{モデル構成とパラメータ}
 実験2では，3段階LLMパイプライン（Stage1--Stage3）に割り当てるモデル構成の違いが，
@@ -1311,6 +1381,16 @@ LLM-Hardened DSL システム「Prism Lattice UI」を提案・実装した。
 今後は，生成された UI 上でのインタラクションログを詳細に分析し，
 動的 UI がもたらす認知的負荷の低減効果や，
 ユーザーの思考プロセスへの影響を定量的に評価する必要がある。
+
+
+% =========================
+% [ADD] 用語マクロ（表記ゆれ防止）
+% INSERT IN PREAMBLE OR AFTER \begin{document}
+% =========================
+\newcommand{\DynUILevel}{Level} % 動的UI度
+\newcommand{\LevelFour}{Level4} % Widget間連動
+\newcommand{\LLMStep}{Step} % LLM呼び出し段階
+
 
 % %-------------------
 % \bibliographystyle{plain} % 参考文献

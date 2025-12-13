@@ -838,10 +838,11 @@ batchExperimentRoutes.get('/:batchId/api-errors', async (c) => {
       if (!log.dslErrors || !Array.isArray(log.dslErrors)) {
         return false;
       }
-      // dslErrorsにAPI_ERRORを含むものを検出
-      return (log.dslErrors as string[]).some(err =>
-        err === 'API_ERROR' || err.startsWith('API_ERROR')
-      );
+      // dslErrorsにAPI_ERROR/api_errorを含むものを検出（大文字小文字両対応）
+      return (log.dslErrors as string[]).some(err => {
+        const upperErr = err.toUpperCase();
+        return upperErr === 'API_ERROR' || upperErr.startsWith('API_ERROR');
+      });
     });
 
     // Stage別に集計
@@ -1453,14 +1454,15 @@ batchExperimentRoutes.post('/:batchId/regenerate', async (c) => {
       .from(experimentTrialLogs)
       .where(eq(experimentTrialLogs.batchId, batchId));
 
-    // API_ERRORを含むログをフィルタ
+    // API_ERRORを含むログをフィルタ（大文字小文字両対応）
     let targetLogs = allLogs.filter(log => {
       if (!log.dslErrors || !Array.isArray(log.dslErrors)) {
         return false;
       }
-      return (log.dslErrors as string[]).some(err =>
-        err === 'API_ERROR' || err.startsWith('API_ERROR')
-      );
+      return (log.dslErrors as string[]).some(err => {
+        const upperErr = err.toUpperCase();
+        return upperErr === 'API_ERROR' || upperErr.startsWith('API_ERROR');
+      });
     });
 
     // logIdsが指定されている場合はフィルタ

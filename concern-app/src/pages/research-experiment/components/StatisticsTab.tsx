@@ -54,7 +54,7 @@ export default function StatisticsTab({ batchId, refreshKey }: StatisticsTabProp
       .then(setStatistics)
       .catch((err) => setError(err.message))
       .finally(() => setIsLoading(false));
-  }, [batchId, refreshKey]); // refreshKeyが変わると再取得
+  }, [api, batchId, refreshKey]); // refreshKeyが変わると再取得
 
   if (isLoading) {
     return (

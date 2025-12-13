@@ -472,11 +472,17 @@ export class RevalidationLogger {
     if (a === null || b === null) return false;
     if (typeof a !== typeof b) return false;
 
-    if (Array.isArray(a) && Array.isArray(b)) {
-      if (a.length !== b.length) return false;
-      return a.every((val, idx) => this.deepEqual(val, b[idx]));
+    // If one is array and the other is not, return false
+    const aIsArray = Array.isArray(a);
+    const bIsArray = Array.isArray(b);
+    if (aIsArray !== bIsArray) return false;
+
+    if (aIsArray && bIsArray) {
+      if ((a as unknown[]).length !== (b as unknown[]).length) return false;
+      return (a as unknown[]).every((val, idx) => this.deepEqual(val, (b as unknown[])[idx]));
     }
 
+    // Both are objects (but not arrays)
     if (typeof a === 'object' && typeof b === 'object') {
       const keysA = Object.keys(a as object);
       const keysB = Object.keys(b as object);

@@ -51,6 +51,18 @@ interface RevalidationSummary {
 // ========================================
 // Box Drawing Characters for CLI
 // ========================================
+// 
+// NOTE: These Unicode box-drawing characters and icons require a terminal
+// that supports UTF-8 encoding. Most modern terminals (macOS Terminal,
+// iTerm2, Windows Terminal, VS Code integrated terminal) support these
+// characters. If you encounter rendering issues:
+// 
+// - Ensure your terminal locale is set to UTF-8 (e.g., `export LANG=en_US.UTF-8`)
+// - Check that your terminal font supports Unicode box-drawing characters
+// - Consider using a monospace font like "Fira Code", "JetBrains Mono", or "Cascadia Code"
+// 
+// For environments without Unicode support, logs will still be functional
+// but may display replacement characters (�) instead of the intended symbols.
 
 const BOX = {
   TOP_LEFT: '┌',
@@ -70,6 +82,7 @@ const ICONS = {
   REVALIDATE: '⟳',
   CHECK: '✓',
   CROSS: '✗',
+  ERROR: '✗',
   ARROW: '→',
   DELTA: 'Δ',
   DOT: '•',
@@ -85,6 +98,36 @@ const LOG_PREFIX = '[revalidate]';
 // RevalidationLogger Class
 // ========================================
 
+/**
+ * RevalidationLogger
+ * 
+ * A dedicated logger for visualizing batch experiment revalidation processes.
+ * Provides rich, formatted CLI output with progress tracking, diff visualization,
+ * and detailed logging capabilities.
+ * 
+ * **Usage Example:**
+ * ```typescript
+ * const logger = new RevalidationLogger(batchId);
+ * logger.logHeader(totalTargets, { experimentId, modelConfigs });
+ * 
+ * for (const target of targets) {
+ *   const result = await processTarget(target);
+ *   logger.logProgress(result);
+ * }
+ * 
+ * const summary = logger.logSummary();
+ * await logger.writeLogFile(summary);
+ * ```
+ * 
+ * **Revalidation Context:**
+ * In this project, revalidation refers to re-running backend validation logic
+ * on Stage 3 experiment logs to detect changes in validation results over time
+ * or when validation logic is updated.
+ * 
+ * **Thread Safety:**
+ * This logger is NOT thread-safe. Create separate instances for concurrent
+ * revalidation sessions.
+ */
 export class RevalidationLogger {
   private batchId: string;
   private startedAt: Date;
@@ -449,9 +492,9 @@ export class RevalidationLogger {
       return `[${value.length} items]`;
     }
     if (typeof value === 'string') {
-      return value.length > 20 ? `"${value.slice(0, 17)}..."` : `"${value}"`;
+      return value.length > 50 ? `"${value.slice(0, 47)}..."` : `"${value}"`;
     }
-    return JSON.stringify(value).slice(0, 20);
+    return JSON.stringify(value).slice(0, 50);
   }
 
   // ========================================
@@ -484,9 +527,14 @@ export class RevalidationLogger {
 
     // Both are objects (but not arrays)
     if (typeof a === 'object' && typeof b === 'object') {
-      const keysA = Object.keys(a as object);
-      const keysB = Object.keys(b as object);
+      const keysA = Object.keys(a as object).sort();
+      const keysB = Object.keys(b as object).sort();
+      
+      // Check if both objects have the same keys
       if (keysA.length !== keysB.length) return false;
+      if (!keysA.every((key, idx) => key === keysB[idx])) return false;
+      
+      // Compare values for all keys
       return keysA.every(key =>
         this.deepEqual(
           (a as Record<string, unknown>)[key],

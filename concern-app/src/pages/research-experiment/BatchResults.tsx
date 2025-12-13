@@ -65,6 +65,7 @@ export default function BatchResults() {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [regenerateResult, setRegenerateResult] = useState<RegenerateResult | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [statisticsRefreshKey, setStatisticsRefreshKey] = useState(0); // 統計タブ更新用
 
   // データ再読み込み関数
   const refreshData = useCallback(async () => {
@@ -85,6 +86,7 @@ export default function BatchResults() {
       setTrials(trialsData);
       setApiErrors(apiErrorsData);
       setRegenerateResult(null);
+      setStatisticsRefreshKey(prev => prev + 1); // 統計タブも更新
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to refresh data');
     } finally {
@@ -602,7 +604,7 @@ export default function BatchResults() {
             <TrialsSection />
           </div>
         )}
-        {activeTab === 'statistics' && batchId && <StatisticsTab batchId={batchId} />}
+        {activeTab === 'statistics' && batchId && <StatisticsTab batchId={batchId} refreshKey={statisticsRefreshKey} />}
       </div>
 
       {/* ナビゲーション */}

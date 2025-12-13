@@ -143,7 +143,7 @@ export class RevalidationLogger {
     this.results.push(result);
     this.processedCount++;
 
-    const progressPct = Math.round((this.processedCount / this.totalTargets) * 100);
+    const progressPct = Math.round((this.processedCount / Math.max(1, this.totalTargets)) * 100);
     const progressBar = this.createProgressBar(progressPct, 16);
 
     const statusIcon = result.success ? ICONS.CHECK : ICONS.CROSS;

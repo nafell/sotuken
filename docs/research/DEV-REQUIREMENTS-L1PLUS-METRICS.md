@@ -155,16 +155,31 @@ class L1PlusEvaluatorService {
 
 ```typescript
 // 禁止構造の定義（概念的表現）
-// 注意: 以下は説明用の概念的リストです。実装ではacorn.parse()でAST生成後、
-// walk()等のビジター関数を使ってASTノードを走査し、禁止パターンを検出します。
-// 実際のコードではEstree ASTのノードタイプと、必要に応じてノードプロパティを検証します。
-const FORBIDDEN_CONSTRUCTS = {
+// 注意: 以下は **説明用の概念的リスト** です。コロン記法（例: 'CallExpression:eval'）は
+// 標準AST表現ではなく、本ドキュメント内でのみ使用する短縮表記です。
+// 実装ではacorn.parse()でAST生成後、acorn-walkのビジター関数を使って実際のASTノードを検証します。
+const FORBIDDEN_CONSTRUCTS_CONCEPT = {
   loops: ['WhileStatement', 'ForStatement'], // while, for(;;)
-  dynamicCode: ['CallExpression:eval', 'NewExpression:Function'], // eval(), new Function()
-  network: ['CallExpression:fetch', 'Identifier:XMLHttpRequest'], // fetch(), XMLHttpRequest
-  nonDeterministic: ['MemberExpression:Date.now', 'MemberExpression:Math.random'],
-  timers: ['CallExpression:setTimeout', 'CallExpression:setInterval', 'CallExpression:setImmediate'],
-  nodeRuntime: ['Identifier:process', 'CallExpression:require', 'ImportExpression'], // process, require(), import()
+  dynamicCode: [
+    'CallExpression where callee.name === "eval"',
+    'NewExpression where callee.name === "Function"'
+  ],
+  network: [
+    'CallExpression where callee.name === "fetch"',
+    'Identifier where name === "XMLHttpRequest"'
+  ],
+  nonDeterministic: [
+    'CallExpression where callee is MemberExpression(object.name="Date", property.name="now")',
+    'MemberExpression where object.name="Math" and property.name="random"'
+  ],
+  timers: [
+    'CallExpression where callee.name in ["setTimeout", "setInterval", "setImmediate"]'
+  ],
+  nodeRuntime: [
+    'Identifier where name === "process"',
+    'CallExpression where callee.name === "require"',
+    'ImportExpression' // import() 動的インポート
+  ],
 };
 
 // 安全なJSパターン（許可）
@@ -188,20 +203,39 @@ function checkPolicyCompliance(code: string): { ok: boolean; violations: string[
     import { simple } from 'acorn-walk';
     
     const violations: string[] = [];
+    const ast = parse(code, { ecmaVersion: 2020 });
+    
     simple(ast, {
-      WhileStatement(node) { violations.push('while loop detected'); },
+      WhileStatement(node) { 
+        violations.push('while loop detected'); 
+      },
+      ForStatement(node) {
+        violations.push('for loop detected');
+      },
       CallExpression(node) {
+        // eval() 検出
         if (node.callee.type === 'Identifier' && node.callee.name === 'eval') {
           violations.push('eval() detected');
         }
-        // MemberExpression の場合も考慮
-        if (node.callee.type === 'MemberExpression') {
-          // 例: Date.now() の検出ロジック
+        // fetch() 検出
+        if (node.callee.type === 'Identifier' && node.callee.name === 'fetch') {
+          violations.push('fetch() detected');
         }
+        // Date.now() 検出
+        if (node.callee.type === 'MemberExpression' &&
+            node.callee.object.type === 'Identifier' &&
+            node.callee.object.name === 'Date' &&
+            node.callee.property.type === 'Identifier' &&
+            node.callee.property.name === 'now') {
+          violations.push('Date.now() detected');
+        }
+      },
+      ImportExpression(node) {
+        violations.push('dynamic import() detected');
       },
     });
     ```
-  - これにより、変数名に 'for' を含むケース（例: 'format', 'information'）は誤検出されません。
+  - この方式により、変数名に 'for' を含むケース（例: 'format', 'information'）は誤検出されません。
 
 ---
 

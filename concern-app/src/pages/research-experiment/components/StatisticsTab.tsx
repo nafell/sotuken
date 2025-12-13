@@ -16,6 +16,7 @@ import {
 
 interface StatisticsTabProps {
   batchId: string;
+  refreshKey?: number; // 親からの更新トリガー
 }
 
 const LAYER1_METRICS = ['VR', 'TCR', 'RRR', 'CDR', 'RGR', 'W2WR_SR', 'RC_SR', 'JA_SR'];
@@ -34,7 +35,7 @@ const METRIC_DESCRIPTIONS: Record<string, string> = {
   COST: '推定APIコスト (JPY)',
 };
 
-export default function StatisticsTab({ batchId }: StatisticsTabProps) {
+export default function StatisticsTab({ batchId, refreshKey }: StatisticsTabProps) {
   const api = getBatchExperimentApi();
 
   const [statistics, setStatistics] = useState<BatchStatisticsResult | null>(null);
@@ -46,12 +47,14 @@ export default function StatisticsTab({ batchId }: StatisticsTabProps) {
   const [selectedLayer4Metric, setSelectedLayer4Metric] = useState<string>('LAT');
 
   useEffect(() => {
+    setIsLoading(true);
+    setError(null);
     api
       .getStatistics(batchId)
       .then(setStatistics)
       .catch((err) => setError(err.message))
       .finally(() => setIsLoading(false));
-  }, [batchId]);
+  }, [batchId, refreshKey]); // refreshKeyが変わると再取得
 
   if (isLoading) {
     return (

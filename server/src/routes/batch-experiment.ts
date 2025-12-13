@@ -942,7 +942,7 @@ batchExperimentRoutes.post('/:batchId/revalidate', async (c) => {
     }
 
     if (targetLogs.length === 0) {
-      console.log(`  ─ No logs to revalidate for batch ${batchId.slice(0, 8)}...`);
+      console.log(`[revalidate] ─ No logs to revalidate for batch ${batchId.slice(0, 8)}...`);
       return c.json({
         success: true,
         message: 'No logs to revalidate',

@@ -8,7 +8,7 @@
  * @see specs/system-design/experiment_spec_layer_1_layer_4.md
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   getBatchExperimentApi,
@@ -16,6 +16,8 @@ import {
   type Layer4Metrics,
   type ModelStatistics,
   type TrialLog,
+  type ApiErrorsResult,
+  type RegenerateResult,
 } from '../../services/BatchExperimentApiService';
 import TrialLogDetail from './components/TrialLogDetail';
 import StatisticsTab from './components/StatisticsTab';
@@ -58,20 +60,75 @@ export default function BatchResults() {
   // タブ管理
   const [activeTab, setActiveTab] = useState<TabId>('results');
 
+  // API_ERROR関連
+  const [apiErrors, setApiErrors] = useState<ApiErrorsResult | null>(null);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [regenerateResult, setRegenerateResult] = useState<RegenerateResult | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // データ再読み込み関数
+  const refreshData = useCallback(async () => {
+    if (!batchId) return;
+    setIsRefreshing(true);
+    setError(null);
+
+    try {
+      const [resultsData, trialsData, apiErrorsData] = await Promise.all([
+        api.getBatchResults(batchId),
+        api.getTrialLogs(batchId),
+        api.getApiErrors(batchId).catch(() => null),
+      ]);
+
+      setSummary(resultsData.summary);
+      setLayer1Results(resultsData.layer1Results ?? null);
+      setLayer4Results(resultsData.layer4Results ?? null);
+      setTrials(trialsData);
+      setApiErrors(apiErrorsData);
+      setRegenerateResult(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to refresh data');
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [batchId, api]);
+
+  // API_ERROR再試行関数
+  const handleRegenerate = async (dryRun: boolean) => {
+    if (!batchId) return;
+    setIsRegenerating(true);
+    setRegenerateResult(null);
+
+    try {
+      const result = await api.regenerateTrials(batchId, { dryRun });
+      setRegenerateResult(result);
+
+      if (!dryRun && result.regeneratedCount > 0) {
+        // 再試行成功後、データを再読み込み
+        await refreshData();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to regenerate trials');
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
   // データ読み込み
   useEffect(() => {
     if (!batchId) return;
 
-    // サマリーとトライアルを並列で読み込み
+    // サマリーとトライアルとAPI_ERRORを並列で読み込み
     Promise.all([
       api.getBatchResults(batchId),
       api.getTrialLogs(batchId),
+      api.getApiErrors(batchId).catch(() => null),
     ])
-      .then(([resultsData, trialsData]) => {
+      .then(([resultsData, trialsData, apiErrorsData]) => {
         setSummary(resultsData.summary);
         setLayer1Results(resultsData.layer1Results ?? null);
         setLayer4Results(resultsData.layer4Results ?? null);
         setTrials(trialsData);
+        setApiErrors(apiErrorsData);
       })
       .catch(err => setError(err.message))
       .finally(() => setIsLoading(false));
@@ -245,6 +302,132 @@ export default function BatchResults() {
     </section>
   );
 
+  // API_ERRORセクション
+  const ApiErrorSection = () => {
+    if (!apiErrors || apiErrors.apiErrorCount === 0) {
+      return null;
+    }
+
+    return (
+      <section style={{
+        padding: '16px',
+        backgroundColor: '#fff3e0',
+        borderRadius: '4px',
+        border: '1px solid #ff9800',
+      }}>
+        <h2 style={{ fontSize: '18px', marginBottom: '12px', color: '#e65100' }}>
+          API_ERROR検出 ({apiErrors.apiErrorCount}件)
+        </h2>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '16px' }}>
+          <div>
+            <div style={{ fontSize: '12px', color: '#666' }}>エラーログ数</div>
+            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#e65100' }}>
+              {apiErrors.apiErrorCount} / {apiErrors.totalLogCount}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: '12px', color: '#666' }}>影響入力数</div>
+            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#e65100' }}>
+              {apiErrors.affectedInputCount}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: '12px', color: '#666' }}>ステージ分布</div>
+            <div style={{ fontSize: '14px' }}>
+              {Object.entries(apiErrors.stageDistribution).map(([stage, count]) => (
+                <span key={stage} style={{ marginRight: '8px' }}>
+                  S{stage}: {count}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '16px' }}>
+          <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>モデル構成分布</div>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            {Object.entries(apiErrors.modelConfigDistribution).map(([model, count]) => (
+              <span
+                key={model}
+                style={{
+                  padding: '4px 8px',
+                  backgroundColor: '#ffe0b2',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                }}
+              >
+                {model}: {count}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* 再試行ボタン */}
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <button
+            onClick={() => handleRegenerate(true)}
+            disabled={isRegenerating}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#ff9800',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: isRegenerating ? 'not-allowed' : 'pointer',
+              opacity: isRegenerating ? 0.7 : 1,
+            }}
+          >
+            {isRegenerating ? '確認中...' : 'Dry Run (確認のみ)'}
+          </button>
+          <button
+            onClick={() => handleRegenerate(false)}
+            disabled={isRegenerating}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#d32f2f',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: isRegenerating ? 'not-allowed' : 'pointer',
+              opacity: isRegenerating ? 0.7 : 1,
+            }}
+          >
+            {isRegenerating ? '再試行中...' : '再試行実行'}
+          </button>
+        </div>
+
+        {/* 再試行結果表示 */}
+        {regenerateResult && (
+          <div style={{
+            marginTop: '16px',
+            padding: '12px',
+            backgroundColor: regenerateResult.regeneratedCount > 0 ? '#e8f5e9' : '#fff',
+            borderRadius: '4px',
+            border: '1px solid #ccc',
+          }}>
+            <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+              {regenerateResult.message ?? `再生成完了: ${regenerateResult.regeneratedCount}件成功`}
+              {regenerateResult.failedCount !== undefined && regenerateResult.failedCount > 0 && (
+                <span style={{ color: '#d32f2f' }}> / {regenerateResult.failedCount}件失敗</span>
+              )}
+            </div>
+            {regenerateResult.results && regenerateResult.results.length > 0 && (
+              <div style={{ fontSize: '12px', maxHeight: '150px', overflowY: 'auto' }}>
+                {regenerateResult.results.map((r, i) => (
+                  <div key={i} style={{ color: r.status === 'success' ? '#388e3c' : '#d32f2f' }}>
+                    Trial {r.trialNumber} ({r.modelConfig}): {r.status}
+                    {r.error && <span style={{ marginLeft: '8px' }}>- {r.error}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+    );
+  };
+
   // Layer1セクション
   const Layer1Section = () => (
     <section>
@@ -383,7 +566,24 @@ export default function BatchResults() {
 
   return (
     <div style={{ padding: '24px', maxWidth: '1100px', margin: '0 auto' }}>
-      <h1 style={{ marginBottom: '16px' }}>実験結果サマリー</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h1 style={{ margin: 0 }}>実験結果サマリー</h1>
+        <button
+          onClick={refreshData}
+          disabled={isRefreshing}
+          style={{
+            padding: '8px 16px',
+            backgroundColor: isRefreshing ? '#ccc' : '#1976d2',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: isRefreshing ? 'not-allowed' : 'pointer',
+            fontSize: '14px',
+          }}
+        >
+          {isRefreshing ? '更新中...' : 'データ更新'}
+        </button>
+      </div>
 
       {/* タブナビゲーション */}
       <div style={{ display: 'flex', marginBottom: '0', borderBottom: '2px solid #1976d2' }}>
@@ -396,6 +596,7 @@ export default function BatchResults() {
         {activeTab === 'results' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <OverviewSection />
+            <ApiErrorSection />
             <Layer1Section />
             <Layer4Section />
             <TrialsSection />

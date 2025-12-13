@@ -1011,6 +1011,7 @@ batchExperimentRoutes.post('/:batchId/revalidate', async (c) => {
           RevalidationLogger.createDiff('typeErrorCount', beforeState.typeErrorCount, afterState.typeErrorCount),
           RevalidationLogger.createDiff('referenceErrorCount', beforeState.referenceErrorCount, afterState.referenceErrorCount),
           RevalidationLogger.createDiff('cycleDetected', beforeState.cycleDetected, afterState.cycleDetected),
+          RevalidationLogger.createDiff('serverValidatedAt', beforeState.serverValidatedAt, afterState.serverValidatedAt),
         ];
 
         // DB更新

@@ -315,13 +315,18 @@ export class RevalidationLogger {
     // ログ内容を構築
     const logContent = this.buildLogFileContent(summary);
 
-    await writeFile(filepath, logContent, 'utf-8');
-
-    const line = `${LOG_PREFIX} ${ICONS.BULLET} Log file: ${filepath}`;
-    console.log(line);
-    this.logBuffer.push(line);
-
-    return filepath;
+    try {
+      await writeFile(filepath, logContent, 'utf-8');
+      const line = `${LOG_PREFIX} ${ICONS.BULLET} Log file: ${filepath}`;
+      console.log(line);
+      this.logBuffer.push(line);
+      return filepath;
+    } catch (error) {
+      const errorLine = `${LOG_PREFIX} ${ICONS.ERROR} Failed to write log file: ${filepath} (${error instanceof Error ? error.message : String(error)})`;
+      console.error(errorLine);
+      this.logBuffer.push(errorLine);
+      throw error;
+    }
   }
 
   private buildLogFileContent(summary: RevalidationSummary): string {

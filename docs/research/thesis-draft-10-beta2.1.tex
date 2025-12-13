@@ -406,6 +406,62 @@ Level 4 以降，とくに Widget 間のリアクティブな連動を伴う UI 
 
 \section{設計方針の全体像}
 
+% =========================
+% [REPLACE] Chapter3冒頭の導入（結論先出し）
+% REPLACE FIRST PARAGRAPH OF: \section{設計方針の全体像}
+% =========================
+第\ref{chap:introduction}章および第\ref{chap:related_work}章で述べた課題は，
+LLMによる動的UI生成において「構造の安定性」と「文脈適応」を同時に満たすことが難しい点にある。
+そこで本研究は，思考整理ドメインの \textbf{Plan Phase} に着目し，
+その中でも \textbf{Stage4（意思決定・収束に相当）}で有効な
+\textbf{動的UI度 Level4（Widget間連動）}を実現する設計パラダイムを提案する。
+本章では，そのための設計判断と，後続章で実装・評価できる形への落とし込みを述べる。
+
+
+% =========================
+% [ADD] 用語整理（Level / Phase / Stage / Step）
+% INSERT INSIDE: \section{設計方針の全体像} 冒頭段落の直後
+% =========================
+\subsection{用語の整理（Level / Phase / Stage / Step）}
+本論文では，複数の「段階」を扱うため，用語を以下のように統一する。
+
+\begin{itemize}
+  \item \textbf{Level}：動的UI度の分類枠組み（例：Level4＝Widget間連動）。
+  \item \textbf{Phase}：思考整理アプリ全体の大区分（全3 Phase）。
+  \item \textbf{Stage}：各Phase内の手順段階（Capture Phaseは2 Stage，Plan Phaseは4 Stage）。
+  \item \textbf{Step}：LLM呼び出しパイプラインの段階（Step1--Step3）。
+\end{itemize}
+
+以降，旧称の「Stage4（動的UI度）」は \textbf{Level4} と表記し，
+LLM呼び出し段階は \textbf{Step} と表記することで混同を避ける。
+
+
+
+% =========================
+% [ADD][NEW] Chapter3: 思考整理プロセスの4フェーズ（ドメインモデル）
+% INSERT AFTER: \section{設計方針の全体像}
+% =========================
+
+\subsection{思考整理プロセスのモデル化（ドメイン知識）}
+本研究では，思考整理のプロセスを「発散・整理・収束・まとめ」の4フェーズとしてモデル化し，
+これをドメイン知識としてシステムに組み込む設計とした。
+これはデザイン思考におけるダブルダイアモンドモデル\cite{design_council2005}に着想を得ている。
+
+\begin{description}
+  \item[Diverge（発散）] 視点を広げ，可能性や選択肢を洗い出すフェーズ。
+  \item[Organize（整理）] 情報を構造化し，関係性を可視化するフェーズ。
+  \item[Converge（収束）] 優先順位付けと意思決定を行うフェーズ。
+  \item[Summary（まとめ）] 結果を言語化し，次の一歩へ接続するフェーズ。
+\end{description}
+
+% 用語整理を追加したので，以下はいらない
+% ここでのフェーズ（ドメイン側の段階）は，第\ref{chap:implementation}章で述べる
+% Stage1--Stage3（LLMパイプラインの段階）とは異なる概念である点に注意する。
+提案システムは，UI全体をこのフェーズ構造に沿わせつつ，
+各フェーズ内部のWidget構成およびStage4（Widget間連動）を文脈に応じて生成することで，
+「迷わせない型」と「状況適応」を両立させる。
+
+
 第\ref{chap:introduction}章および第\ref{chap:related_work}章で述べたように，
 本研究は，思考整理支援ドメインに対して LLM-Hardened DSL に基づく動的 UI 生成システムを適用し，
 Stage4 の動的 UI を実現するための設計パラダイムを明らかにすることを目的とする。
@@ -471,6 +527,75 @@ Jelly は汎用的な情報・タスク支援を対象に，LLM-Hardened DSL に
 これにより，DSL と UI フレームワーク（React/TypeScript）は疎結合となり，
 DSL の変更と実装の変更を比較的独立に行える。
 
+% =========================
+% [ADD][FUSED] Chapter3: Why Widget? (Atom vs Widget) + 不自由化 + 固定/動的の要点
+% INSERT AFTER: \section{宣言型 UI と JSON DSL の採用理由}
+% INSERT BEFORE: \section{Widget 方式と Widget-to-Widget Reactivity}
+% =========================
+
+\section{UI構成単位としてのWidgetの採用}
+\label{sec:why_widget}
+
+\subsection{Atom方式とWidget方式の比較}
+動的UI生成において，UIをどの粒度で組み立てるかは重要な設計判断である。
+先行研究 Jelly UI\cite{cao2025jelly} は，ボタンや入力欄といった最小単位の \textbf{Atom} を動的に組み合わせることで
+高い柔軟性を実現する。一方，完全自由度に近い生成は，UX品質のばらつきが大きく，
+プロンプトが肥大化しやすいという課題を伴う。
+
+これに対し本研究では，思考整理ドメインにおけるUX品質を担保するため，
+ある程度まとまった機能単位としての \textbf{Widget} を構成要素として採用する。
+ここでいうWidgetとは，「SWOT分析」や「トレードオフ天秤」のように，
+特定の認知的操作を支援するために設計・検証済みの複合コンポーネントである。
+
+なお，本章でいう Atom は「UI構成単位」としての Atom（Jelly UIの文脈）であり，
+第\ref{chap:implementation}章で述べる状態管理ライブラリ Jotai の Atom（状態セル）とは概念が異なる点に注意する。
+
+\subsection{ドメイン特化による不自由化の利点}
+Widget方式を採用し，LLMの自由度を「Atomの組み合わせ」から
+「Widgetの選択と接続（特にStage4の連動）」へと意図的に制限（不自由化）することで，以下を得る。
+
+\begin{itemize}
+  \item \textbf{UX品質の事前担保}：
+        Widget内部のインタラクションやレイアウトは人間が設計するため，
+        破綻したUIを生成しにくい。
+  \item \textbf{トークンコストの削減}：
+        LLMがDOM構造等の詳細を出力する必要がなく，
+        Widget IDと設定値，および接続のみを生成すればよい。
+  \item \textbf{構造的整合性の向上}：
+        生成対象が粗いブロックの組み合わせとなるため，
+        微細なミスが致命傷になりにくい。
+\end{itemize}
+
+以上により，本研究は「何でも作れるが不安定」な汎用生成ではなく，
+「思考整理に特化して安定稼働し，Stage4（Widget間連動）でUX価値を出す」方針を取る。
+
+\subsection{固定/動的の切り分け（要点）}
+設計空間の詳細は\sectionref{設計空間の整理と本研究のフォーカス}で整理するが，
+本研究の要点となる切り分けを表\ref{tab:design_decision_beta21}に示す。
+
+\begin{table}[tb]
+\caption{設計判断の要点（固定/動的の切り分け）}
+\label{tab:design_decision_beta21}
+\centering
+\small
+\begin{tabular}{l|c|p{8cm}} \toprule
+要素 & 固定/動的 & 理由（beta2.1ストーリーに沿った要点） \\ \midrule
+Widget種類（ライブラリ） & 固定 &
+UX品質担保と探索空間削減のため，Widget自体は事前定義とし，
+「選択と接続」を動的化する。\\
+UI構造（Widgetツリー） & 動的 &
+ユーザー文脈により最適構造が異なるため，構成・配置は動的生成する。\\
+Widget間連動（Stage4） & 動的 &
+連動パターンは文脈依存であり，port接続（依存グラフ）は生成対象とする。\\
+実行時伝播 & 固定（決定論） &
+応答性・安全性のため，実行時は事前生成された依存グラフにもとづき決定論的に伝播する。\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% --- 末尾追記：宣言型UI節の末尾 ---
+以上より，本研究では宣言型JSON DSLを採用し，生成結果の検証可能性と再現性を確保する。 次節では，このDSL上で扱うUI構成単位として，なぜAtomではなくWidgetを採用するのかを述べる。
+
 \section{Widget 方式と Widget-to-Widget Reactivity}
 
 \subsection{UX 的観点からの必要性}
@@ -523,6 +648,9 @@ DSL は，どの Widget のどのポートが，どの Widget のどのポート
 を分離できる。
 ポート抽象の詳細な実装方法は第\ref{chap:implementation}章で述べる。
 
+% --- 末尾追記：Widget方式節の末尾 ---
+以上の設計判断により，LLMの自由度は「Widgetの選択と接続」に集約され， Level4（Widget間連動）の実現が本研究の焦点となる。 次節では，実運用上の障壁となるCold Start Problemと，generatedValueによる対処を示す。
+
 \section{generatedValue と Cold Start Problem}
 
 \subsection{Cold Start Problem の位置づけ}
@@ -563,6 +691,9 @@ Widget が必要とするデータ構造に応じて柔軟に定義できる。
 ユーザーが自由に削除・編集できる UI を採用するに留めた。
 より精密にバイアスを制御することは，今後の課題である（第\ref{chap:future_work}章参照）。
 
+% --- 末尾追記：generatedValue節の末尾 ---
+以上より，generatedValueは「空欄を埋める」ためではなく，「思考開始点を与える」ための設計要素として位置づけられる。 最後に，本研究が扱う設計空間を整理し，本論文の貢献範囲を明確化する。
+
 \section{設計空間の整理と本研究のフォーカス}
 
 以上の議論を踏まえると，本研究が対象とする設計空間は，
@@ -590,12 +721,22 @@ generatedValue によるコンテンツ初期化は，
 
 \section{思考整理支援アプリケーションの概要}
 
+% =========================
+% [REPLACE] Chapter4冒頭：対象範囲を断定（Phase/Stage/Levelの整列）
+% REPLACE FIRST PARAGRAPH OF: \section{思考整理支援アプリケーションの概要}
+% =========================
 本章では，第\ref{chap:system_design}章で述べた設計方針にもとづき，
-思考整理支援ドメインに特化した LLM-Hardened DSL システムの実装について述べる。
-本実装は，ユーザーが自然言語で現状や悩みを入力する Plan フェーズを対象とし，
-その入力内容に応じた動的 UI を生成・表示する。
-タスク実行フェーズや長期的な履歴管理は本研究の範囲外とし，
-Plan フェーズにおける Stage4 の動的 UI を検証する基盤として実装している。
+思考整理支援ドメインに特化した LLM-Hardened DSL システムの実装を述べる。
+本アプリケーションは全体を3 Phaseから構成し，
+\textbf{Capture Phase（2 Stage）}と\textbf{Plan Phase（4 Stage）}を想定する。
+本研究の評価対象は，Plan Phase内で特に効果が大きい
+\textbf{動的UI度 Level4（Widget間連動）}であり，
+タスク実行フェーズや長期的な履歴管理は範囲外とする。
+
+なお，Capture PhaseのStage2（ボトルネック診断）は，
+本研究のRQと関連が薄いため現時点では未実装とし，
+評価ではテストケース側でボトルネック種別を決め打ちして与える。
+
 
 \section{システム構成と技術スタック}
 
@@ -629,6 +770,31 @@ LLM から受け取った JSON をパースする際に型ガードを用いる�
 つまり，TypeScript は「LLM の不安定さ」というリスクを管理し，
 システムとしての信頼性を担保するための防壁として機能している。
 
+% =========================
+% [ADD][NEW] Chapter4: 技術スタックと選定理由（再現性の担保）
+% INSERT AFTER: \subsection{TypeScript 採用の理由}
+% =========================
+
+\subsection{技術スタックと選定理由}
+実装の再現性と開発効率，および実行時性能を重視し，表\ref{tab:tech_stack_beta21}の技術スタックを採用した。
+
+\begin{table}[tb]
+\caption{実装に用いた技術スタック}
+\label{tab:tech_stack_beta21}
+\centering
+\small
+\begin{tabular}{lp{8cm}} \toprule
+レイヤー & 採用技術 \\ \midrule
+ランタイム & \textbf{Bun}（高速な起動と実行により開発サイクル短縮） \\
+バックエンド & \textbf{Hono}（軽量で型安全，LLM呼び出しI/Oの実装が容易） \\
+DB / ORM & \textbf{SQLite} + \textbf{Drizzle ORM}（TypeScriptと親和性が高くスキーマ管理が容易） \\
+フロントエンド & \textbf{React} + \textbf{TypeScript}（宣言型UIとDSLレンダリングに適合） \\
+状態管理 & \textbf{Jotai}（portをAtomとして扱う実行エンジンと親和性が高い） \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
 \section{JSON DSL とデータモデル}
 
 \subsection{DSL の概要}
@@ -652,6 +818,34 @@ LLM からの出力に対してパースとバリデーションを行う。
 デフォルト値に置き換えるなどのフォールバック処理を行い，
 アプリケーション全体が落ちないようにする。
 
+% =========================
+% [ADD][NEW] Chapter4: 実装したWidgetライブラリ（証拠としての厚み）
+% INSERT AFTER: \subsection{DSL の概要}
+% =========================
+
+\subsection{実装したWidgetライブラリ（抜粋）}
+本実装では，思考整理の各フェーズに対応する複数のWidgetを事前実装し，
+LLMは「Widgetの内部構造」ではなく「選択・設定・接続」を生成する。
+表\ref{tab:widget_list}に主要なWidgetを抜粋して示す（全量は付録またはリポジトリ定義に準拠）。
+
+\begin{table}[tb]
+\caption{実装された思考整理支援Widget（抜粋）}
+\label{tab:widget_list}
+\centering
+\small
+\begin{tabular}{llcp{6.5cm}} \toprule
+Widget ID & 名称 & complexity & 概要・用途 \\ \midrule
+stage\_summary & ステージサマリー & 0.1 & フェーズ間の要点・決定事項の受け渡し \\
+emotion\_palette & 感情パレット & 0.3 & 感情の種類・強度を可視化し言語化を支援 \\
+brainstorm\_cards & ブレインストーム & 0.2 & カード形式で大量にアイデアを発散 \\
+dependency\_mapping & 依存関係マップ & 0.8 & 要素間の因果/依存をノード・エッジで可視化 \\
+matrix\_placement & マトリクス配置 & 0.5 & 2軸で項目を配置し評価（重要度×緊急度等） \\
+priority\_slider\_grid & 優先度スライダー & 0.4 & 重み付け調整により順位を再計算（Syncに有効） \\
+swot\_analysis & SWOT分析 & 0.6 & 強み/弱み/機会/脅威で状況を構造化 \\ \bottomrule
+\end{tabular}
+\end{table}
+
+
 \section{3段階 LLM パイプラインの実装}
 
 3 段階の LLM パイプラインは，第\ref{chap:system_design}章で述べた設計を
@@ -674,6 +868,52 @@ LLM からの出力に対してパースとバリデーションを行う。
 ユーザーにエラーメッセージを表示するか，
 簡易な固定 UI にフォールバックする。
 
+% =========================
+% [ADD][NEW] Chapter4: Stage別I/O例（本当に実装した説得力）
+% INSERT AT END OF: \section{3段階 LLM パイプラインの実装}
+% =========================
+
+\subsection{Stage別の入出力例（概要）}
+Stage1--Stage3の実装を具体化するため，各Stageの出力例（概略）を示す。
+
+\begin{lstlisting}[caption = Stage1出力例：IDDM（概略JSON）, label = lst:iddm_example]
+{
+  "intent": "転職の不安を整理し，選択肢を比較して次の行動を決めたい",
+  "bottleneck": "emotional_block",
+  "focus": ["現状", "選択肢", "メリット・デメリット", "次の一歩"]
+}
+\end{lstlisting}
+
+\begin{lstlisting}[caption = Stage2出力例：ORS + DependencyGraph（概略JSON）, label = lst:ors_dpg_example]
+{
+  "widgets": ["emotion_palette", "brainstorm_cards", "priority_slider_grid"],
+  "dependencyGraph": [
+    { "source": "brainstorm_cards.items", "target": "priority_slider_grid.items", "kind": "flow" },
+    { "source": "priority_slider_grid.weights", "target": "priority_slider_grid.ranking", "kind": "sync" }
+  ]
+}
+\end{lstlisting}
+
+\begin{lstlisting}[caption = Stage3出力例：UISpec（概略JSON）, label = lst:uispec_example]
+{
+  "widgets": [
+    { "id":"w1", "type":"emotion_palette", "ports":[{"name":"mood","dir":"out"}] },
+    { "id":"w2", "type":"brainstorm_cards",
+      "ports":[{"name":"items","dir":"out"}],
+      "generatedValue":{"kind":"samples","prompt":"転職で気になる点の例を3つ"} },
+    { "id":"w3", "type":"priority_slider_grid",
+      "ports":[{"name":"items","dir":"in"},{"name":"weights","dir":"in"}] }
+  ],
+  "dependencyGraph":[
+    { "source":"w2.items", "target":"w3.items", "kind":"flow" }
+  ]
+}
+\end{lstlisting}
+
+上記のように，Stage1で抽出した意図・ボトルネックを起点として，
+Stage2でWidget候補と依存関係を定め，Stage3で具体的なUISpec（props/ports/generatedValue）へ落とし込む。
+この段階的生成により，LLMの自由度を管理しつつStage4（Widget間連動）を成立させる。
+
 \section{Widget-to-Widget Reactivity の実装}
 
 \subsection{ポートと依存グラフ}
@@ -690,6 +930,55 @@ DSL の別セクションでは，これらのポート間の接続関係を依�
 ある Widget の出力ポートに対応する Atom が更新されると，
 依存先の入力ポートに対応する Atom が再計算され，
 必要に応じて Widget の再レンダリングが行われる。
+
+
+% =========================
+% [ADD][FUSED] Chapter4: Reactivity分類 + 実行時伝播/更新モード + Atomインスタンス化
+% INSERT INSIDE: \section{Widget-to-Widget Reactivity の実装}
+% INSERT AFTER: \subsection{Widget 実装との疎結合}
+% =========================
+
+\subsection{Reactivityの分類（Flow / Meta / Sync）}
+DSL上で表現されるWidget間連動は，データの性質と更新タイミングに応じて以下の3種類に分類できる。
+
+\begin{enumerate}
+  \item \textbf{Data Input（Flow）}：
+        あるWidgetの出力データ（例：カード一覧）を，
+        次のWidgetの入力データ（例：マトリクス配置の対象項目）として受け渡す連動である。
+  \item \textbf{Config Input（Meta）}：
+        あるWidgetの出力値を，別Widgetの設定（props）として利用する連動である。
+        例として，テーマ文字列を別Widgetのラベルに反映するケースが挙げられる。
+  \item \textbf{Reactive Binding（Sync）}：
+        同一画面内でユーザー操作に応じて即時に値が同期する連動である。
+        例として，スライダーの重み変更によりランキングが即時に再計算される挙動がある。
+        本研究で最も技術的難易度が高く，かつUX効果が大きい区分である。
+\end{enumerate}
+
+\subsection{依存グラフにもとづく実行時伝播（LLM不介在）}
+実行時は，入力ポート/出力ポートに対応する状態（Jotai Atom）を生成し，
+依存グラフにもとづいて値を伝播させる。ここで重要なのは，
+\textbf{実行時にはLLMを呼ばず}，事前生成された依存関係に従って決定論的に更新を行う点である。
+
+また，UXと安定性のため，依存エッジには更新モード（例：\texttt{realtime}, \texttt{debounced}, \texttt{on\_confirm}）を持たせ，
+高頻度更新によるちらつきや計算コスト増大を抑制する。
+循環依存が検出された場合は，該当エッジを無効化し，連動を停止することで破綻を局所化する。
+
+\subsection{Widget ID/portごとのAtomインスタンス化}
+DSLが動的に生成するWidget/portに追従するため，portごとにAtomを動的に生成・キャッシュする。
+これにより，Widget追加・接続変更はDSL側の変更だけで成立し，
+Widget実装は「自分のportを読む/書く」だけに保てる。
+
+\begin{lstlisting}[caption = portごとのJotai Atom動的生成（概念実装）, label = lst:jotai-port-atom]
+const portAtomMap = new Map<string, Atom<any>>(); // key = `${widgetId}.${portName}`
+
+export function getOrCreatePortAtom<T>(key: string, init: T): Atom<T> {
+  const existing = portAtomMap.get(key);
+  if (existing) return existing as Atom<T>;
+  const a = atom<T>(init);
+  portAtomMap.set(key, a);
+  return a;
+}
+\end{lstlisting}
 
 \subsection{Widget 実装との疎結合}
 
@@ -756,6 +1045,15 @@ generatedValue により，ユーザーは初回利用時でも
 思考整理支援ドメインにおける Stage4 の動的 UI を支えることを示した。
 次章では，これらの設計にもとづく実験設計と評価方法について述べる。
 
+% =========================
+% [ADD] Chapter4末尾：評価章への橋渡し
+% INSERT AT END OF: \section{本章のまとめ}
+% =========================
+以上により，提案要素（宣言型JSON DSL，Level4の実行エンジン，generatedValue）は，
+Step1--Step3の段階的生成と，実行時の決定論的伝播として実装に落とし込まれた。
+次章では，これらが「構造として破綻しないか（Layer1）」，
+および「実用上の速度・コストに耐えるか（Layer2）」を評価する。
+
 
 % =========================================
 % 第5章 実験と評価
@@ -821,13 +1119,39 @@ Layer1 および Layer2 の指標を統計的に比較する。
   \end{tabular}
 \end{table}
 
-\subsection{モデル構成とパラメータ}
+% =========================
+% [ADD] 評価条件：Capture Stage2未実装の扱い（決め打ち）
+% INSERT INSIDE: \section{評価データと共通条件} （入力テキストの準備の後）
+% =========================
+\subsection{Capture Phase Stage2（ボトルネック診断）の扱い}
+Capture PhaseのStage2（ボトルネック診断）は本研究のRQと関連が薄いため未実装とし，
+評価では入力テキストに対してボトルネック種別をテストケース側で付与する。
+これにより，本研究の焦点であるLevel4（Widget間連動）の生成・実行に評価を集中させる。
 
-実験2で比較するモデル構成は，第\ref{chap:related_work}章で述べた通り，
-All-5-Chat，All-5-mini，Hybrid 構成（例：Stage1/2 を mini，Stage3 を Chat など）とする。
+
+\subsection{モデル構成とパラメータ}
+実験2では，3段階LLMパイプライン（Stage1--Stage3）に割り当てるモデル構成の違いが，
+DSL構造健全性（Layer1）および実用性（Layer2）に与える影響を評価する。
+
+\begin{table}[tb]
+\caption{比較対象のモデル構成（Stage1--3への割当）}
+\label{tab:model_configs_beta21}
+\centering
+\small
+\begin{tabular}{clccc} \toprule
+ID & 構成名 & Stage1 & Stage2 & Stage3 \\ \midrule
+A & All-5-Chat & GPT-5-Chat & GPT-5-Chat & GPT-5-Chat \\
+B & All-5-mini & GPT-5-mini & GPT-5-mini & GPT-5-mini \\
+C & Hybrid (mini/mini/chat) & GPT-5-mini & GPT-5-mini & GPT-5-Chat \\
+D & Hybrid (chat/mini/mini) & GPT-5-Chat & GPT-5-mini & GPT-5-mini \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 温度パラメータは再現性を確保するために $T=0.0$ とし，
-その他のパラメータも固定した。
-同一の入力テキストに対して，各モデル構成で同じプロンプトテンプレートを用いて実行する。
+その他のパラメータ（最大トークン等）も固定した。
+同一の入力テキストに対して，各モデル構成で同一のプロンプトテンプレートを用いて実行する。
+
 
 \section{評価指標と測定方法}
 
@@ -930,6 +1254,52 @@ FR は，エラー種別ごとにカウントし，合計値を全実行数で�
 \end{itemize}
 を，各モデル構成ごとに得ることができる。
 
+% =========================
+% [ADD][NEW] Chapter5: 実験2の結果・統計検定（beta2.1の空白を埋める）
+% INSERT AFTER: \subsection{目的とバッチ実行仕様}
+% =========================
+
+\subsection{結果（集計表）}
+表\ref{tab:layer1_results_beta21}にLayer1（VR/TCR/RRR），
+表\ref{tab:layer2_results_beta21}にLayer2（LAT/COST/FR）の集計結果を示す。
+（数値はバッチログ集計結果を記入する。）
+
+\begin{table}[tb]
+\caption{実験2：Layer1 構造健全性（平均）}
+\label{tab:layer1_results_beta21}
+\centering
+\small
+\begin{tabular}{lccc} \toprule
+Model & VR & TCR & RRR \\ \midrule
+A: All-5-Chat &  &  &  \\
+B: All-5-mini &  &  &  \\
+C: Hybrid (mini/mini/chat) &  &  &  \\
+D: Hybrid (chat/mini/mini) &  &  &  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[tb]
+\caption{実験2：Layer2 実用性（平均）}
+\label{tab:layer2_results_beta21}
+\centering
+\small
+\begin{tabular}{lccc} \toprule
+Model & LAT (s) & COST (JPY) & FR \\ \midrule
+A: All-5-Chat &  &  &  \\
+B: All-5-mini &  &  &  \\
+C: Hybrid (mini/mini/chat) &  &  &  \\
+D: Hybrid (chat/mini/mini) &  &  &  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{統計検定}
+成功率系（VR/TCR/RRR/FR）は2標本の比率検定，
+実数値系（LAT/COST）はノンパラメトリック検定（Mann--Whitney U検定）で比較する。
+有意水準は $\alpha=0.05$ とする。
+
+
 % =========================================
 % 第6章 考察
 % =========================================
@@ -974,6 +1344,8 @@ All-5-Chat に迫る構造健全性を維持しつつ，コストとレイテン
 Level 4 の動的 UI の価値を裏付けるものである。
 
 
+
+
 % =========================================
 % 第8章 おわりに
 % =========================================
@@ -1009,6 +1381,16 @@ LLM-Hardened DSL システム「Prism Lattice UI」を提案・実装した。
 今後は，生成された UI 上でのインタラクションログを詳細に分析し，
 動的 UI がもたらす認知的負荷の低減効果や，
 ユーザーの思考プロセスへの影響を定量的に評価する必要がある。
+
+
+% =========================
+% [ADD] 用語マクロ（表記ゆれ防止）
+% INSERT IN PREAMBLE OR AFTER \begin{document}
+% =========================
+\newcommand{\DynUILevel}{Level} % 動的UI度
+\newcommand{\LevelFour}{Level4} % Widget間連動
+\newcommand{\LLMStep}{Step} % LLM呼び出し段階
+
 
 % %-------------------
 % \bibliographystyle{plain} % 参考文献

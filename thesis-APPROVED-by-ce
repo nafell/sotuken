@@ -1,0 +1,1613 @@
+% =============
+% VERSION 6.0
+% UPDATE: 考察の箇条書き改善
+% =============
+\documentclass[senior,final,11pt,dvipdfmx]{iputit-thesis}
+%\documentclass[senior,final,11pt]{iputde-thesis}
+
+%\graphicspath{./}
+\usepackage[dvipdfmx]{graphicx}
+\usepackage{placeins}
+\usepackage{float}
+\usepackage{subcaption}
+
+\usepackage{booktabs} % 表の罫線用
+
+\usepackage{amsmath, amssymb}
+\usepackage{listings} % コードブロック用
+\usepackage[dvipdfmx]{xcolor}
+
+\usepackage{otf} % やまざきの「ざき」の字を正しく表示するため。
+
+% 論文の種類とフォントサイズをオプションに
+%-------------------
+\etitle{Prism Lattice UI: Proposal and Evaluation of an LLM-Hardened DSL and Dynamic UI Generation Pipeline Realizing Widget-to-Widget Reactivity}
+\jtitle{Widget間連動を実現するLLM-Hardened DSLおよび動的UI生成パイプライン Prism Lattice UI の提案と評価}
+%
+\eauthor{Yuto Kashiwabara}
+\jauthor{柏原 悠斗}
+\esupervisor{Michiharu Takemoto}
+\jsupervisor{武本 充治}
+\supervisortitle{Professor} % Professor, etc.
+\date{December 14, 2025}
+
+% ipsjunsrt.bst を使おうとするときのバグ回避
+\def\：{：}
+\usepackage{doi}
+\usepackage{url}
+%\usepackage{subcaption}
+
+% % === コードブロックの設定
+
+\lstdefinelanguage{json}{
+    showspaces=false,
+    showtabs=false,
+    breaklines=true,
+    breakatwhitespace=true,
+    basicstyle=\ttfamily\small,
+    morestring=[b]",
+    stringstyle=\color{black},
+    commentstyle=\color{gray},
+    keywordstyle=\bfseries,
+    morekeywords={true, false, null}
+}
+
+\lstset{
+  basicstyle=\ttfamily\scriptsize,
+  frame=single,
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true,
+  tabsize=2,
+  captionpos=b,
+  backgroundcolor=\color{gray!5},
+  xleftmargin=0pt,
+  xrightmargin=0pt,
+}
+
+
+\def\TAKEMOTO#1{{\Huge (武本: {#1})}}
+
+%-------------------
+\begin{document}
+
+\begin{eabstract}
+The proliferation of interactive computing has made improving UI/UX quality a persistent challenge. As computing becomes increasingly integrated into daily life, user expectations have intensified, yet current systems often fail to adequately address these demands, particularly for context-dependent tasks where user needs change dynamically.
+
+To address this challenge, this paper proposes Prism Lattice UI, a domain-specific framework that enables reliable LLM-based dynamic UI generation. The proposed system adopts a declarative JSON DSL that constrains LLM outputs to widget selection and inter-widget reactive bindings. We implemented a three-stage generation pipeline and evaluated five model configurations across 50 test cases.
+
+Evaluation experiments revealed that, in terms of formal soundness, the proposed architecture achieved 100\% success rates for type consistency, reference integrity, and acyclicity through systematic validation. In terms of operational performance, model configuration significantly affected latency (7.5–31 seconds) and estimated cost (¥359–687 per generation), revealing clear trade-offs between model allocation strategies and practical constraints. Although challenges remain regarding DSL validation rates and execution system integration, the proposed system demonstrated effectiveness as an architecture capable of generating verifiably sound dynamic UIs.
+
+These findings lay the groundwork for systems capable of meeting the evolving UI/UX expectations of users.
+\end{eabstract}
+
+\begin{jabstract}
+コンピュータの出現以来，UI/UXの高度化は継続的な課題であり続けてきた．近年のコンピュータの日常生活への普及に伴い，ユーザーの期待はますます高まっているが，特に文脈依存性の高いタスクにおいて，現状のシステムはその要求に十分応えられていない．
+
+この課題に対し，本研究ではLLMによる動的UI生成を安定化するドメイン特化フレームワーク「Prism Lattice UI」を提案する．本システムは，LLM出力をウィジェット選択とウィジェット間反応的接続に制約する宣言型JSON DSLを採用し，3段階生成パイプラインを実装した．50件のテストケースに対して5種のモデル構成で評価実験を行った．
+
+評価実験の結果，形式健全性に関しては，型整合性・参照整合性・非循環性において100\%の達成率を示し，体系的検証による構造的正確性の確保を実証した．一方，運用性能に関しては，モデル構成がレイテンシ（7.5〜31秒）および推定コスト（359〜687円）に顕著な影響を与え，モデル割り当て戦略と実用制約間に明確なトレードオフが存在することが確認された．DSL妥当性検証と実行系統合に課題は残るものの，本システムは検証可能な健全性を持つ動的UIを生成可能なアーキテクチャとして有効であることを示した．
+
+本研究の現状の成果，および今後の発展により，人々のUI/UXへの高まる要求に応えるシステムの実現に寄与できるものと考える．
+\end{jabstract}
+
+\maketitle
+
+
+\frontmatter %% 前付け
+\tableofcontents % 目次
+\listoffigures % 図目次
+\listoftables % 表目次
+%\lstlistoflistings % ソースコード目次
+%-------------------
+
+\mainmatter %% 本文
+% =========================================
+% 第1章 はじめに
+% =========================================
+
+\chapter{はじめに}
+\label{chap:introduction}
+
+\section{社会的背景}
+
+近年，日常生活や業務の多くがソフトウェアを介して行われるようになり，
+ユーザインタフェース（User Interface; UI）は，人間と情報システムを結ぶ主要な接点となっている。
+オンラインバンキングや電子商取引，コラボレーションツールから，
+日々のタスク管理やメモアプリに至るまで，多様なアプリケーションが登場しているが，
+その成否はしばしば UI／UX の良し悪しに強く依存する\cite{nielsen2012usability}。
+
+一方で，現実の多くのアプリケーションは，
+開発時点で設計された固定的な画面構成を前提としており，
+ユーザー個々の目的や認知スタイル，その時々の状況に応じて
+UI 構造自体を柔軟に変化させることは想定していない。
+ユーザー側でカスタマイズ可能な設定画面やテンプレート切り替え機能は提供されるものの，
+それらはあらかじめ設計者が想定した範囲内での変化に留まり，
+タスク構造や思考プロセスそのものに寄り添った UI へと自律的に変化するわけではない。
+
+とくに，本研究が対象とする思考整理支援ドメインにおいては，
+ユーザーが扱うトピックや粒度，抽象度，感情の状態などが常に変化する。
+にもかかわらず，従来のメモアプリやタスク管理アプリでは，
+単一のノート画面やチェックリストといった固定的な UI が中心であり，
+ユーザーの思考構造そのものに合わせて UI を変形させることは困難である。
+このギャップを埋めるには，ユーザーの入力内容や状況に応じて UI 構造を動的に生成・更新できる枠組みが必要となる。
+
+\section{技術的背景}
+
+\subsection{UIの柔軟化への要求}
+
+UI の柔軟化に関する研究・実務的な取り組みはこれまでにも行われてきた。
+レスポンシブデザインやテーマ切り替え，ウィジェットのレイアウト変更，
+ユーザープロファイルに応じた表示内容の出し分けなどがその一例である。
+しかし，これらの多くは「どの UI 要素を表示するか」や
+「どのスタイルを適用するか」を切り替えるものであり，
+画面全体のタスク構造や情報構造を，ユーザーの目的に応じて自動的に再構成するものではない。
+さらに，フロントエンドの実装はコンポーネント単位でのハードコーディングに依存しており，
+UI の構造変更を行うには，開発者がコードレベルで画面構成を設計し直す必要がある。
+このため，「ユーザーの入力内容に合わせてUI自体を動的に設計し直す」ような応答性の高いシステムを，
+従来のソフトウェア工学の枠組みだけで構築することは難しい。
+実際，すべてのユーザーの多様なニーズを単一のUIで満たすことは困難であり\cite{grundy2022diverse}，
+カスタマイズ機能もユーザーにとって負担となりUXを損なう場合があることが指摘されている\cite{nielsen2009customization,nielsen2016simplicity}。
+
+
+\subsection{LLMによる開発支援の普及}
+
+一方，大規模言語モデル（Large Language Model; LLM）の登場により，
+自然言語による仕様記述とコードや設定ファイルの自動生成が現実的な選択肢となった。
+GitHub Copilot のような開発支援ツール\cite{uiuc2025copilot}や，対話型のコード生成エージェントは，
+日常的なプログラミング作業の一部を LLM に委譲する新しいスタイルとして，すでに広く普及し，実用的な成功を収めている。
+また，テストコードやドキュメント，設定ファイルなど，
+従来は人手で記述していた多くのアーティファクトが，
+自然言語のプロンプトから生成できることも示されている\cite{chen2021codex,openai2023gpt4}。
+このように，開発時の静的な成果物を生成するタスクにおいて，LLM は強力なツールとして定着しつつある。
+
+\subsection{LLMによるリアルタイムUI生成の課題}
+
+しかしながら，LLM を実行時の UI 生成に用いる試みは，開発支援ほどの成功を収めていないのが現状である。
+ユーザーの入力に応じて UI 構造自体をリアルタイムに生成・更新するアプローチは注目されているものの，
+実際に動作するシステムを構築することは極めて困難である。
+なぜなら，LLM の出力は非決定的であり，
+生成される UI 定義が構文的に破綻していたり，
+同一画面内での状態整合性が取れていなかったりするためである。
+
+特に，単発の JSON 出力からバインディングコードを生成するだけでは，
+複数のセクション間で値を連動させるような複雑な UI 振る舞いの制御が難しい。
+開発支援ツールのように「人間がレビューしてから実行する」のではなく，
+「生成されたものが即座にユーザーに提示され，動作しなければならない」というリアルタイム性の要求が，
+この問題をより深刻にしている。
+
+\section{研究目的}
+
+本研究の目的は，Jelly UI に代表される汎用的な LLM-Hardened DSL（Domain Specific Language） を，
+思考整理支援という特定ドメインに導入する際の設計パラダイムを提案し，
+その技術的実現性とモデル構成に応じた品質・コストのトレードオフを明らかにすることである。
+とくに，3ステップの LLM パイプラインと Widget-to-Widget Reactivity を備えた
+ドメイン特化型システム「Prism Lattice UI」を設計・実装し，入力テキストに応じた動的 UI を安定して生成できるかを確認するとともに，
+複数の LLM モデル構成における動作特性を評価する。
+
+\section{論文構成}
+
+本論文の構成は次のとおりである。
+第\ref{chap:related_work}章では，LLM によるソフトウェア開発支援や UI 生成，
+適応型 UI・Model-Based UI，および Jelly UI に代表される LLM-Hardened DSL などの関連研究を整理し，
+本研究の位置づけと目的を明確化する。
+第\ref{chap:system_design}章では，提案するドメイン特化型 LLM 動的 UI 生成システムの
+アーキテクチャと DSL 設計について述べる。
+第\ref{chap:evaluation}章では，提案システムを用いた実験設定と評価指標を示し，
+RQ1 および RQ2 に対する検証結果を報告する。
+第\ref{chap:discussion}章では，評価結果の考察と限界，今後の展望について議論し，
+第\ref{chap:conclusion}章で本研究をまとめる。
+
+
+% =========================================
+% 第2章 関連研究
+% =========================================
+
+\chapter{関連研究}
+\label{chap:related_work}
+
+\section{LLMによるソフトウェア開発支援}
+
+LLM をソフトウェア開発支援に用いる研究および実用サービスは急速に増加している。
+コード補完やリファクタリング支援，テストコード生成，
+エラーメッセージの解釈やデバッグ支援など，
+従来は開発者が手動で行っていた作業の一部を LLM に委譲するアプローチが提案されている。
+GitHub Copilot のようなツールは，エディタ内での自動補完という形で
+開発者のワークフローに組み込まれており，
+自然言語とコードの橋渡しを行う役割を果たしている\cite{uiuc2025copilot}。
+
+研究レベルでは，ペアプログラミングエージェントや対話型コード生成エージェントなど，
+より高レベルな開発支援を行う試みも報告されている。
+これらの手法では，開発者が自然言語で仕様や意図を記述し，
+LLM が候補コードの生成・修正提案・代替案の提示などを行う。
+また，生成されたコードの安全性や信頼性を確保するため，
+静的解析やテスト生成と組み合わせる手法も検討されている\cite{cognition2025devin}。
+
+これらの取り組みは，すでに実用段階にあり，
+「自然言語による仕様記述 → 構造化されたアーティファクト生成」というパラダイムが
+開発プロセスにおいて有効であることを証明している。
+本研究は，この成功したパラダイムを，開発時ではなく実行時の UI 生成に応用しようとするものである。
+
+\section{LLMによるUI生成}
+
+一方，LLM による実行時の UI 生成に関する研究は，依然として発展途上であり，多くの課題を抱えている。
+自然言語プロンプトからフォームや画面レイアウトを生成する試み\cite{wu2024uicoder}はあるものの，
+それらは単一画面の静的なレイアウト生成に留まることが多い。
+
+また，中間表現として 形式的に記述された UI 定義を生成し，
+それをフロントエンド側で解釈してレンダリングする方式も一般的である。
+この方式では，LLM は中間表現の記述
+に従ったデータ構造を出力し，
+クライアント側がそれをコンポーネントにマッピングすることで画面を生成する。
+API スキーマからフォームを生成するような設定駆動型 UI と類似した構造を，
+自然言語ベースで動的に構成するイメージである\cite{chang2025generative}。
+
+しかし，これらの手法の多くは，
+単一画面内におけるフォーム構造やコンポーネントツリーの生成に焦点を当てており，
+複数コンポーネント間の状態連動や，
+画面遷移を伴う複雑なタスクフローの制御までは十分に扱えていない。
+
+さらに，LLM が 中間表現の記述形式を厳密に守らない場合，パースエラーや型不整合が生じ，
+アプリケーションがクラッシュするリスクがある。
+開発支援ツールであれば「再生成」ボタンを押せば済むが，
+対話的なアプリケーションにおいては，この不安定さが UX を著しく損なう要因となっている。
+
+\section{適応型UI・Model-Based UI}
+
+LLM を用いない従来の研究分野として，
+ユーザーモデルやタスクモデルに基づいて UI を変化させる適応型 UI や，
+Model-Based UI（MBUI）がある\cite{puerta1998mbui,myers1995uisoft}。
+これらのアプローチでは，ユーザーの能力・嗜好・文脈などを表現するユーザーモデルや，
+タスクの階層構造・遷移関係を表現するタスクモデルを用意し，
+そのモデルに基づいて UI を自動生成・変換することを目指す\cite{gajos2007supple}。
+
+MBUI では，抽象的な対話モデルやコンテナモデルから，
+より具体的なウィジェット配置や画面遷移図を導出する手法が提案されており，
+UI 設計プロセスを明示的なモデル操作として扱う。
+適応型 UI では，ユーザーの特性や利用状況に応じて，
+情報量や操作ステップ数，表示形式などを変化させる手法が研究されてきた\cite{barrera2014tukuchiy}。
+
+これらの手法は，モデルに基づく整合性の高い UI 生成を可能にする一方で，
+モデルの構築・維持に大きなコストがかかるという課題を持つ。
+また，ユーザーの自由記述からモデルを自動構築することは想定されておらず，
+モデルの更新は主に設計者側の作業である。
+本研究は，LLM を用いてユーザーの入力からタスク構造や UI 構造を動的に推定し，
+DSL を介して実行環境に橋渡しするという点で，
+従来の Model-Based UI と LLM ベース UI 生成の中間に位置づけられる。
+
+\section{LLM-Hardened DSLと Jelly UI}
+
+\subsection{LLM-Hardened DSL の概念}
+
+LLM-Hardened DSL は，LLM の出力を直接アプリケーションに適用するのではなく，
+型付き DSL を介して\textbf{解釈・検証する}ことで，生成物の安全性と制御性を高めるアーキテクチャ上の考え方である\cite{deanmai2025dsl}。
+
+LLM は DSL のインスタンス（抽象構文木や設定オブジェクト）を生成し，
+実行環境側は DSL の型検査や補完，制約チェックを行ったうえで，
+最終的な UI や挙動を決定する。
+これにより，LLM の不安定な出力をそのまま利用する場合に比べて，
+構文エラーや不整合を検出・緩和しやすくなる。
+
+\subsection{Jelly UI のアーキテクチャ}
+
+Jelly UI は，LLM-Hardened DSL の具体例として提案された，
+汎用的な情報・タスク支援アプリケーションである\cite{cao2025jelly}。
+Jelly UI では，ユーザーの入力からタスクや情報構造を抽出する
+タスク・データ依存モデル（Task/Data Dependency Model; TDDM）を中心に据え，
+その上に UI 構成をマッピングする。
+LLM は複数段階で呼び出され，
+タスク構造の抽出，UI 要素候補の生成，DSL インスタンスの整形などを行う。
+生成された DSL インスタンスは，実行環境側で解釈され，
+Web UI としてレンダリングされる。
+
+このアーキテクチャにより，Jelly UI はユーザーの入力内容に応じて
+柔軟な UI を生成できるとともに，
+DSL を介して LLM 出力を制御することで，
+構造的な整合性を一定程度担保している。
+また，ユーザー評価を通じて，従来の静的 UI に比べて動的 UI が有用であることも示されている。
+
+\subsection{Jelly UI の評価と残された課題}
+
+一方で，Jelly UI は汎用性の高い DSL を採用しているため，
+1 回の UI 生成プロセスにおける LLM 呼び出し回数やトークン消費量が大きくなるという課題も報告されている。
+DSL の表現力が高いほど，LLM が生成すべき情報量も増え，
+コンテキスト長の制約やレイテンシの増大につながる\cite{du2025context}。
+また，複数回の LLM 呼び出しをパイプライン状に組み合わせるため，
+上流での誤りが下流に伝搬しやすいという問題もある。
+
+さらに，Jelly UI は汎用的なタスク支援を対象としており，
+特定ドメインに最適化された UI パターンやドメイン知識を
+積極的に活用する設計にはなっていない。
+したがって，トークン消費とレイテンシを抑えつつ，
+ドメイン特有の UI 要求を満たすような「ドメイン特化型 LLM-Hardened DSL」の設計は，
+依然として開かれた課題である。
+
+
+
+\section{動的UI度の分類枠組み}
+
+本研究では，既存の UI 生成手法を整理し，
+LLM-Hardened DSL に基づく動的 UI の位置づけを明確にするため，
+UI の「動的UI度」を Level 0 から Level 5 までの 6 段階で定義する。
+概要は以下のとおりである。
+
+\begin{itemize}
+  \item Level 0：完全に静的な UI。画面構成はコードにハードコーディングされ，実行時には変化しない。
+  \item Level 1：設定ファイルやテンプレートに基づく可変 UI。あらかじめ用意されたパラメータにより表示内容が変化する。
+  \item Level 2：データ駆動型 UI。外部データや API 応答に応じてリストやカードが増減するが，UI 構造自体は固定的である。
+  \item Level 3：LLM により JSON 形式などで UI 定義を生成する手法。フォームやセクション構成を実行時に生成できるが，コンポーネント間の連動や状態管理は限定的である。
+  \item Level 4：LLM-Hardened DSL に基づく動的 UI。DSL レベルで Widget 間の依存関係やリアクティブな振る舞いを記述し，LLM により DSL インスタンスを生成する。
+  \item Level 5：複数画面・長期タスクをまたいだ UI 適応。ユーザーモデルや履歴に基づき，画面遷移やタスクフロー全体を動的に再構成する。
+\end{itemize}
+
+従来研究の多くは Level 3 までを主な対象としており，
+Level 4 以降，とくに Widget 間のリアクティブな連動を伴う UI の動的生成は十分に検討されていない。
+本研究は Level 4 の具体的な実装と評価を通じて，
+どの段階から LLM-Hardened DSL を導入する意義が現れるのかを議論するための基盤を提供する。
+
+
+\section{本研究の位置づけ}
+
+本研究は，Jelly UI 等の先行研究\cite{cao2025jelly}に着想を得つつ，
+「汎用的なタスク支援」から「ドメイン特化型の思考整理支援」へと対象をシフトさせることで，
+動的 UI 生成の実用性を高める点に独自性がある。
+具体的には以下の 2 点において，先行研究との差別化を図る。
+
+\begin{enumerate}
+  \item \textbf{ドメイン特化による自由度の制限と精度の向上}：
+        Jelly UI が汎用性を重視し，あらゆる UI 要素を生成しようとするのに対し，
+        本研究は「思考整理」に必要な Widget（SWOT分析，天秤など）に要素を限定する。
+        LLM の自由度（何でも生成できる状態）をあえて狭める「不自由化」を行うことで，
+        逆に特定タスクにおける生成精度と構造的整合性を向上させるアプローチをとる。
+        
+  \item \textbf{Widget-to-Widget Reactivity の実現}：
+        既存研究の多くが，単一のフォームや独立したコンポーネントの生成に留まるのに対し，
+        本研究は Widget 間の「値の連動（Reactivity）」自体を生成対象とする。
+        これにより，思考整理において重要な「ある観点の変更が別の観点に波及する」という
+        動的な振る舞いを，DSL レベルで記述・生成することを可能にする。
+\end{enumerate}
+
+これらのアプローチを通じて，LLM による動的 UI 生成を
+単なる「実験的な試み」から「信頼性の高いシステム」へと昇華させることを目指す。
+
+
+% =========================================
+% 第3章 提案手法
+% =========================================
+
+\chapter{提案手法}
+\label{chap:system_design}
+
+\section{設計方針の全体像}
+
+% =========================
+% [REPLACE] Chapter3冒頭の導入（結論先出し）
+% REPLACE FIRST PARAGRAPH OF: \section{設計方針の全体像}
+% =========================
+第\ref{chap:introduction}章および第\ref{chap:related_work}章で述べた課題は，
+LLMによる動的UI生成において「構造の安定性」と「文脈適応」を同時に満たすことが難しい点にある。
+そこで本研究は，思考整理ドメインの \textbf{Plan Phase} に着目し，
+その中でも \textbf{Stage4（意思決定・収束に相当）}で有効な
+\textbf{動的UI度 Level4（Widget間連動）}を実現する設計パラダイムを提案する。
+本章では，そのための設計判断と，後続章で実装・評価できる形への落とし込みを述べる。
+
+
+% =========================
+% [ADD] 用語整理（Level / Phase / Stage / Step）
+% INSERT INSIDE: \section{設計方針の全体像} 冒頭段落の直後
+% =========================
+\subsection{用語の整理（Level / Step /  Phase / Stage）}
+本論文では，複数の「段階」を扱うため，用語を以下のように統一する。
+
+\begin{itemize}
+  \item \textbf{Level}：動的UI度の分類枠組み（例：Level4＝Widget間連動）。
+  \item \textbf{Step}：LLM呼び出しパイプラインの段階（Step1--Step3）。
+  \item \textbf{Phase}：思考整理アプリ全体の大区分（全3 Phase）。
+  \item \textbf{Stage}：各Phase内の手順段階（Capture Phaseは2 Stage，Plan Phaseは4 Stage）。
+\end{itemize}
+
+以降，旧称の「Stage4（動的UI度）」は \textbf{Level4} と表記し，
+LLM呼び出し段階は \textbf{Step} と表記することで混同を避ける。
+
+
+
+% =========================
+% [ADD][NEW] Chapter3: 思考整理プロセスの4フェーズ（ドメインモデル）
+% INSERT AFTER: \section{設計方針の全体像}
+% =========================
+
+\subsection{思考整理プロセスのモデル化（ドメイン知識）}
+本研究では，思考整理のプロセスを「発散・整理・収束・まとめ」の4フェーズとしてモデル化し，
+これをドメイン知識としてシステムに組み込む設計とした。
+これはデザイン思考におけるダブルダイアモンドモデル\cite{design_council2005}に着想を得ている。
+
+\begin{description}
+  \item[Diverge（発散）] 視点を広げ，可能性や選択肢を洗い出すフェーズ。
+  \item[Organize（整理）] 情報を構造化し，関係性を可視化するフェーズ。
+  \item[Converge（収束）] 優先順位付けと意思決定を行うフェーズ。
+  \item[Summary（まとめ）] 結果を言語化し，次の一歩へ接続するフェーズ。
+\end{description}
+
+% 用語整理を追加したので，以下はいらない
+% ここでのフェーズ（ドメイン側の段階）は，第\ref{chap:implementation}章で述べる
+% Stage1--Stage3（LLMパイプラインの段階）とは異なる概念である点に注意する。
+提案システムは，UI全体をこのフェーズ構造に沿わせつつ，
+各フェーズ内部のWidget構成およびLevel4（Widget間連動）を文脈に応じて生成することで，
+「迷わせない型」と「状況適応」を両立させる。
+
+
+第\ref{chap:introduction}章および第\ref{chap:related_work}章で述べたように，
+本研究は，思考整理支援ドメインに対して LLM-Hardened DSL に基づく動的 UI 生成システムを適用し，
+Level4 の動的 UI を実現するための設計パラダイムを明らかにすることを目的とする。
+ここでいう Level4 とは，動的 UI 度の枠組みにおいて，
+Widget 種類はある程度固定しつつも，Widget 間の依存関係や連動ルールを DSL で表現し，
+LLM によりそのインスタンスを生成する段階である。
+
+本研究の設計方針は，以下の 3 点に集約される。
+
+\begin{itemize}
+  \item \textbf{宣言型 JSON DSL の採用}：
+        UI を命令列としてではなく，宣言的な構造として記述することで，
+        DSL と実行フレームワークを疎結合に保ちつつ，
+        LLM の出力を安全に受け止める。
+  \item \textbf{Widget 方式と Widget-to-Widget Reactivity}：
+        UI の最小単位を Widget として定義し，
+        Widget 間の値の伝搬や依存関係を DSL 上の「ポート」を通じて表現することで，
+        思考整理タスクに特有の複数セクション間の連動を扱う。
+  \item \textbf{generatedValue による初期コンテンツ生成}：
+        UI 構造は Stage4 の DSL で扱いつつ，
+        各 Widget 内部のコンテンツについては generatedValue を用いて
+        LLM によるサンプル値を生成し，Cold Start Problem を軽減する。
+\end{itemize}
+
+以下では，これらの設計方針の背景と具体的な位置づけについて述べる。
+
+\section{宣言型 UI と JSON DSL の採用理由}
+
+\subsection{宣言的 UI 記述の利点}
+
+UI をどのような抽象度で記述するかは，LLM-Hardened DSL の設計において根本的な選択である。
+本研究では，Jelly UI の UI DSL を参考にしつつ，JSON 形式の宣言的 UI 記述を採用した。
+宣言的な UI 記述とは，画面を構成する Widget 群やレイアウト，
+データバインディングの関係を「何を表示したいか」という観点から構造的に記述するものであり，
+「どの順序でどの命令を実行するか」を列挙する命令型の記述とは対照的である。
+
+React や Elm，SwiftUI，Jetpack Compose などの近年の UI フレームワークでは，
+UI を関数の合成として捉える宣言的スタイルが主流となっている。
+このスタイルは，UI を状態からビューへの純粋関数として扱う発想と相性が良く，
+数学的な意味での合成性や局所的な推論のしやすさを高める。
+また，宣言的な UI 記述は，ツリー構造やグラフ構造として表現しやすく，
+そのまま JSON や DSL としてシリアライズ・デシリアライズしやすい。
+
+LLM-Hardened DSL においても，宣言的な UI 記述を採用することで，
+\begin{itemize}
+  \item DSL インスタンスを LLM が生成しやすい（構造化された JSON として出力できる）。
+  \item 実行フレームワーク側で，型検査や制約チェックを行いやすい。
+  \item DSL 仕様と実際の Widget 実装（React コンポーネントなど）を疎結合に保ちやすい。
+\end{itemize}
+といった利点がある。
+
+\subsection{Jelly UI からの拡張}
+
+Jelly UI は汎用的な情報・タスク支援を対象に，LLM-Hardened DSL による UI 生成を実現しているが，
+本研究ではこれを思考整理支援ドメイン向けに拡張する。
+具体的には，Jelly の DSL が持つ抽象 UI 要素に加え，
+思考整理に特化した複合 Widget（SWOT 分析やトレードオフ天秤など）を定義し，
+それらを JSON DSL 上で宣言的に記述できるようにした。
+
+このとき，DSL 仕様は「どのような Widget をどのように接続できるか」という
+構造的な制約のみを表現し，実際の見た目やスタイル，
+細かな挙動はフロントエンドの実装に委ねる。
+これにより，DSL と UI フレームワーク（React/TypeScript）は疎結合となり，
+DSL の変更と実装の変更を比較的独立に行える。
+
+% =========================
+% [ADD][FUSED] Chapter3: Why Widget? (Atom vs Widget) + 不自由化 + 固定/動的の要点
+% INSERT AFTER: \section{宣言型 UI と JSON DSL の採用理由}
+% INSERT BEFORE: \section{Widget 方式と Widget-to-Widget Reactivity}
+% =========================
+
+\section{UI構成単位としてのWidgetの採用}
+\label{sec:why_widget}
+
+\subsection{Atom方式とWidget方式の比較}
+動的UI生成において，UIをどの粒度で組み立てるかは重要な設計判断である。
+先行研究 Jelly UI\cite{cao2025jelly} は，ボタンや入力欄といった最小単位の \textbf{Atom} を動的に組み合わせることで
+高い柔軟性を実現する。一方，完全自由度に近い生成は，UX品質のばらつきが大きく，
+その懸念を払拭するためにDSLの言語仕様が複雑化し，プロンプトが肥大化しやすいという課題を伴う。
+
+これに対し本研究では，思考整理ドメインにおけるUX品質を担保するため，
+ある程度まとまった機能単位としての \textbf{Widget} を構成要素として採用する。
+ここでいうWidgetとは，「SWOT分析」や「トレードオフ天秤」のように，
+特定の認知的操作を支援するために設計・検証済みの複合コンポーネントである。
+
+% なお，本章でいう Atom は「UI構成単位」としての Atom（Jelly UIの文脈）であり，
+% 第\ref{chap:implementation}章で述べる状態管理ライブラリ Jotai の Atom（状態セル）とは概念が異なる点に注意する。
+
+\subsection{ドメイン特化による不自由化の利点}
+Widget方式を採用し，LLMの自由度を「Atomの組み合わせ」から
+「Widgetの選択と接続（特にStage4の連動）」へと意図的に制限（不自由化）することで，以下を得る。
+
+\begin{itemize}
+  \item \textbf{UX品質の事前担保}：
+        Widget内部のインタラクションやレイアウトは人間が設計するため，
+        破綻したUIを生成しにくい。
+  \item \textbf{トークンコストの削減}：
+        LLMがDOM構造等の詳細を出力する必要がなく，
+        Widget IDと設定値，および接続のみを生成すればよい。
+  \item \textbf{構造的整合性の向上}：
+        生成対象が粗いブロックの組み合わせとなるため，
+        微細なミスが致命傷になりにくい。
+\end{itemize}
+
+以上により，本研究は「何でも作れるが不安定」な汎用生成ではなく，
+「思考整理に特化して安定稼働し，Stage4（Widget間連動）でUX価値を出す」方針を取る。
+
+\subsection{固定/動的の切り分け（要点）}
+設計空間の詳細は\ref{sec:design_space}で整理するが，
+本研究の要点となる切り分けをTable \ref{tab:design_decision_beta21}に示す。
+
+\begin{table}[tb]
+\caption{設計判断の要点（固定/動的の切り分け）}
+\label{tab:design_decision_beta21}
+\centering
+\small
+\begin{tabular}{l|c|p{5cm}} \toprule
+要素 & 固定/動的 & 理由（beta2.1ストーリーに沿った要点） \\ \midrule
+Widget種類（ライブラリ） & 固定 &
+UX品質担保と探索空間削減のため，Widget自体は事前定義とし，
+「選択と接続」を動的化する。\\
+UI構造（Widgetツリー） & 動的 &
+ユーザー文脈により最適構造が異なるため，構成・配置は動的生成する。\\
+Widget間連動（Stage4） & 動的 &
+連動パターンは文脈依存であり，port接続（依存グラフ）は生成対象とする。\\
+実行時伝播 & 固定（決定論） &
+応答性・安全性のため，実行時は事前生成された依存グラフにもとづき決定論的に伝播する。\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% --- 末尾追記：宣言型UI節の末尾 ---
+以上より，本研究では宣言型JSON DSLを採用し，生成結果の検証可能性と再現性を確保する。 次節では，このDSL上で扱うUI構成単位として，なぜAtomではなくWidgetを採用するのかを述べる。
+
+\section{Widget 方式と Widget-to-Widget Reactivity}
+
+\subsection{UX 的観点からの必要性}
+
+思考整理支援ドメインでは，ユーザーが扱う情報が複数の観点や粒度にまたがる。
+例えば，「現状の整理」「選択肢の列挙」「メリット・デメリットの比較」
+「次の一歩の具体化」といったステップは，相互に依存しており，
+一方の欄を編集すると別の欄の意味付けが変わることが多い。
+
+従来の固定的な UI では，これらの情報は別々の画面やモーダルに分かれていることが多く，
+ユーザーは頭の中で関係性を維持しながら画面間を行き来する必要がある。
+これは，単に入力欄の数を増やすだけでは解決できず，
+「複数の Widget が同じ文脈を共有しながら，互いの値を参照・更新できる」ような
+UI の振る舞いが求められる。
+
+そこで本研究では，ユーザに取り組ませるべき目的を持つタスク(そしてその目的は悩みの内容によって変わる->generatedValueの重要性)を構成する単位として Widget を定義し，
+Widget 間の値の伝搬や依存関係を UI の一部として明示的に扱う。
+例えば，本システムに実装した図\ref{fig:widget-tradeoff-with-input}「トレードオフ天秤」Widget は，
+方針 A/B のラベルと，それぞれの理由や懸念点の一覧を持ち，
+別の Widget（現状整理や価値観の棚卸し）と連動して更新されることが望ましい。
+このような複数 Widget 間の連動を，単発の JSON 出力ではなく，
+DSL と実行環境の協調により実現するのが Widget-to-Widget Reactivity である。
+
+\begin{figure}[tb]
+    \centering
+    \includegraphics[width=0.8\linewidth]{tradeoff.png}
+    \caption{トレードオフ天秤 Widget 概略（Widget-to-Widget Reactivity の例）}
+    \label{fig:widget-tradeoff-with-input}
+\end{figure}
+
+このような連動は，単なる「便利機能」ではなく，
+\begin{itemize}
+  \item ユーザーが複数の視点を行き来しながら考える認知プロセスを支える。
+  \item ある Widget で行った編集が，別の Widget にどのような影響を与えるかを可視化する。
+  \item 手作業では作り込みが難しい細やかな連動を，LLM による DSL 生成で補完する。
+\end{itemize}
+という意味で，UX 的な価値が大きい。
+また，どの Widget をどのように連動させるべきかはユーザーの文脈に依存するため，
+LLM による状況判断と DSL 生成が特に有効に働く部分でもある。
+
+\subsection{ポート抽象にもとづく Reactivity 設計}
+
+Widget 間の連動を DSL 上で扱うため，本研究では Widget ごとに
+入出力ポート（port）を抽象的に定義する。
+各 Widget は，内部状態やプロパティの一部を「出力ポート」として公開し，
+他の Widget はそれを「入力ポート」として参照する。
+DSL は，どの Widget のどのポートが，どの Widget のどのポートに接続されているかを
+依存グラフとして記述する。
+
+実行環境では，これらのポートに対してリアクティブなデータフローを構成することで，
+ある Widget の出力が変化したときに，依存先の Widget が自動的に再計算・再描画される。
+この設計により，
+\begin{itemize}
+  \item Widget 内部の実装（React コンポーネントの具体的な状態管理）と，
+  \item Widget 間の依存関係（DSL によるポート接続の記述）
+\end{itemize}
+を分離できる。
+ポート抽象の詳細な実装方法は第\ref{chap:implementation}章で述べる。
+
+% --- 末尾追記：Widget方式節の末尾 ---
+以上の設計判断により，LLMの自由度は「Widgetの選択と接続」に集約され， Level4（Widget間連動）の実現が本研究の焦点となる。 次節では，実運用上の障壁となるCold Start Problemと，generatedValueによる対処を示す。
+
+\section{generatedValue と Cold Start Problem}
+
+\subsection{Cold Start Problem の位置づけ}
+
+思考整理支援アプリケーションにおいて，
+ユーザーが初めて画面を開いたときに「何をすればよいのか分からない」という
+Cold Start Problem は UX 上の大きな課題である。
+特に，本研究で扱うような複合 Widget（SWOT 分析やトレードオフ天秤など）は，
+名前だけでは用途が直感的に理解しづらく，
+空の状態で表示しても多くのユーザーは手を動かしにくい。
+
+この問題は動的 UI 度の観点では Level2（コンテンツの自動補完）に相当し，
+Level4（DSL ベースの UI 構造生成）とは別軸の課題である。
+しかし，実際のアプリケーションとして成立させるためには，
+UI 構造だけでなく，Widget の中身にあたるコンテンツの初期値も適切に提示する必要がある。
+
+\subsection{generatedValue による初期コンテンツ生成}
+
+本研究では，Widget 内部に \texttt{generatedValue} というフィールドを定義し，
+LLM によりコンテンツの初期値を生成する仕組みを導入した。
+\texttt{generatedValue} は，単一のスカラー値だけでなく，
+文字列のリストや，複数フィールドを持つ構造体のリストなど，
+Widget が必要とするデータ構造に応じて柔軟に定義できる。
+
+例えば，「トレードオフ天秤」Widget では，
+\begin{itemize}
+  \item 方針 A/B のラベル（単一文字列）
+  \item それぞれのメリットや選択理由の候補（文字列リスト）
+\end{itemize}
+を \texttt{generatedValue} として生成する。
+これにより，ユーザーは空の天秤を前に「まず何を書けばよいか」を考える必要がなく，
+サンプルとして提示された項目を眺めながら，自分なりの項目に書き換えていくことができる。
+説明書やチュートリアルを読まなくても，Widget の使い方が自然と理解できる点が UX 上の利点である。
+
+一方で，LLM が生成するサンプルがユーザーに過度な先入観を与え，
+フレーム問題を引き起こす可能性もある。
+本研究では，generatedValue をあくまで「書き換え前提のたたき台」と位置づけ，
+ユーザーが自由に削除・編集できる UI を採用するに留めた。
+より精密にバイアスを制御することは，今後の課題である（第\ref{sec:conc_future}節参照）。
+
+% --- 末尾追記：generatedValue節の末尾 ---
+以上より，generatedValueは「空欄を埋める」ためではなく，「思考開始点を与える」ための設計要素として位置づけられる。 最後に，本研究が扱う設計空間を整理し，本論文の貢献範囲を明確化する。
+
+\section{設計空間の整理と本研究のフォーカス}
+\label{sec:design_space}
+
+以上の議論を踏まえると，本研究が対象とする設計空間は，
+\begin{itemize}
+  \item UI 構造の動的生成（動的 UI 度 Stage3/4/5 のうち Stage4 にフォーカス）
+  \item Widget 間の連動（Widget-to-Widget Reactivity）
+  \item Widget 内部コンテンツの初期生成（generatedValue による Cold Start 対策）
+\end{itemize}
+の 3 つの軸から構成される。
+
+本研究の評価は，主に Stage4 の UI 構造生成と Widget 間連動に焦点を当て，
+DSL の構造健全性（Layer1）とモデル構成ごとの実用性指標（Layer2）を測定することで，
+設計判断の妥当性を検証する。
+generatedValue によるコンテンツ初期化は，
+評価指標の対象とはしないものの，実際のアプリケーションとしての一貫性を保つために導入した，
+重要な UX 上の工夫として位置づける。
+
+
+% =========================================
+% 第4章 実装
+% =========================================
+
+\chapter{実装}
+\label{chap:implementation}
+
+\section{思考整理支援アプリケーションの概要}
+
+% =========================
+% [REPLACE] Chapter4冒頭：対象範囲を断定（Phase/Stage/Levelの整列）
+% REPLACE FIRST PARAGRAPH OF: \section{思考整理支援アプリケーションの概要}
+% =========================
+本章では，第\ref{chap:system_design}章で述べた設計方針にもとづき，
+思考整理支援ドメインに特化した LLM-Hardened DSL システムの実装を述べる。
+本アプリケーションは全体を3 Phaseから構成し，
+\textbf{Capture Phase（2 Stage）}と\textbf{Plan Phase（4 Stage）}を想定する。
+本研究の評価対象は，Plan Phase内で特に効果が大きい
+\textbf{動的UI度 Level4（Widget間連動）}であり，
+タスク実行フェーズや長期的な履歴管理は範囲外とする。
+
+なお，Capture PhaseのStage2（ボトルネック診断）は，
+本研究のRQと関連が薄いため現時点では未実装とし，
+評価ではテストケース側でボトルネック種別を決め打ちして与える。
+
+
+\section{システム構成と技術スタック}
+
+\subsection{全体構成}
+
+システムは，フロントエンド，バックエンド API サーバ，
+および LLM 呼び出し層から構成される。
+フロントエンドはブラウザ上で動作する Single Page Application (SPA) として実装し，
+ユーザーの入力と動的 UI のレンダリングを担う。
+バックエンドは，ユーザー入力テキストを受け取り，
+3 段階の LLM パイプラインを実行して JSON DSL を生成し，
+それをフロントエンドに返す役割を持つ。
+
+\subsection{TypeScript 採用の理由}
+
+フロントエンドおよび DSL 処理ロジックには TypeScript を採用した。
+本研究において，LLM から受け取る JSON を DSL として取り扱う場合，
+「出力データが不安定になりやすい（フィールド欠落や型不一致など）」という
+LLM 特有のネガティブな特性（課題）に直面する。
+この課題に対処するための解決策として，TypeScript の静的型システムを採用した。
+
+具体的には，DSL の型定義を TypeScript 上で厳格に表現し，
+LLM から受け取った JSON をパースする際に型ガードを用いることで，
+以下を実現している。
+\begin{itemize}
+  \item 不正なデータ構造が含まれていた場合，その影響範囲を局所化し，
+        アプリケーション全体のクラッシュを防ぐ（堅牢性の確保）。
+  \item 型が整合している部分については，IDE の補完やリファクタリング支援を享受し，
+        開発効率を高める。
+\end{itemize}
+つまり，TypeScript は「LLM の不安定さ」というリスクを管理し，
+システムとしての信頼性を担保するための防壁として機能している。
+
+% =========================
+% [ADD][NEW] Chapter4: 技術スタックと選定理由（再現性の担保）
+% INSERT AFTER: \subsection{TypeScript 採用の理由}
+% =========================
+
+\subsection{技術スタックと選定理由}
+実装の再現性と開発効率，および実行時性能を重視し，Table\ref{tab:tech_stack_beta21}の技術スタックを採用した。
+
+\begin{table}[tb]
+\caption{実装に用いた技術スタック}
+\label{tab:tech_stack_beta21}
+\centering
+\small
+\begin{tabular}{lp{8cm}} \toprule
+レイヤー & 採用技術 \\ \midrule
+ランタイム & \textbf{Bun} \\
+APIサーバー & \textbf{Hono}（軽量で型安全，LLM呼び出しI/Oの実装が容易） \\
+DB / ORM & \textbf{PostgreSQL} + \textbf{Drizzle ORM} \\
+フロントエンド & \textbf{React} + \textbf{TypeScript}（宣言型UIとDSLレンダリングに適合） \\
+状態管理 & \textbf{Jotai}（portをAtomとして扱う実行エンジンと親和性が高い） \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%選定理由のテーブルにする
+
+Honoはサーバーサイドアプリとしながらも，Reactをパッケージとして内包することでReactへの変換処理を再現できる．つまりヘッドレス検証が可能となる．これにより，実験の際，フロントエンドとのREST APIの通信，仕様するブラウザ独自の仕様などいらない変数を排除することができる．技術スタックの全体像を図\ref{fig:tech_stack}に示す．
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\linewidth]{stack.png}
+    \caption{Prism Lattice UIの技術スタック構成図}
+    \label{fig:tech_stack}
+\end{figure}
+
+
+\section{JSON DSL とデータモデル}
+
+\subsection{DSL の概要}
+
+本研究の DSL は，画面を構成する Widget のツリー構造と，
+Widget 間の依存関係，および generatedValue を含む属性を JSON 形式で表現する。
+各 Widget は以下のような基本フィールドを持つ。
+
+\begin{itemize}
+  \item \texttt{id}: Widget を一意に識別する ID
+  \item \texttt{type}: Widget の種類（例：\texttt{"swot"}, \texttt{"tradeoff"}, \texttt{"note"} など）
+  \item \texttt{props}: Widget 固有のプロパティ
+  \item \texttt{ports}: 入出力ポートの定義
+  \item \texttt{generatedValue}: 初期コンテンツ生成のための設定
+  \item \texttt{children}: 子 Widget の配列（必要に応じて）
+\end{itemize}
+
+DSL のスキーマは TypeScript の型定義として表現し，
+LLM からの出力に対してパースとバリデーションを行う。
+スキーマに合致しない場合は，該当 Widget をスキップする，
+デフォルト値に置き換えるなどのフォールバック処理を行い，
+アプリケーション全体が落ちないようにする。
+
+% =========================
+% [ADD][NEW] Chapter4: 実装したWidgetライブラリ（証拠としての厚み）
+% INSERT AFTER: \subsection{DSL の概要}
+% =========================
+
+\subsection{実装したWidgetライブラリ（抜粋）}
+本実装では，思考整理の各フェーズに対応する複数のWidgetを事前実装し，
+LLMは「Widgetの内部構造」ではなく「選択・設定・接続」を生成する。
+Table \ref{tab:widget_list}に主要なWidgetを抜粋して示す
+%（全量は付録またはリポジトリ定義に準拠）
+。
+
+\begin{table}[tb]
+\caption{実装された思考整理支援Widget（抜粋）}
+\label{tab:widget_list}
+\centering
+\small
+\begin{tabular}{llcp{5cm}} \toprule
+Widget ID & 名称 & complexity & 概要・用途 \\ \midrule
+stage\_summary & ステージサマリー & 0.1 & フェーズ間の要点・決定事項の受け渡し(表示専用) \\
+emotion\_palette & 感情パレット & 0.3 & 感情の種類・強度を可視化し言語化を支援 \\
+brainstorm\_cards & ブレインストーム & 0.2 & カード形式で大量にアイデアを発散 \\
+dependency\_mapping & 依存関係マップ & 0.8 & 要素間の因果/依存をノード・エッジで可視化 \\
+matrix\_placement & マトリクス配置 & 0.5 & 2軸で項目を配置し評価（重要度×緊急度等） \\
+priority\_slider\_grid & 優先度スライダー & 0.4 & 重み付け調整により順位を再計算（Syncに有効） \\
+swot\_analysis & SWOT分析 & 0.6 & 強み/弱み/機会/脅威で状況を構造化 \\ \bottomrule
+\end{tabular}
+\end{table}
+
+
+\section{3段階 LLM パイプラインの実装}
+
+本システムでは，ユーザーの曖昧な入力を決定論的な UI 仕様へと変換するため，以下の 3 段階のパイプラインを採用している．各段階では，Pydantic を用いて厳格な型検証を行い，不正な JSON が生成された場合は自動リトライを行う実装となっている．
+
+\begin{description}
+  \item[Stage1: Widget Selection（構成の決定）]
+    ユーザーの悩みと特定されたボトルネック（例：情報の未整理）に基づき，解決に最適な Widget の組み合わせ（WidgetSelectionResult）を決定する．
+    この段階では「どのようなデータを扱うか」という詳細は決定せず，あくまで「どのツール（Widget）を使うか」という戦略のみを固定する．
+  \item[Stage2: Integrated ORS Generation（データ構造の設計）]
+    Stage1 で決定された Widget 構成を入力とし，それらが扱うべきデータの論理構造（Entity）と，Widget 間のデータの流れ（Dependency Graph）を設計する．
+    ここでは，Plan フェーズ全体（発散・整理・収束）を通して一貫したデータモデル（ORS）を生成する．これにより，後の工程で UI が分断されることを防ぐ．
+  \item[Stage3: Integrated UISpec Generation（UI詳細の具体化）]
+    ORS で定義されたデータ構造を，具体的な画面表示仕様（UISpec）に変換する．
+    ここでは，各 Widget の表示文言（Props），ポートの接続設定（ReactiveBinding），および初期コンテンツ（generatedValue）を生成する．
+    特に \texttt{generatedValue} は，この段階で「ユーザーの悩みに即した具体例」として生成され，UI に埋め込まれる．
+\end{description}
+
+\subsection{Stage別の入出力例（概要）}
+各 Stage の実際の出力データ構造（抜粋）をリスト\ref{lst:stage1_example}--\ref{lst:stage3_example}に示す．
+
+\begin{lstlisting}[caption = Stage1出力例：WidgetSelectionResult（JSON）, label = lst:stage1_example]
+{
+  "stages": {
+    "diverge": { "widgets": [{ "widgetId": "brainstorm_cards", "purpose": "不安の書き出し" }] },
+    "organize": { "widgets": [{ "widgetId": "card_sorting", "purpose": "カテゴリ分け" }] },
+    "converge": { "widgets": [{ "widgetId": "priority_slider_grid", "purpose": "優先順位付け" }] }
+  },
+  "rationale": "未整理な状態を解消するため，まず発散し，分類後に重み付けを行う構成としました．"
+}
+\end{lstlisting}
+
+\begin{lstlisting}[caption = Stage2出力例：Integrated ORS（JSON）, label = lst:stage2_example]
+{
+  "entities": [
+    { "id": "diverge_data", "type": "section_data", 
+      "attributes": [{ "name": "ideas", "structuralType": "ARRY" }] },
+    { "id": "organize_data", "type": "section_data",
+      "attributes": [{ "name": "sorted_ideas", "structuralType": "PNTR", "ref": "diverge_data.ideas" }] }
+  ],
+  "dependencyGraph": {
+    "dependencies": [
+      { "source": "diverge_data.ideas", "target": "organize_data.sorted_ideas", "mechanism": "update" }
+    ]
+  }
+}
+\end{lstlisting}
+
+\begin{lstlisting}[caption = Stage3出力例：Integrated UISpec（JSON）, label = lst:stage3_example]
+{
+  "sections": {
+    "diverge": {
+      "widgets": [
+        {
+          "id": "w_brainstorm", "component": "brainstorm_cards",
+          "config": {
+            "title": "不安の書き出し",
+            "generatedValue": { "items": ["給与への不満", "将来のキャリアパス"] } 
+          }
+        }
+      ]
+    }
+  },
+  "reactiveBindings": {
+    "bindings": [
+      {
+        "source": "w_brainstorm.cards", "target": "w_sorting.inputCards",
+        "updateMode": "realtime"
+      }
+    ]
+  }
+}
+\end{lstlisting}
+
+上記のように，Stage1で抽出した意図・ボトルネックを起点として，
+Stage2でPlan全体を通したデータ構造（ORS）を定義し，
+Stage3で具体的なUI仕様（UISpec）へ落とし込む．
+この段階的生成により，LLMの自由度を管理しつつ，セクション間をまたぐ動的なデータ連携（Widget-to-Widget Reactivity）を成立させている．
+
+\subsection{DSLを解釈するRule-based Rendererの実装}
+パイプラインが生成した JSON DSL（UISpec）は，フロントエンド上の Renderer によって React コンポーネントへと変換される．
+リスト\ref{lst:renderer_impl} に示す通り，Renderer は DSL 内の文字列（例：\texttt{"brainstorm\_cards"}）をキーとしてコンポーネント・レジストリを検索し，対応する実装を動的にマウントする．
+この設計により，LLM は「コンポーネントのコード」を生成する必要がなく，安全かつ確実な UI 構築が可能となる．
+
+\begin{lstlisting}[caption = Rule-based Rendererの実装（React/TypeScript概要）, label = lst:renderer_impl]
+const UIRenderer: React.FC<{ uispec: PlanUISpec }> = ({ uispec }) => {
+  return (
+    <div className="plan-layout">
+      {/* 3つのセクション（発散/整理/収束）を展開 */}
+      {Object.entries(uispec.sections).map(([key, section]) => (
+        <section key={key} className={`section-${key}`}>
+          <Header title={section.header.title} />
+          {section.widgets.map((wSpec) => {
+            // 文字列IDからReactコンポーネントを動的解決
+            const WidgetComp = WIDGET_REGISTRY[wSpec.component];
+            // Atom生成とProps注入を行うContainerでラップ
+            return (
+              <WidgetContainer key={wSpec.id} spec={wSpec}>
+                 <WidgetComp config={wSpec.config} />
+              </WidgetContainer>
+            );
+          })}
+        </section>
+      ))}
+    </div>
+  );
+};
+\end{lstlisting}
+
+\section{Widget-to-Widget Reactivity の実装}
+
+
+\subsection{ポートと依存グラフに基づく状態管理}
+
+Widget 間の連動を実現するため，各 Widget は \texttt{ports} フィールドに入出力ポートを定義する．
+ポートは，型定義と方向（input/output），および論理名を持つ．
+DSL の \texttt{dependencyGraph} セクションでは，これらのポート間の接続関係を定義する．
+
+実行時には，この依存グラフにもとづいて Jotai の Atom を動的に生成し，リアクティブなデータフローを構築する．
+重要な点は，この連動が \textbf{LLM を介さずにクライアントサイドで完結する} 点である．
+これにより，ネットワーク遅延のない即応的なインタラクションが可能となる．
+
+\subsection{Reactivityの分類（Flow / Meta / Sync）}
+本システムでは，Widget 間連動をデータの性質と更新タイミングに応じて以下の 3 種類に分類し，それぞれ最適な更新戦略（Update Mode）を適用している．
+
+\begin{enumerate}
+  \item \textbf{Data Input（Flow）}：
+        ある Widget の出力データ（例：発散フェーズで出したカード一覧）を，
+        次の Widget の入力データ（例：整理フェーズの未分類カード）として受け渡す連動．
+        更新モードは \texttt{realtime} が主である．
+  \item \textbf{Config Input（Meta）}：
+        ある Widget の出力値を，別 Widget の設定（props）として動的に反映する連動．
+        例として，分析結果のキーワードを次ステージの Widget タイトルに埋め込むケースなどがある．
+  \item \textbf{Reactive Binding（Sync）}：
+        同一画面内でユーザー操作に応じて即時に値が同期する双方向的な連動．
+        例として，スライダー操作によるパラメータ変更が，隣接するグラフ Widget に即座に反映される挙動などである．
+        計算コストの高い処理を含む場合，更新モードとして \texttt{debounced}（一定時間操作がない場合に更新）を適用する．
+\end{enumerate}
+
+\subsection{Widget ID/PortごとのAtom動的生成}
+DSL で定義される Widget 構成はユーザーごとに異なるため，状態管理の Atom も動的に生成する必要がある．
+本実装では，Widget ID と Port 名をキーとして Atom をキャッシュする仕組み（Atom Family パターン）を採用した．
+
+リスト\ref{lst:jotai-port-atom} にその実装概要を示す．
+\texttt{getOrCreatePortAtom} 関数は，指定されたキーに対応する Atom が存在すればそれを返し，なければ新規作成して登録する．
+これにより，Widget コンポーネント側は「自分自身の ID と Port 名」を知っているだけで，依存先の Atom にアクセスできるようになる．
+
+\begin{lstlisting}[caption = PortごとのJotai Atom動的生成（実装概要）, label = lst:jotai-port-atom]
+// グローバルなAtomキャッシュ
+const portAtomMap = new Map<string, Atom<any>>(); 
+
+/**
+ * WidgetIDとPort名を結合したキーからAtomを取得または生成する
+ */
+export function getOrCreatePortAtom<T>(widgetId: string, portName: string, initVal: T): Atom<T> {
+  const key = `${widgetId}.${portName}`;
+  const existing = portAtomMap.get(key);
+  if (existing) return existing as Atom<T>;
+
+  // 新規Atomの生成
+  const newAtom = atom<T>(initVal);
+  portAtomMap.set(key, newAtom);
+  return newAtom;
+}
+
+// Reactコンポーネント内での利用例
+const usePortValue = (widgetId, portName) => {
+   const atomConfig = useMemo(() => 
+     getOrCreatePortAtom(widgetId, portName, null), 
+   [widgetId, portName]);
+   return useAtom(atomConfig);
+};
+\end{lstlisting}
+
+\section{generatedValue の実装}
+
+\subsection{概要と目的}
+\texttt{generatedValue} は，Stage 3 の LLM 呼び出し時に，Widget の初期コンテンツを動的に生成する仕組みである．
+これは，ユーザーが空の入力欄を前にした際に感じる認知負荷（Cold Start Problem）を軽減することを目的としている．
+「何を書けばよいか分からない」状態を防ぐため，LLM がユーザーの文脈に沿った「たたき台」を提供する．
+
+\subsection{生成コンテンツの分類}
+生成されるコンテンツには主に以下の 2 種類がある．
+
+\begin{enumerate}
+  \item \textbf{Type A: ラベル・インストラクション}
+    Widget の UI ラベルやプレースホルダー文言を，ユーザーの悩みに合わせてカスタマイズする．
+    例：「優先度」という汎用ラベルの代わりに，「転職における重要度」と表示する．
+  \item \textbf{Type B: サンプルデータ}
+    入力フィールドにあらかじめ具体的な値（例）を埋め込む．
+    例：ブレインストーミング Widget において，「給与水準」「通勤時間」といったカードがあらかじめ作成された状態で開始する．
+\end{enumerate}
+
+\subsection{実装上の考慮点}
+\texttt{generatedValue}  はあくまで「呼び水」であり，ユーザーの思考を強制してはならない．
+そのため，本実装では以下の設計を行っている．
+\begin{itemize}
+  \item 生成されたアイテムには \texttt{isGenerated: true} フラグを付与し，UI 上で視覚的に区別可能にする（例：点線枠で表示）．
+  \item ユーザーは生成された値を自由に編集・削除できる．
+  \item 明示的な「リセット」や「再生成」のアクションを提供する（将来拡張）．
+\end{itemize}
+
+\section{本章のまとめ}
+本章では，Prism Lattice UI の実装詳細について述べた．
+宣言的 JSON DSL の採用，Widget Selection から始まる 3 段階生成パイプライン，および Jotai Atom を用いた動的な Widget-to-Widget Reactivity により，
+柔軟かつ堅牢な動的 UI 生成機構を実現した．
+また，generatedValue による初期コンテンツ生成が，ユーザーの認知的ハードルを下げる補助輪として機能する．
+次章では，これらの設計にもとづく実験設計と評価結果について述べる．
+
+% =========================
+% [ADD] Chapter4末尾：評価章への橋渡し
+% INSERT AT END OF: \section{本章のまとめ}
+% =========================
+以上により，提案要素（宣言型JSON DSL，Level4の実行エンジン，generatedValue）は，
+Step1--Step3の段階的生成と，実行時の決定論的伝播として実装に落とし込まれた。
+次章では，これらが「構造として破綻しないか（Layer1）」，
+および「実用上の速度・コストに耐えるか（Layer2）」を評価する。
+
+
+
+
+% =========================================
+% 第5章 実験と評価（全面改稿案）
+% =========================================
+\chapter{実験と評価}
+\label{chap:evaluation}
+
+\section{評価の目的と研究課題}
+本章では，Prism Lattice UI の技術的実現性と，モデル構成（Stage1--Stage3 の割当）に応じた品質・コスト特性を検証する．
+第\ref{chap:introduction}章で述べた研究目的に対し，本章の評価は次の 2 点に整理される．
+
+\begin{itemize}
+  \item \textbf{RQ1（実現性）}：3ステップ LLM パイプラインにより，DSL と実行系が要求する\textbf{形式的健全性}を安定して満たす動的 UI を生成できるか．
+  \item \textbf{RQ2（トレードオフ）}：Stage ごとのモデル割当が，\textbf{運用指標（レイテンシ・推定コスト）}にどの程度影響するか．
+\end{itemize}
+
+また，Layer1 が天井効果に達しうる点を踏まえ，本研究では \textbf{Layer1+（仕様適合・静的健全性）}を導入し，
+「単に壊れていない」だけでなく「\textbf{ドメイン設計上の期待に沿っている}」ことを，自動検証可能な範囲で確認する．
+
+\section{実験設計}
+\subsection{対象システムと 3 ステップ生成パイプライン}
+Prism Lattice UI は，入力テキスト（悩み）から動的 UI を生成する 3 ステップの LLM パイプラインと，生成された DSL を解釈・実行するクライアント上のランタイムから構成される．
+図\ref{fig:pipeline}に処理フローを示す．
+パイプラインは以下の 3 ステップを直列に実行し，各ステップの出力は次段のコンテキストとして利用される．
+
+\begin{enumerate}
+  \item \textbf{Stage1（文脈理解・要件定義）}：
+    入力文脈を解釈し，解決に最適な Widget の構成（例：\texttt{brainstorm\_cards} $\to$ \texttt{card\_sorting}）を決定する．
+    ここで選定された Widget ID リストが後続ステージへの制約として渡される．
+  \item \textbf{Stage2（概念設計・構造化出力）}：
+    選定された Widget 群が扱うデータの論理構造（Entity/Attribute）と，Widget 間のデータ依存関係（Dependency Graph）を構築し，ORS (Object-Relational Schema) DSL として出力する．
+  \item \textbf{Stage3（詳細設計・構造化出力）}：
+    Stage2 の抽象モデルを具体的な UI 仕様に落とし込む．各 Widget の初期設定（Props）や，データフローの具体的な振る舞い（Javascript 式や更新頻度など）を含む UI Spec DSL を出力する．
+    この際，\texttt{generatedValue} として初期コンテンツ（例：サンプルカードや推奨ラベル）も同時に生成し，ユーザーのコールドスタート問題（何を書けばよいか分からない状態）を解消する．
+\end{enumerate}
+
+生成された JSON DSL は，フロントエンドの \textbf{Rule-based Renderer} によって解釈される．
+Renderer は，DSL 内の Widget ID を事前に実装された React コンポーネントにマッピングし，動的に画面を構築する（LLM はコンポーネントのコードそのものは生成せず，構成と設定のみを決定する）．
+また，DSL で定義された Widget 間の依存関係は，実行時に \textbf{Reactivity Engine}（Jotai Atom ベースの実装）によって処理され，ある Widget の出力が別の Widget の入力や設定へとリアルタイム（または Debounce）で伝播する仕組みとなっている．
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\linewidth]{pipeline.png}
+    \caption{3段階LLM生成パイプラインの処理フロー}
+    \label{fig:pipeline}
+\end{figure}
+
+\subsection{テストケースと試行回数}
+テストケースと試行回数等の基本設定をTable \ref{tab:exp_overview}に示す．
+テストケースは 50 件であり，各ケースは入力テキストと，期待される W2WR の複雑度カテゴリ等を含む．
+モデル構成（A--E）を各テストケースに適用し，合計試行数は $50 \times 5 = 250$ 試行である．
+なお，Stage ごとに計測する運用指標（レイテンシ・推定コスト）は，1試行あたり 3 呼出し分（Stage1--3）を含む．
+
+\begin{table}[tb]
+\centering
+\caption{実験の基本設定（概要）}
+\label{tab:exp_overview}
+\small
+\begin{tabular}{ll} \toprule
+項目 & 値 \\ \midrule
+テストケース数 & 50 \\
+モデル構成数 & 5（A--E）\\
+総試行数 & 250（=50$\times$5）\\
+1試行の LLM 呼出し & 3 回（Stage1--3，直列）\\
+温度 & $T=0.0$（再現性優先）\\
+評価レイヤ & Layer1 / Layer1+ / Layer4 \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{モデル構成（Stage への割当）}
+比較対象のモデル構成をTable \ref{tab:model_configs}に示す．
+本研究は「単一モデル固定」だけでなく，「Stage ごとに適材適所で割り当てる」運用設計も評価対象とする．
+
+\begin{table}[tb]
+\centering
+\caption{比較対象のモデル構成（Stage1--3 への割当）}
+\label{tab:model_configs}
+\small
+\begin{tabular}{clccc} \toprule
+ID & 構成名 & Stage1 & Stage2 & Stage3 \\ \midrule
+A & All-5-Chat & GPT-5-Chat & GPT-5-Chat & GPT-5-Chat \\
+B & All-5-mini & GPT-5-mini & GPT-5-mini & GPT-5-mini \\
+C & Hybrid-1 & GPT-5-Chat & GPT-4.1-mini & GPT-4.1-mini \\
+D & Hybrid-2 & GPT-5-Chat & GPT-5-mini & GPT-5-mini \\
+E & Router Based & model-router & model-router & model-router \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{ログ欠損（B の $n=9$）の扱い}
+構成 B について，一部試行で生成結果が空（あるいは DB に保存されない）ログ欠損が発生した．
+詳細ログ上，出力トークン量が他構成と大きくは異ならないにもかかわらず生成結果が空であったため，
+検証後の保存処理で欠損が生じた可能性がある．
+本研究では，\textbf{欠損が生じた試行は当該指標の計算から除外}し，指標ごとに有効サンプル数 $n$ を明記する．
+
+\section{評価指標}
+本研究は「自動検証可能」な範囲で，(i) 形式健全性（Layer1），(ii) 仕様適合・静的健全性（Layer1+），(iii) 運用指標（Layer4）を評価する．
+各指標の一覧をTable \ref{tab:metrics_layer1}--Table \ref{tab:metrics_layer4}に示す．
+
+\subsection{Layer1：DSL 構造健全性（形式健全性）}
+Layer1 は，LLM 出力 DSL が，実行系および型・参照制約に対して破綻しないことを検証する．
+
+\begin{table}[tb]
+\centering
+\caption{Layer1 指標（形式健全性）}
+\label{tab:metrics_layer1}
+\small
+\begin{tabular}{ll} \toprule
+記号 & 概要 \\ \midrule
+VR & DSL 妥当率（スキーマ/構造検査に合格）\\
+TCR & 型整合率（入出力型の整合）\\
+RRR & 参照整合率（参照解決が可能）\\
+CDR & 循環依存なし率（DG が非循環）\\
+RGR & 再生成なし率（再生成を要しない）\\
+W2WR\_SR & W2WR 成功率（Binding の生成と実行が成立）\\
+RC\_SR & React 変換成功率（UI 生成物の変換が成立）\\
+JA\_SR & Jotai Atom 成功率（状態モデルへの変換が成立）\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Layer1+：仕様適合・静的健全性}
+Layer1+ は，テストケースが期待する「W2WR の有無・複雑度カテゴリ」等に対して，生成結果が整合するかを検証する．
+Layer1 が「壊れていない」ことの確認であるのに対し，Layer1+ は「\textbf{設計意図に沿う}」ことを確認する位置づけである．
+
+\begin{table}[tb]
+\centering
+\caption{Layer1+ 指標（仕様適合・静的健全性）}
+\label{tab:metrics_layer1plus}
+\small
+\begin{tabular}{ll} \toprule
+記号 & 概要 \\ \midrule
+REQ\_W2WR\_PRES & W2WR 存在整合率（要否と一致）\\
+REQ\_BINDING\_COUNT\_OK & Binding 数適合率（期待レンジと一致）\\
+REQ\_PATTERN\_MATCH & パターン一致率（期待カテゴリと一致）\\
+JS\_PARSE\_OK & JavaScript 構文妥当率（構文解析に合格）\\
+JS\_POLICY\_OK & JS ポリシー準拠率（禁止 API 等を含まない）\\
+REQ\_STAGE\_FORWARD\_RATE & 前方向 Binding 率（段階に沿う接続）\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Layer4：運用指標（レイテンシ・推定コスト）}
+Layer4 は，実運用上の重要指標として，\textbf{平均レイテンシ（LAT）}および \textbf{推定 API コスト（COST）}を評価する．
+本研究では，Stage1--3 の合計として 1 試行の運用負荷を定義する．
+
+\begin{table}[tb]
+\centering
+\caption{Layer4 指標（運用指標）}
+\label{tab:metrics_layer4}
+\small
+\begin{tabular}{ll} \toprule
+記号 & 概要 \\ \midrule
+LAT & 平均レイテンシ（Stage1--3 合計）\\
+COST & 推定 API コスト（Stage1--3 合計）\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{統計解析手法}
+5 構成（A--E）について，ペアワイズ比較は $5 \choose 2$ = 10 組である．
+各指標のデータ型に応じて以下を用いる．
+
+\begin{itemize}
+  \item \textbf{比率（2値）指標}：2標本比例検定（z 検定）を用い，効果量として Cohen's $h$ を併記する．
+  \item \textbf{連続/順位尺度指標（LAT, COST, REQ\_STAGE\_FORWARD\_RATE 等）}：
+        Mann--Whitney の U 検定を用い，効果量として $r$ を併記する．
+\end{itemize}
+
+多重検定は Bonferroni 補正を用い，指標ごとに $\alpha' = 0.05/10 = 0.005$ とする．
+
+\section{結果}
+本節では，Layer1 / Layer1+ / Layer4 の結果を示す．
+詳細な数値表（構成別集計およびペアワイズ比較）は，Table \ref{tab:results_layer1}--Table \ref{tab:results_layer4_pairwise}に示す．
+
+\subsection{Layer1：DSL 構造健全性}
+Layer1 の主要指標（VR, TCR, RRR など）は高い成功率を示し，複数構成間で差がつきにくい傾向が確認された．
+
+\begin{table}[tb]
+\centering
+\caption{Layer1 結果（構成別集計）}
+\label{tab:results_layer1}
+\small
+\begin{tabular}{lccc} \toprule
+構成 & VR (\%) & TCR (\%) & RCR (\%) \\ \midrule
+A & 66.7 & 100 & 66.7 \\
+B & 94.0 & 100 & 94.0 \\
+C & 66.7 & 100 & 66.7 \\
+D & 68.7 & 100 & 68.7 \\
+E & 66.7 & 100 & 66.7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Layer1+：仕様適合・静的健全性}
+Layer1+ は，Layer1 の天井効果を補う目的で導入した．
+一部指標（例：Binding 数適合やパターン一致）では，100\% に達しない値が観測され，設計意図との差分が可視化された．
+ただし，構成間の差は限定的であった（考察はChapter \ref{chap:discussion}章）．
+
+\begin{table}[tb]
+\caption{Layer1+ 結果（構成別集計）}
+\label{tab:results_layer1plus}
+\centering
+\small
+\begin{tabular}{lccc} \toprule
+構成 & \begin{tabular}{@{}c@{}}REQ\_W2WR\\\_PRES (\%)\end{tabular} & \begin{tabular}{@{}c@{}}REQ\_BINDING\\\_COUNT\_OK (\%)\end{tabular} & \begin{tabular}{@{}c@{}}REQ\_PATTERN\\\_MATCH (\%)\end{tabular} \\ \midrule
+A & 80.00 & 60.00 & 80.00 \\
+B & 77.80 & 66.70 & 77.80 \\
+C & 80.00 & 60.00 & 80.00 \\
+D & 79.60 & 59.20 & 79.60 \\
+E & 80.00 & 60.00 & 80.00 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Layer4：運用指標（レイテンシ・推定コスト）}
+Layer4 では，構成間でレイテンシおよび推定コストに差が観測された．
+特に「単価直感」だけでは説明しづらい差分（分布差）が確認され，運用設計として Stage ごとの割当が有効である可能性が示唆された．
+
+\begin{table}[tb]
+\centering
+\caption{Layer4 結果（構成別集計）}
+\label{tab:results_layer4}
+\small
+\begin{tabular}{lcc} \toprule
+構成 & LAT（中央値, ms） & COST（中央値, 日本円） \\ \midrule
+A & 8,216.42 & 358.01 \\
+B & 31,003.09 & 686.87 \\
+C & 7,569.99 & 359.21 \\
+D & 17,788.64 & 469.05 \\
+E & 18,382.05 & 475.15 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Layer4 ペアワイズ比較（有意差サマリ）}
+\label{tab:results_layer4_pairwise}
+\small
+\begin{tabular}{lcc} \toprule
+指標 & 有意（$p<0.05$） & 補正後も有意（$p<0.005$） \\ \midrule
+LAT & 9/10 & 8/10 \\
+COST & 7/10 & 6/10 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+% =========================================
+% 第6章 考察（全面改稿案）
+% =========================================
+\chapter{考察}
+\label{chap:discussion}
+
+\section{本章の目的}
+\label{sec:disc_intro}
+
+本章では、第\ref{chap:evaluation}章の実験結果を用いて、Prism Lattice UIが本研究で定めた条件（50ケース、3ステップ生成、DSL/実行系、評価指標、統計手法）のもとで何を支持し、どこに課題が残るかを整理する。
+議論はRQ1（生成の妥当性・形式健全性）とRQ2（モデル構成差とトレードオフ）に沿って進める。
+
+本研究の評価指標は大きく次の3群に分かれる。
+\begin{itemize}
+\item \textbf{Layer1（構造健全性）}：型整合・参照整合・循環不在など、DSLと依存関係が「壊れていない」ことの検証
+\item \textbf{Layer1+（仕様適合・静的健全性）}：テストケースが期待するW2WRの要否や複雑度カテゴリに、生成結果が「沿っている」かの検証
+\item \textbf{Layer4（実用性）}：待ち時間（LAT）と推定コスト（COST）
+\end{itemize}
+
+本章の結論（背骨）を先に置くと、次の3点である。
+\begin{enumerate}
+\item 形式的な不変条件の多くは天井（100\%）に到達し、設計（宣言型DSL + 段階的検証 + 実行系）により破綻の大半を抑えられる。
+\item 一方で、入口（VR）と実行系への橋渡し（RC\_SR）はボトルネックとして残る。つまり健全性境界は「DSL検証」だけで完結せず、「実行系前提」まで含めて再定義される。
+\item モデル構成差は、正しさだけでなく実用性（LAT/COST）を強く動かす。したがってモデル選択は「最強モデル」ではなく目的関数に基づく多目的最適化として現れる。
+\end{enumerate}
+
+\section{RQ1：生成の妥当性・形式健全性はどこまで「保証」できたか}
+\label{sec:disc_rq1}
+
+\subsection{形式健全性の下限（検査可能な不変条件）は安定して満たされた}
+\label{subsec:disc_rq1_baseline}
+
+Layer1のうち、TCR（型整合）、RRR（参照整合）、CDR（循環依存なし）、RGR（再生成なし）、W2WR\_SR（W2WR成功）、JA\_SR（Jotai Atom成功）などは\textbf{全比較で100\%}となった。
+
+ここから言えるのは、「LLMに自由にUIを書かせる」方向ではなく、宣言型JSON DSLに落とし込み、検査可能な不変条件を定義し、段階的検証で受け止める設計により、少なくとも本研究が定義した形式破綻は実用上抑え込める、という点である。
+
+この結果は「モデルが賢いからできた」と単純化するより、むしろLLMの不確実性を「検査可能な境界」の内側に閉じ込めたと解釈する方が工学的である。
+特にW2WRを「依存グラフ+参照」として明示化したことで、循環検知・参照解決などの静的検査が可能になり、形式健全性を測定できる対象へ変換できた。
+
+\subsection{ただし「入口」と「実行系へ渡す直前」は残る：VRとRC\_SRがボトルネック}
+\label{subsec:disc_rq1_bottleneck}
+
+天井に到達した指標が多い一方で、VR（DSL妥当率）とRC\_SR（React変換成功率）では構成差が残った。
+具体的にVRはBが93.3\%で、他構成（66.7〜68.7\%）より有意に高い（効果量も中）。同様にRC\_SRもBが94.0\%で、他構成（66.7〜68.7\%）より有意に高い。
+
+ここから重要なのは、「形式健全性が確保できた」という結論を「DSL検査を通った」だけで確定させないことだ。
+実際には、
+\begin{itemize}
+\item[(A)] DSLとして妥当である（VR）
+\item[(B)] 実行系（React/Jotai）へ変換できる（RC\_SR）
+\end{itemize}
+は同一ではない。
+
+したがって、本研究のRQ1の答えは「形式健全性は概ね達成」だけで終わらず、健全性境界を「実行系前提」まで含めて再定義すべきという帰結を含む。
+
+\subsection{（仮説）失敗は「LLMが壊した」より「仕様ギャップ」として整理できる}
+\label{subsec:disc_rq1_hypothesis}
+
+VR/RC\_SRがボトルネックとして残るメカニズムは、少なくとも次のように整理できる（ここは考察=仮説として明示する）。
+\subsubsection{H1：VR低下は「入口条件の逸脱」が主要因}
+VR低下は，スキーマ制約の表現力不足や，必須フィールド欠落など「入口条件の逸脱」が主要因になりうる．
+
+\subsubsection{H2：RC\_SR低下は「実行系前提の不一致」が主要因}
+RC\_SR低下は，DSLとしては合法でも，レンダラが暗黙に仮定している前提（デフォルト値，型の具体化，必須プロパティの整合）が満たされない場合に発生しうる．
+
+\subsubsection{H3：改善方針は「工学的な仕様境界の再設計」}
+改善方針は，プロンプト改善だけでなく，以下のような「工学的に再現可能な」方向が有効である．
+\begin{itemize}
+  \item[(a)] スキーマ/型の制約強化（実行系前提をDSL側へ降ろす）
+  \item[(b)] 正規化（canonicalization）や欠損補完
+  \item[(c)] 変換器の防御的実装
+\end{itemize}
+
+この整理が成立すると、本研究の失敗は「モデルが弱い」よりも、検査対象（DSL）と実行対象（変換器/レンダラ）の仕様境界をどう設計するかの問題として議論できる。
+
+\section{Layer1+：なぜ導入し、何が分かったか（Layer1天井の検証として）}
+\label{sec:disc_layer1plus}
+
+\subsection{Layer1+の狙い：天井指標の外側に「設計意図」を置く}
+\label{subsec:disc_layer1plus_goal}
+
+Layer1の多くが100\%に到達すると、モデル構成差を議論する「測定器」としては弱くなる。
+そこでLayer1+は、テストケース設計（W2WRカテゴリA〜E、期待バインディング数・パターンなど）を正解ラベルに近い参照として用い、「壊れてない」を超えて「設計意図に沿っている」を測定可能にする目的で導入される。
+
+\subsection{観測：Layer1+は「差を付ける」より「ズレを可視化する」方向に効いた}
+\label{subsec:disc_layer1plus_obs}
+
+Layer1+の統計検定結果は、総検定数60に対して有意差が0であり、構成間の差は統計的に支持されなかった。
+一方で、絶対値としては次が観測されている。
+\begin{itemize}
+\item REQ\_W2WR\_PRES / REQ\_PATTERN\_MATCH：おおむね78〜80\%
+\item REQ\_BINDING\_COUNT\_OK：おおむね59〜60\%（Bはnが小さいが66.7\%）
+\item JS\_PARSE\_OK / JS\_POLICY\_OK：100\%
+\item REQ\_STAGE\_FORWARD\_RATE：中央値1（全構成同等）
+\end{itemize}
+
+この結果の読み方は二段階に分けると分かりやすい。
+\subsubsection{「安全側の静的健全性」は達成}
+JS構文・ポリシーが100\%である点や，前方向率が1で揃う点は，「危険な変換」や「逆流する依存」などが抑制されていることを示す．
+これはDSL hardeningと検証パイプラインが「安全側の形」へ収束させている可能性が高い．
+
+\subsubsection{「仕様適合」は未達が残る}
+binding数適合が約60\%ということは，形式的には成立しても，期待した複雑度カテゴリの設計意図（例：Eは2-3本，B/C/Dは1本など）に一致しない試行が一定数あることを意味する．
+ここで得られる知見は「モデル差」ではなく，設計意図と生成結果のズレの所在を定量化できた点にある．
+
+\subsection{解釈：仕様適合は「モデル」より「設計（プロンプト/制約/ケース）」で支配される可能性}
+\label{subsec:disc_layer1plus_interp}
+
+Layer1+で差が出なかったことは、単に「指標が弱い」だけでなく、次の含意を持つ。
+\subsubsection{I1：仕様適合の達成はモデルよりパイプライン設計に依存}
+同じDSL制約と同じ検証枠組みのもとでは，モデルを変えても「期待カテゴリに沿う/沿わない」の傾向が大きく変わらない可能性がある．
+
+\subsubsection{I2：改善の主戦場は「仕様の明示化」と「生成物の正準化」}
+REQ\_BINDING\_COUNT\_OKが低い場合，以下の要因が混ざりうる．
+\begin{itemize}
+  \item テストケース側の期待記述（カテゴリ定義）の曖昧さ
+  \item プロンプト側の要求の弱さ（「必ず1本/必ず2本」といった強制条件の不足）
+  \item 生成結果の表現揺れ（同等だがカウント規則に引っかかる）
+\end{itemize}
+これらは「意味評価」に入る前に，仕様と評価器の一貫性を上げるだけで改善余地がある．
+
+この節の結論は、「Layer1+で差が出た/出ない」という二元論ではなく、Layer1天井の外側に置いた指標として、設計意図とのズレ（約40\%）を「計測可能」にした点に置くのが筋が良い。
+
+\section{RQ2：モデル構成差は何に効き、どう運用設計へ落とせるか}
+\label{sec:disc_rq2}
+
+\subsection{「正しさ側」の差：VR/RC\_SRは構成Bが優位（ただし他は横並び）}
+\label{subsec:disc_rq2_correctness}
+
+RQ2の正しさ側の主要差分はVR/RC\_SRに現れている。
+Bは入口と変換の両方で成功率を押し上げる一方、A/C/D/Eはほぼ同水準（66〜69\%）で横並びである。
+
+ここでのポイントは、「モデル差は形式健全性の中心（天井領域）ではなく、入口と出口に現れる」という構造だ。
+つまり、モデル選択は「検査可能な不変条件」の達成よりも、\textbf{検査に入る前（VR）と、実行系へ渡す直前（RC\_SR）}の歩留まりを左右する。
+
+\subsection{「運用側」の差：LAT/COSTは統計的にも効果量的にも大きい}
+\label{subsec:disc_rq2_operational}
+
+実用性（Layer4）は多くの比較で有意差が観測される。代表的には次の構図になる。
+\begin{itemize}
+\item \textbf{LAT}：Bが最も遅い（中央値27098ms）、Cが最短（中央値7539ms）。多くの比較で補正後も有意、効果量も大。
+\item \textbf{COST}：Bが高い（中央値4円）、他は概ね3円。ただし中央値が同じでも分布差で有意になる比較がある（裾の重さが異なる）。
+\end{itemize}
+
+この結果は、モデル構成差が「正しさ」だけでなく、待ち時間と費用という運用上の制約を強く動かすことを示す。
+
+\subsection{トレードオフを「意思決定ルール」に翻訳する（運用設計への含意）}
+\label{subsec:disc_rq2_tradeoff}
+
+RQ2の結論を「Bが良い/悪い」で終わらせず、設計指針に落とすなら、次の翻訳ができる。
+\subsubsection{R1（歩留まり優先）：Bが有力候補}
+入口妥当性（VR）と変換成功（RC\_SR）を最大化したい場合，Bが有力候補になる．
+
+\subsubsection{R2（応答性優先）：Cを中心に防御的実装で補う}
+対話的体験で待ち時間が制約となる場合，C（最短）を中心にし，VR/RC\_SRの不足はスキーマ強化・正規化・防御的変換で埋める方針が合理的になりうる．
+
+\subsubsection{R3（多目的最適化）：運用指標とのトレードオフ問題}
+現実にはVR/RC\_SRとLAT/COSTを同時に最適化する必要があるため，モデル選択は以下のような目的関数設計の問題として表現できる．
+\[
+  \max \{ \mathrm{VR}, \mathrm{RC\_SR} \} \quad \text{s.t.} \quad \mathrm{LAT} \le X,\ \mathrm{COST} \le Y
+\]
+
+\subsubsection{R4（Stageごとの割当）：ハイブリッド構成の必然性}
+3ステップパイプラインである以上，「どのStageにどのモデルを置くか」は設計自由度であり，目的関数に応じて最適解が変わる．結果として「ハイブリッドが常に勝つ」ではなく，「目的関数が先にあり，構成は従う」が結論になる．
+
+\section{フロントエンド/状態管理/形式検査としての含意（厚みのある読み替え）}
+\label{sec:disc_frontend}
+
+\subsection{W2WRをDSL化した意義：依存を「明示化」したから検査できる}
+\label{subsec:disc_frontend_w2wr}
+
+Widget-to-Widget Reactivityを、参照・依存としてDSLに明示化したことで、
+\begin{itemize}
+\item 参照解決（RRR）
+\item 循環検知（CDR）
+\item 更新方向の規則（Layer1+の前方向率など）
+\end{itemize}
+といった静的検査が可能になった。
+
+これは「見た目のUI生成」ではなく、状態遷移・データフローの生成としてUIを扱う設計であり、フロントエンド（React/Jotai）と形式検査の接点を作った点が重要である。
+
+\subsection{「天井」の意味：差が付かない=測定不能ではなく、設計が効いた証拠}
+\label{subsec:disc_frontend_ceiling}
+
+天井指標は「意味がない」ではなく、定義した不変条件が崩れなかったという証拠である。
+一方で、天井はモデル差の議論には使いにくい。
+
+したがって今後は、「天井を壊すための過激なタスク」を作るより、評価器側を精密化して差が出る場所を測る（例：VR/RC\_SRの失敗分類、Layer1+のエッジ単位比較）という方向が自然に繋がる。
+
+\section{妥当性への脅威（limitationsに直結する「射程の定義」）}
+\label{sec:disc_threats}
+
+\subsection{多重比較と効果量：統計的有意と実用的有意を分けて示せる}
+\label{subsec:disc_threats_stats}
+
+本研究はペア比較10組に対して補正を行い、補正後でもLayer1で8件、Layer4で14件が有意である。
+またLAT/COSTは効果量も大きく、統計的有意性と実用的含意を分けて議論できる。
+
+\subsection{Bのログ欠損（n=9）：欠損メカニズムと扱い}
+\label{subsec:disc_threats_missing}
+
+構成Bはログ欠損により有効サンプルが$n=9$となった。詳細ログ確認の結果、出力トークン量が他と大きく乖離しないにもかかわらず生成結果が空であり、検証後にDBに保存されなかった等の保存層要因が疑われる。
+
+本研究では欠損試行を除外し、各指標の$n$を明記して透明性を確保したが、Bに関する推論の射程は限定される（特にLayer1+で検出力が落ちる）。
+
+\subsection{独立性・階層性：入力由来の相関の可能性}
+\label{subsec:disc_threats_independence}
+
+同一コーパス上で複数構成を比較しているため、入力由来の相関（ケース難度）が残る可能性がある。将来的にはmixed-effectsなどで「入力をランダム効果」として扱う設計が候補になる。
+
+\section{形式評価の限界と残された課題}
+\label{sec:disc_future}
+
+本研究の評価は、自動検証可能な範囲（形式健全性・仕様適合・運用指標）に基づく。
+一方で、本研究の位置づけ（思考整理支援というドメイン特化）をより強く主張するには、\textbf{形式的に正しいだけでなく意味的に有用か（Semantic Validity）}の評価が残る。
+
+この「意味評価」を導入する利点は明確であり、次を可能にする。
+\begin{itemize}
+\item ドメイン特化の価値を直接測れる（「思考が始められる初期値」「文脈に沿う連動」など）
+\item W2WRの独自性を「レベル4の中身」として説明できる（正しい接続・冗長・誤接続の内訳）
+\item 先行研究（例：Jelly UI）の「Dependency Accuracy」に対応する比較軸を持てる
+\end{itemize}
+
+その際、LLM-as-a-Judgeと人手検証を併用する構成には、次の利点がある。
+\begin{itemize}
+\item LLMで大規模にラベル付け → 全体傾向を出せる
+\item 人手でサンプル検証+一致率 → 判定の信頼性（校正）を担保できる
+\item 判定基準（0/1/2など）を固定 → 再現性ある評価設計として提示できる
+\end{itemize}
+
+
+\chapter{おわりに}
+\label{chap:conclusion}
+
+\section{研究の背景と目的の再確認}
+\label{sec:conc_plan}
+
+本研究の目的は、Jelly UIに代表される汎用的LLM-Hardened DSLを、思考整理支援という特定ドメインに導入する際の設計パラダイムを提案し、技術的実現性とモデル構成に応じた品質・コストのトレードオフを明らかにすることであった。
+
+また位置づけとして、(1) ドメイン特化による自由度制限（不自由化）と精度向上、(2) Widget-to-Widget Reactivityの実現、の2点で差別化を狙った。
+
+\section{本研究の取り組み}
+\label{sec:conc_work}
+
+この目的のために、本研究では、思考整理支援に必要なWidget集合を定義して生成自由度を制限し、3ステップのLLMパイプラインと宣言型JSON DSLを設計した。特に、Widget-to-Widget Reactivity (W2WR) をDSL上で明示し、依存関係をグラフとして扱うことで静的検査を可能にした。評価においては、50ケースに対して5つのモデル構成を適用し、健全性（Layer1/1+）と運用指標（Layer4）の双方から多角的な検証を行った。
+
+\section{得られた知見}
+\label{sec:conc_findings}
+
+本研究の条件下で、以下の知見が得られた。第一に、型整合や参照整合といった形式的な健全性は、適切な設計により安定して達成可能であることが示された。第二に、形式検査だけでなく、実行系への変換を含めた健全性境界の設計が重要であり、ボトルネックはDSL妥当性（VR）とReact変換（RC\_SR）にあることが明らかになった。第三に、仕様適合性（Layer1+）の評価により、設計意図との定量的な乖離を可視化できた。最後に、モデル構成の違いは運用指標（レイテンシ・コスト）に顕著に現れ、モデル選択は正しさとコストのトレードオフ問題であることが確認された。
+
+\section{本研究の貢献}
+\label{sec:conc_contribution}
+
+以上の結果より、本研究は動的UI生成を単なる実験的な試みではなく、宣言型DSLと検証可能な不変条件に基づき、実行系まで含めて工学的に制御可能なシステムとして提示した。また、モデル構成による品質と運用負荷のトレードオフを可視化したことで、実際の導入制約に応じた設計判断を可能にする枠組みを提供した点に貢献がある。
+
+
+
+\section{提案方式の限界}
+\label{sec:conc_limitations}
+
+一方で、本研究にはいくつかの限界が残る。generatedValueの内容妥当性やW2WRの意味的な正しさ（Semantic Validity）は未評価であり、自動検証の範囲外である。また、Layer1+指標は乖離の可視化には有効だが、改善に向けた詳細なフィードバックを与えるには測定精度に課題がある。一部の実験ではログ欠損が生じており、評価基盤の信頼性向上も求められる。
+
+\section{今後の課題}
+\label{sec:conc_future}
+
+今後の展望として、意味評価の導入が挙げられる。generatedValueの有用性やW2WRの妥当性を評価するために、LLM-as-a-Judgeと人手検証を組み合わせたハイブリッドな評価系が必要である。また、仕様適合指標を改良し、失敗箇所を特定して自動修復するメカニズムの構築も有効である。さらに、入力特性や運用制約（コスト・時間）に応じて、動的にモデル構成を切り替える適応的な運用設計への発展が期待される。
+
+
+% =========================
+% [ADD] 用語マクロ（表記ゆれ防止）
+% INSERT IN PREAMBLE OR AFTER \begin{document}
+% =========================
+\newcommand{\DynUILevel}{Level} % 動的UI度
+\newcommand{\LevelFour}{Level4} % Widget間連動
+\newcommand{\LLMStep}{Step} % LLM呼び出し段階
+
+
+% %-------------------
+% \bibliographystyle{plain} % 参考文献
+\bibliographystyle{ieeetr} % 参考文献
+% \bibliographystyle{ipsjunsrt} % 参考文献
+\bibliography{myref} %
+% %-------------------
+
+%-------------------
+\begin{acknowledge}
+本研究を進めるにあたり，熱心にご指導くださり，期限ギリギリまで休日返上してまでレビューしていただいた 東京国際工科専門職大学 情報工学科 武本充治教授に深く感謝いたします．
+
+また，Azure OpenAIサービスの利用申請及び，事務手続きの確立に尽力いただいた東京国際工科専門職大学 山\ajTatsuSaki 勝也氏に深く感謝いたします．
+
+他にも，実験を行うにあたり，統計処理についての知見を要した．2023年前期に確率統計論を講義で指導していただき，論文執筆中に質問に答えてくださった 東京国際工科専門職大学 情報工学科 \UTF{5152}玉賢史講師に深く感謝いたします．
+
+また，日頃より研究の相談や話し相手となってくれた研究室の仲間，そして，就活相談，メンタルケア，研究テーマ決めにおいて壁打ちを行なってくれた東京国際工科専門職大学 情報工学科 長峯幸佑君にも心より御礼申し上げます．
+
+他にも，本研究のシステム開発は，要件定義，設計，タスク管理，コーディング，テスト，デバッグ，バージョン管理，コードレビュー，デプロイ，運用管理の全工程において Vibe Coding (AI駆動開発) されています．Claude Code Max プランを格安で提供している Anthropic 社に深くお礼申し上げます．
+
+最後に，卒業研究という長期プロジェクトを通じて，
+日々の生活と正気の維持を支えてくれた友人や学友，可愛い仕草で癒しを与えてくれた飼い犬のダックスフント，そして学費を出してくれた両親及び今は亡き祖父の柏原\UTF{6EFF},祖母の柏原ゆみに感謝します．
+\end{acknowledge}
+
+\end{document}

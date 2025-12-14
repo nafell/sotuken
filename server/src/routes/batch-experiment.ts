@@ -922,6 +922,14 @@ batchExperimentRoutes.post('/:batchId/revalidate', async (c) => {
       .from(batchExecutions)
       .where(eq(batchExecutions.id, batchId));
 
+    // バッチが存在しない場合は404を返す
+    if (!batch) {
+      return c.json({
+        success: false,
+        error: `Batch with ID "${batchId}" not found.`
+      }, 404);
+    }
+
     // 対象ログを取得
     let targetLogs = await db
       .select()

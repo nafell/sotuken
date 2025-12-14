@@ -322,7 +322,7 @@ export class RevalidationLogger {
       this.logBuffer.push(line);
       return filepath;
     } catch (error) {
-      const errorLine = `${LOG_PREFIX} ${ICONS.ERROR} Failed to write log file: ${filepath} (${error instanceof Error ? error.message : String(error)})`;
+      const errorLine = `${LOG_PREFIX} ${ICONS.CROSS} Failed to write log file: ${filepath} (${error instanceof Error ? error.message : String(error)})`;
       console.error(errorLine);
       this.logBuffer.push(errorLine);
       throw error;

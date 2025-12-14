@@ -20,17 +20,19 @@ export interface LatexTableExporterProps<T> {
 }
 
 const escapeLatex = (value: string): string => {
-  return value
-    .replace(/\\/g, '\\textbackslash{}')
-    .replace(/&/g, '\\&')
-    .replace(/%/g, '\\%')
-    .replace(/\$/g, '\\$')
-    .replace(/#/g, '\\#')
-    .replace(/_/g, '\\_')
-    .replace(/\{/g, '\\{')
-    .replace(/\}/g, '\\}')
-    .replace(/\^/g, '\\^{}')
-    .replace(/~/g, '\\textasciitilde{}');
+  const replacements: { [char: string]: string } = {
+    '\\': '\\textbackslash{}',
+    '&': '\\&',
+    '%': '\\%',
+    '$': '\\$',
+    '#': '\\#',
+    '_': '\\_',
+    '{': '\\{',
+    '}': '\\}',
+    '^': '\\^{}',
+    '~': '\\textasciitilde{}',
+  };
+  return value.replace(/[\\&%$#_{}\^~]/g, match => replacements[match]);
 };
 
 function buildLatexTable<T>(
@@ -118,9 +120,15 @@ export function LatexTableExporter<T>({
   };
 
   const copyToClipboard = async () => {
-    await navigator.clipboard.writeText(latex);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    try {
+      await navigator.clipboard.writeText(latex);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error);
+      // Fallback: Show error or use alternative copy method
+      alert('Failed to copy to clipboard. Please copy manually.');
+    }
   };
 
   return (

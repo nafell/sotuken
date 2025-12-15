@@ -6,13 +6,14 @@
  * アイテムに優先度スコアを付与して整理するWidget
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import type { BaseWidgetProps } from '../../../../types/widget.types';
 import type { WidgetResult } from '../../../../types/result.types';
 import {
   PrioritySliderGridController,
   type PriorityItem,
 } from './PrioritySliderGridController';
+import { useReactivePorts } from '../../../../hooks/useReactivePorts';
 import styles from './PrioritySliderGrid.module.css';
 
 /**
@@ -22,7 +23,18 @@ export const PrioritySliderGrid: React.FC<BaseWidgetProps> = ({
   spec,
   onComplete,
   onUpdate,
+  onPortChange,
+  getPortValue,
+  initialPortValues,
 }) => {
+  // Reactive Ports
+  const { emitPort, setCompleted, setError } = useReactivePorts({
+    widgetId: spec.id,
+    onPortChange,
+    getPortValue,
+    initialPortValues,
+  });
+
   const [items, setItems] = useState<PriorityItem[]>([]);
   const [newItemLabel, setNewItemLabel] = useState<string>('');
 
@@ -33,15 +45,26 @@ export const PrioritySliderGrid: React.FC<BaseWidgetProps> = ({
   );
 
   /**
+   * 全出力Portに値を発行
+   */
+  const emitAllPorts = useCallback(() => {
+    emitPort('items', controllerRef.current.getItems());
+    emitPort('summary', controllerRef.current.generateSummary());
+  }, [emitPort]);
+
+  /**
    * アイテム追加ハンドラー
    */
-  const handleAddItem = () => {
+  const handleAddItem = useCallback(() => {
     if (newItemLabel.trim() === '') return;
 
     try {
       controllerRef.current.addItem(newItemLabel);
       setItems(controllerRef.current.getItems());
       setNewItemLabel('');
+
+      // Reactive Port出力
+      emitAllPorts();
 
       // 親コンポーネントに通知
       if (onUpdate) {
@@ -51,17 +74,20 @@ export const PrioritySliderGrid: React.FC<BaseWidgetProps> = ({
     } catch (error) {
       alert(error instanceof Error ? error.message : 'エラーが発生しました');
     }
-  };
+  }, [newItemLabel, emitAllPorts, onUpdate, spec.id]);
 
   /**
    * 優先度変更ハンドラー
    */
-  const handlePriorityChange = (itemId: string, value: number) => {
+  const handlePriorityChange = useCallback((itemId: string, value: number) => {
     try {
       // スライダーは0-100の整数値、0.0-1.0に正規化
       const normalizedValue = value / 100;
       controllerRef.current.updateItemPriority(itemId, normalizedValue);
       setItems(controllerRef.current.getItems());
+
+      // Reactive Port出力
+      emitAllPorts();
 
       if (onUpdate) {
         const result = controllerRef.current.getResult(spec.id);
@@ -70,22 +96,25 @@ export const PrioritySliderGrid: React.FC<BaseWidgetProps> = ({
     } catch (error) {
       console.error('Failed to update priority:', error);
     }
-  };
+  }, [emitAllPorts, onUpdate, spec.id]);
 
   /**
    * アイテム削除ハンドラー
    */
-  const handleDeleteItem = (itemId: string) => {
+  const handleDeleteItem = useCallback((itemId: string) => {
     if (confirm('このアイテムを削除しますか？')) {
       controllerRef.current.deleteItem(itemId);
       setItems(controllerRef.current.getItems());
+
+      // Reactive Port出力
+      emitAllPorts();
 
       if (onUpdate) {
         const result = controllerRef.current.getResult(spec.id);
         onUpdate(spec.id, result.data);
       }
     }
-  };
+  }, [emitAllPorts, onUpdate, spec.id]);
 
   /**
    * Enterキーでアイテム追加
@@ -100,23 +129,30 @@ export const PrioritySliderGrid: React.FC<BaseWidgetProps> = ({
   /**
    * 完了ハンドラー
    */
-  const handleComplete = () => {
+  const handleComplete = useCallback(() => {
     if (items.length === 0) {
+      setError(true, ['少なくとも1つのアイテムを追加してください']);
       alert('少なくとも1つのアイテムを追加してください');
       return;
     }
 
+    setError(false);
+    setCompleted(true);
+
     if (onComplete) {
       onComplete(spec.id);
     }
-  };
+  }, [items.length, setError, setCompleted, onComplete, spec.id]);
 
   /**
    * 結果取得メソッド（外部から呼び出し可能）
    */
-  const getResult = (): WidgetResult => {
+  /**
+   * 結果取得メソッド（外部から呼び出し可能）
+   */
+  const getResult = useCallback((): WidgetResult => {
     return controllerRef.current.getResult(spec.id);
-  };
+  }, [spec.id]);
 
   // 外部から結果を取得できるようにrefを設定
   useEffect(() => {
@@ -124,7 +160,7 @@ export const PrioritySliderGrid: React.FC<BaseWidgetProps> = ({
     return () => {
       delete (window as any)[`widget_${spec.id}_getResult`];
     };
-  }, [spec.id, items]);
+  }, [spec.id, getResult]);
 
   // 優先度でソートしたアイテムを取得
   const sortedItems = controllerRef.current.getItemsSortedByPriority();

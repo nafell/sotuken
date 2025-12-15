@@ -6,7 +6,6 @@
 import { describe, test, expect, beforeEach } from 'vitest';
 import {
   TimelineSliderController,
-  TIME_UNIT_CONFIG,
   PRIORITY_COLORS,
 } from '../TimelineSliderController';
 

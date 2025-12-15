@@ -6,7 +6,7 @@
  * 8種類の感情から選択し、強度を調整するWidget
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import type { BaseWidgetProps } from '../../../../types/widget.types';
 import type { WidgetResult } from '../../../../types/result.types';
 import {
@@ -14,6 +14,7 @@ import {
   EMOTIONS,
   type Emotion,
 } from './EmotionPaletteController';
+import { useReactivePorts } from '../../../../hooks/useReactivePorts';
 import styles from './EmotionPalette.module.css';
 
 /**
@@ -23,7 +24,18 @@ export const EmotionPalette: React.FC<BaseWidgetProps> = ({
   spec,
   onComplete,
   onUpdate,
+  onPortChange,
+  getPortValue,
+  initialPortValues,
 }) => {
+  // Reactive Ports
+  const { emitPort, setCompleted, setError } = useReactivePorts({
+    widgetId: spec.id,
+    onPortChange,
+    getPortValue,
+    initialPortValues,
+  });
+
   const [selectedEmotion, setSelectedEmotion] = useState<string | null>(null);
   const [intensity, setIntensity] = useState<number>(0.5);
   const controllerRef = useRef<EmotionPaletteController>(
@@ -33,51 +45,66 @@ export const EmotionPalette: React.FC<BaseWidgetProps> = ({
   /**
    * 感情選択ハンドラー
    */
-  const handleEmotionSelect = (emotionId: string) => {
+  const handleEmotionSelect = useCallback((emotionId: string) => {
     setSelectedEmotion(emotionId);
     controllerRef.current.selectEmotion(emotionId);
 
-    // 親コンポーネントに通知
+    // Reactive Port出力
+    emitPort('selected_emotion', emotionId);
+    emitPort('summary', controllerRef.current.generateSummary());
+
+    // 親コンポーネントに通知（後方互換性）
     if (onUpdate) {
       const result = controllerRef.current.getResult(spec.id);
       onUpdate(spec.id, result.data);
     }
-  };
+  }, [emitPort, onUpdate, spec.id]);
 
   /**
    * 強度変更ハンドラー
    */
-  const handleIntensityChange = (value: number) => {
+  const handleIntensityChange = useCallback((value: number) => {
     setIntensity(value);
     controllerRef.current.setIntensity(value);
 
-    // 親コンポーネントに通知
+    // Reactive Port出力
+    emitPort('intensity', value);
+    emitPort('summary', controllerRef.current.generateSummary());
+
+    // 親コンポーネントに通知（後方互換性）
     if (onUpdate) {
       const result = controllerRef.current.getResult(spec.id);
       onUpdate(spec.id, result.data);
     }
-  };
+  }, [emitPort, onUpdate, spec.id]);
 
   /**
    * 完了ハンドラー
    */
-  const handleComplete = () => {
+  const handleComplete = useCallback(() => {
     if (!selectedEmotion) {
+      setError(true, ['感情を選択してください']);
       alert('感情を選択してください');
       return;
     }
 
+    setError(false);
+    setCompleted(true);
+
     if (onComplete) {
       onComplete(spec.id);
     }
-  };
+  }, [selectedEmotion, setError, setCompleted, onComplete, spec.id]);
 
   /**
    * 結果取得メソッド（外部から呼び出し可能）
    */
-  const getResult = (): WidgetResult => {
+  /**
+   * 結果取得メソッド（外部から呼び出し可能）
+   */
+  const getResult = useCallback((): WidgetResult => {
     return controllerRef.current.getResult(spec.id);
-  };
+  }, [spec.id]);
 
   // 外部から結果を取得できるようにrefを設定
   useEffect(() => {
@@ -85,7 +112,7 @@ export const EmotionPalette: React.FC<BaseWidgetProps> = ({
     return () => {
       delete (window as any)[`widget_${spec.id}_getResult`];
     };
-  }, [spec.id, selectedEmotion, intensity]);
+  }, [spec.id, getResult]);
 
   return (
     <div className={styles.container} role="region" aria-label="感情選択" data-testid="emotion-palette-container">

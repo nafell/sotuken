@@ -5,7 +5,7 @@ LLM-Hardened DSLを活用したユーザがアプリ利用する時にUIを動�
 ## 技術スタック
 
 - **Frontend**: React + TypeScript + Vite (PWA)
-- **Backend**: Bun + Hono + Drizzle ORM + PostgreSQL
+- **API Server**: Bun + Hono + Drizzle ORM + PostgreSQL
 - **LLM**: Google Gemini 2.5 mini
 - **DSL**: DSL v3（OODM + DpG + Reactive Widgets）
 
@@ -14,7 +14,7 @@ LLM-Hardened DSLを活用したユーザがアプリ利用する時にUIを動�
 ```
 sotuken/
 ├── concern-app/          # React PWAフロントエンド
-├── server/               # Bun/Honoバックエンド
+├── server/               # Bun/Hono APIサーバ
 ├── specs/                # 仕様ドキュメント
 │   ├── dsl-design/       # DSL仕様（v3が現行）
 │   ├── project/          # フェーズ別ドキュメント

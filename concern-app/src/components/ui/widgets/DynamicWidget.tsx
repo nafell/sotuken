@@ -10,10 +10,15 @@ import { StrategyPreviewPickerWidget } from './custom/StrategyPreviewPickerWidge
 
 interface DynamicWidgetProps {
   component: string;
-  props?: Record<string, any>;
-  value?: any;
-  onChange?: (value: any) => void;
+  props?: Record<string, unknown>;
+  value?: unknown;
+  onChange?: (value: unknown) => void;
   className?: string;
+  // Reactive props
+  spec?: any; // WidgetSpecObject is complex, keeping any for now. Reactive props might be passed directly or via spec.
+  onPortChange?: (widgetId: string, portId: string, value: unknown) => void;
+  getPortValue?: (portKey: string) => unknown;
+  initialPortValues?: Record<string, unknown>;
 }
 
 export const DynamicWidget: React.FC<DynamicWidgetProps> = ({
@@ -21,7 +26,12 @@ export const DynamicWidget: React.FC<DynamicWidgetProps> = ({
   props = {},
   value,
   onChange,
-  className = ''
+  className = '',
+  // Reactive props
+  spec,
+  onPortChange,
+  getPortValue,
+  initialPortValues,
 }) => {
   // カスタムコンポーネントのマッピング
   const componentMap: Record<string, React.ComponentType<any>> = {
@@ -48,8 +58,15 @@ export const DynamicWidget: React.FC<DynamicWidgetProps> = ({
 
   return (
     <div className={className}>
-      <Component {...props} value={value} onChange={onChange} />
+      <Component
+        {...props}
+        value={value}
+        onChange={onChange}
+        spec={spec}
+        onPortChange={onPortChange}
+        getPortValue={getPortValue}
+        initialPortValues={initialPortValues}
+      />
     </div>
   );
 };
-

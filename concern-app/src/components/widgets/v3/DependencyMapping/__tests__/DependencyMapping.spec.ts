@@ -27,11 +27,11 @@ test.describe('DependencyMapping Widget', () => {
 
         // Click first node
         const node1 = nodes.nth(0);
-        await node1.click();
+        await node1.click({ force: true });
 
         // Click second node
         const node2 = nodes.nth(1);
-        await node2.click();
+        await node2.click({ force: true });
 
         // Verify edge created by checking the info panel
         // "ノード数: 5 / エッジ数: 1"

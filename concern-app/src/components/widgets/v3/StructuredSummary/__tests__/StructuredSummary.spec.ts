@@ -14,22 +14,22 @@ test.describe('StructuredSummary Widget', () => {
         const titleInput = page.getByTestId('struct-summary-title');
         await titleInput.fill('My Summary');
 
+        // Get initial count
+        const sections = page.getByTestId(/^struct-summary-section-summary_section_\d+$/);
+        const initialSections = await sections.count();
+
         // Add a section (e.g., Action Items)
         const addActionBtn = page.getByTestId('struct-summary-add-section-action_items');
         await addActionBtn.click();
 
         // Verify section added
-        // We need to find the new section. It should be the last one (or first if empty).
-        // Let's look for a section with "アクションアイテム" title (default for action_items)
-        // Or we can just check count of sections
-        const sections = page.locator('[data-testid^="struct-summary-section-"]');
-        // Default might have some sections.
+        await expect(sections).toHaveCount(initialSections + 1);
 
         // Let's find the specific section we added.
         // We can check the input value of the section title
         const sectionTitleInputs = page.locator('[data-testid^="struct-summary-section-title-"]');
         const lastSectionTitle = sectionTitleInputs.last();
-        // The default title seems to be 'アクション' based on test failure
+        // The default title for new action_items is 'アクション'
         await expect(lastSectionTitle).toHaveValue('アクション');
 
         // Get section ID from the title input testid

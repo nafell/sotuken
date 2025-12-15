@@ -16,6 +16,7 @@ import {
   CATEGORY_LABELS,
   type QuestionCard,
 } from './QuestionCardChainController';
+import { useReactivePorts } from '../../../../hooks/useReactivePorts';
 import styles from './QuestionCardChain.module.css';
 
 /**
@@ -25,7 +26,18 @@ export const QuestionCardChain: React.FC<BaseWidgetProps> = ({
   spec,
   onComplete,
   onUpdate,
+  onPortChange,
+  getPortValue,
+  initialPortValues,
 }) => {
+  // Reactive Ports
+  const { emitPort, setCompleted, setError } = useReactivePorts({
+    widgetId: spec.id,
+    onPortChange,
+    getPortValue,
+    initialPortValues,
+  });
+
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showSummary, setShowSummary] = useState(false);
@@ -59,6 +71,15 @@ export const QuestionCardChain: React.FC<BaseWidgetProps> = ({
   }, [currentIndex, currentQuestion?.id]);
 
   /**
+   * 全出力Portに値を発行
+   */
+  const emitAllPorts = useCallback(() => {
+    emitPort('answers', controllerRef.current.getState().answers);
+    emitPort('summary', controllerRef.current.generateSummary());
+    emitPort('progress', controllerRef.current.getProgress());
+  }, [emitPort]);
+
+  /**
    * 回答変更ハンドラ
    */
   const handleAnswerChange = useCallback((text: string) => {
@@ -71,8 +92,10 @@ export const QuestionCardChain: React.FC<BaseWidgetProps> = ({
   const saveCurrentAnswer = useCallback(() => {
     if (currentAnswer.trim()) {
       controllerRef.current.addAnswer(currentAnswer);
+      // Reactive Port出力
+      emitAllPorts();
     }
-  }, [currentAnswer]);
+  }, [currentAnswer, emitAllPorts]);
 
   /**
    * 次の質問へ
@@ -122,17 +145,28 @@ export const QuestionCardChain: React.FC<BaseWidgetProps> = ({
   const handleComplete = useCallback(() => {
     saveCurrentAnswer();
 
+    if (!isAllAnswered) {
+      setError(true, ['全ての質問に回答してください']);
+      return;
+    }
+
+    setError(false);
+    setCompleted(true);
+
     if (onComplete) {
       onComplete(spec.id);
     }
-  }, [saveCurrentAnswer, onComplete, spec.id]);
+  }, [saveCurrentAnswer, isAllAnswered, setError, setCompleted, onComplete, spec.id]);
 
   /**
    * 結果取得
    */
-  const getResult = (): WidgetResult => {
+  /**
+   * 結果取得
+   */
+  const getResult = useCallback((): WidgetResult => {
     return controllerRef.current.getResult(spec.id);
-  };
+  }, [spec.id]);
 
   // 外部から結果を取得できるようにrefを設定
   useEffect(() => {
@@ -140,7 +174,7 @@ export const QuestionCardChain: React.FC<BaseWidgetProps> = ({
     return () => {
       delete (window as any)[`widget_${spec.id}_getResult`];
     };
-  }, [spec.id, state]);
+  }, [spec.id, getResult]);
 
   return (
     <div className={styles.container} role="region" aria-label="質問カード" data-testid="qcc-container">

@@ -84,25 +84,34 @@ export default function ExperimentDashboard() {
         </div>
       </section>
 
-      {/* Quick Actions */}
+      {/* Navigation Cards */}
       <section style={styles.section}>
-        <h2 style={styles.sectionTitle}>Quick Actions</h2>
         <div style={styles.actionGrid}>
-          <Link to="/research-experiment/cases" style={styles.actionCard}>
-            <div style={styles.actionIcon}>📋</div>
-            <div style={styles.actionTitle}>Test Cases</div>
-            <div style={styles.actionDesc}>View and select test cases for evaluation</div>
+          <Link to="/research-experiment/new" style={styles.actionCard}>
+            <div style={{ ...styles.actionIcon, backgroundColor: '#EFF6FF', color: '#3B82F6' }}>🚀</div>
+            <div style={styles.actionTitle}>Run Experiment</div>
+            <div style={styles.actionDesc}>Start a new experiment session (Technical, Expert, or User mode)</div>
           </Link>
-          <Link to="/research-experiment/sessions" style={styles.actionCard}>
-            <div style={styles.actionIcon}>📊</div>
-            <div style={styles.actionTitle}>Sessions</div>
-            <div style={styles.actionDesc}>View experiment session history</div>
+          <Link to="/research-experiment/data/sessions" style={styles.actionCard}>
+            <div style={{ ...styles.actionIcon, backgroundColor: '#F0FDF4', color: '#10B981' }}>📊</div>
+            <div style={styles.actionTitle}>View Data</div>
+            <div style={styles.actionDesc}>Analyze session history, metrics, and replay execution flows</div>
           </Link>
-          <Link to="/research-experiment/execute/case_01" style={styles.actionCard}>
-            <div style={styles.actionIcon}>▶️</div>
-            <div style={styles.actionTitle}>Quick Start</div>
-            <div style={styles.actionDesc}>Start with Case 01</div>
+          <Link to="/research-experiment/settings" style={styles.actionCard}>
+            <div style={{ ...styles.actionIcon, backgroundColor: '#F3F4F6', color: '#6B7280' }}>⚙️</div>
+            <div style={styles.actionTitle}>Settings</div>
+            <div style={styles.actionDesc}>Configure system parameters and defaults</div>
           </Link>
+        </div>
+      </section>
+
+      {/* Recent Activity (Placeholder for now) */}
+      <section style={styles.section}>
+        <h2 style={styles.sectionTitle}>Recent Activity</h2>
+        <div style={styles.statusCard}>
+          <div style={{ color: '#6B7280', fontSize: '14px', textAlign: 'center', padding: '20px' }}>
+            No recent sessions found.
+          </div>
         </div>
       </section>
 

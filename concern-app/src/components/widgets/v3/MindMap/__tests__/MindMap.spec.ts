@@ -43,7 +43,7 @@ test.describe('MindMap Widget', () => {
         // Find input (it replaces the text span)
         // The input testid is mindmap-node-input-${id}
         // We can find it by role or generic selector since it's the only one visible
-        const input = page.locator('input.MindMap_editInput__\\w+'); // Class name might be hashed, better use testid regex
+        // const input = page.locator('input.MindMap_editInput__\\w+'); // Class name might be hashed, better use testid regex
         // Actually we can use the parent container to find the input
         const nodeContainer = page.locator('[data-testid^="mindmap-node-"]').first();
         const editInput = nodeContainer.locator('input[type="text"]');

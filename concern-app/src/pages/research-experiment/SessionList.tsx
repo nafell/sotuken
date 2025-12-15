@@ -158,14 +158,14 @@ export default function SessionList() {
                   </td>
                   <td style={styles.td}>
                     <button
-                      onClick={() => navigate(`/research-experiment/sessions/${session.sessionId}`)}
+                      onClick={() => navigate(`/research-experiment/data/sessions/${session.sessionId}`)}
                       style={styles.viewButton}
                     >
                       View
                     </button>
-                    {session.generationSuccess && (
+                    {(session.generationSuccess || session.completedAt) && (
                       <button
-                        onClick={() => navigate(`/research-experiment/replay/${session.sessionId}`)}
+                        onClick={() => navigate(`/research-experiment/data/replay/${session.sessionId}`)}
                         style={styles.replayButton}
                       >
                         Replay

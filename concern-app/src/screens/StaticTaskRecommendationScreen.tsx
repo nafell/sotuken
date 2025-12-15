@@ -39,7 +39,7 @@ interface RecommendationResult {
 export const StaticTaskRecommendationScreen: React.FC<StaticTaskRecommendationScreenProps> = ({ userId: propUserId }) => {
   const routeLocation = useLocation();
   const locationState = routeLocation.state as LocationState;
-  
+
   const userId = propUserId || localStorage.getItem('anonymousUserId') || '';
 
   // State管理
@@ -90,18 +90,18 @@ export const StaticTaskRecommendationScreen: React.FC<StaticTaskRecommendationSc
 
     initializeFactors();
   }, []);
-  
+
   // 思考整理フローから遷移した場合の処理
   useEffect(() => {
     if (locationState?.generatedTasks && locationState.generatedTasks.length > 0) {
       console.log('[StaticTaskRecommendationScreen] 思考整理フローからのタスク生成:', locationState.generatedTasks.length, '件');
       setShowGeneratedTasksMessage(true);
-      
+
       setTimeout(() => {
         fetchRecommendation();
       }, 1000);
     }
-    
+
     if (locationState?.taskGenerationError) {
       console.error('[StaticTaskRecommendationScreen] タスク生成エラー:', locationState.taskGenerationError);
       setError(`タスクの自動生成に失敗しました: ${locationState.taskGenerationError}`);
@@ -112,10 +112,10 @@ export const StaticTaskRecommendationScreen: React.FC<StaticTaskRecommendationSc
   const fetchRecommendation = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const tasks = await TaskService.getActiveTasks(userId);
-      
+
       if (tasks.length === 0) {
         setError('推奨できるタスクがありません。タスクを作成してください。');
         setLoading(false);
@@ -123,8 +123,8 @@ export const StaticTaskRecommendationScreen: React.FC<StaticTaskRecommendationSc
       }
 
       // /v1/task/rank API呼び出し
-      const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-      
+      const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
       const response = await fetch(`${serverUrl}/v1/task/rank`, {
         method: 'POST',
         headers: {
@@ -173,12 +173,12 @@ export const StaticTaskRecommendationScreen: React.FC<StaticTaskRecommendationSc
         score: result.recommendation?.score ?? result.topScore ?? result.topTask?.score ?? 0,
         generationId: result.generationId,
       };
-      
+
       setRecommendation(recResult);
-      
+
       const shownAt = new Date();
       setRecommendationShownAt(shownAt);
-      
+
       // task_recommendation_shown イベント記録 ⭐️ uiCondition='static_ui'
       await eventLogger.log({
         eventType: 'task_recommendation_shown',
@@ -196,7 +196,7 @@ export const StaticTaskRecommendationScreen: React.FC<StaticTaskRecommendationSc
           },
         },
       });
-      
+
     } catch (err) {
       console.error('Recommendation fetch error:', err);
       setError('タスク推奨の取得に失敗しました。');
@@ -275,13 +275,13 @@ export const StaticTaskRecommendationScreen: React.FC<StaticTaskRecommendationSc
   return (
     <div className="static-task-recommendation-screen" style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
       <h1>タスク推奨（固定UI版）</h1>
-      
+
       {/* 開発環境でのバージョン表示 */}
       {import.meta.env.DEV && (
-        <div style={{ 
-          marginBottom: '15px', 
-          padding: '10px', 
-          backgroundColor: '#FEF3C7', 
+        <div style={{
+          marginBottom: '15px',
+          padding: '10px',
+          backgroundColor: '#FEF3C7',
           border: '1px solid #F59E0B',
           borderRadius: '6px',
           fontSize: '14px',
@@ -290,14 +290,14 @@ export const StaticTaskRecommendationScreen: React.FC<StaticTaskRecommendationSc
           🔧 開発モード: 固定UI版（uiCondition='static_ui'）
         </div>
       )}
-      
+
       {/* 思考整理フローからの成功メッセージ */}
       {showGeneratedTasksMessage && locationState?.generatedTasks && (
-        <div style={{ 
-          marginBottom: '20px', 
-          padding: '15px', 
-          backgroundColor: '#d4edda', 
-          border: '1px solid #c3e6cb', 
+        <div style={{
+          marginBottom: '20px',
+          padding: '15px',
+          backgroundColor: '#d4edda',
+          border: '1px solid #c3e6cb',
           borderRadius: '8px',
           color: '#155724'
         }}>
@@ -306,9 +306,9 @@ export const StaticTaskRecommendationScreen: React.FC<StaticTaskRecommendationSc
             思考整理から {locationState.generatedTasks.length} 件のタスクを生成しました。
             以下で最適なタスクを推奨します。
           </p>
-          <button 
+          <button
             onClick={() => setShowGeneratedTasksMessage(false)}
-            style={{ 
+            style={{
               marginTop: '10px',
               padding: '5px 10px',
               backgroundColor: 'transparent',
@@ -322,7 +322,7 @@ export const StaticTaskRecommendationScreen: React.FC<StaticTaskRecommendationSc
           </button>
         </div>
       )}
-      
+
       {/* 自動取得されたFactors情報（参考表示のみ） */}
       <div className="factors-display" style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
         <h2 style={{ fontSize: '16px', marginBottom: '10px', color: '#495057' }}>📍 自動取得された現在の状況</h2>

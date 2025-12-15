@@ -7,7 +7,7 @@
 
 import { Hono } from 'hono';
 import { db } from '../database/index';
-import { experimentSessions, widgetStates } from '../database/schema';
+import { experimentSessions, widgetStates, experimentGenerations } from '../database/schema';
 import { eq, desc } from 'drizzle-orm';
 import { getExperimentConfigService } from '../services/ExperimentConfigService';
 
@@ -93,19 +93,15 @@ experimentRoutes.get('/sessions', async (c) => {
       .from(experimentSessions)
       .orderBy(desc(experimentSessions.startedAt))
       .limit(limit)
-      .offset(offset);
+      .offset(offset)
+      .$dynamic();
 
     if (experimentType) {
-      query = db
-        .select()
-        .from(experimentSessions)
-        .where(eq(experimentSessions.experimentType, experimentType))
-        .orderBy(desc(experimentSessions.startedAt))
-        .limit(limit)
-        .offset(offset);
+      query = query.where(eq(experimentSessions.experimentType, experimentType));
     }
 
     const sessions = await query;
+
 
     return c.json({
       success: true,
@@ -174,7 +170,9 @@ experimentRoutes.patch('/sessions/:sessionId', async (c) => {
       generationSuccess,
       errorMessage,
       completedAt,
-      formsResponseId
+      formsResponseId,
+      concernText,  // Phase 7: クライアントから送信される追加フィールド
+      status        // Phase 7: クライアントから送信される追加フィールド
     } = body;
 
     // 更新データを構築
@@ -190,6 +188,31 @@ experimentRoutes.patch('/sessions/:sessionId', async (c) => {
     if (errorMessage !== undefined) updateData.errorMessage = errorMessage;
     if (completedAt !== undefined) updateData.completedAt = new Date(completedAt);
     if (formsResponseId !== undefined) updateData.formsResponseId = formsResponseId;
+    if (concernText !== undefined) updateData.concernText = concernText;
+    // Note: 'status' field is not in the DB schema, so we use 'completedAt' to mark completion
+    if (status === 'completed' && !completedAt) updateData.completedAt = new Date();
+
+    // 更新するデータがない場合は早期リターン（空オブジェクトでのDB更新を防止）
+    if (Object.keys(updateData).length === 0) {
+      // 更新なしでも成功として現在のセッションを返す
+      const [currentSession] = await db
+        .select()
+        .from(experimentSessions)
+        .where(eq(experimentSessions.sessionId, sessionId));
+
+      if (!currentSession) {
+        return c.json({
+          success: false,
+          error: 'Session not found'
+        }, 404);
+      }
+
+      console.log(`📝 No updates for session ${sessionId} (empty update body)`);
+      return c.json({
+        success: true,
+        session: currentSession
+      });
+    }
 
     const [updatedSession] = await db
       .update(experimentSessions)
@@ -409,5 +432,117 @@ experimentRoutes.get('/health', async (c) => {
     }, 500);
   }
 });
+
+
+// ========================================
+// 生成履歴管理エンドポイント (Phase 7)
+// ========================================
+
+/**
+ * GET /api/experiment/sessions/:sessionId/generations
+ * セッションの生成履歴一覧を取得
+ */
+experimentRoutes.get('/sessions/:sessionId/generations', async (c) => {
+  try {
+    const sessionId = c.req.param('sessionId');
+
+    const generations = await db
+      .select()
+      .from(experimentGenerations)
+      .where(eq(experimentGenerations.sessionId, sessionId))
+      .orderBy(experimentGenerations.createdAt);
+
+    return c.json({
+      success: true,
+      generations,
+      count: generations.length
+    });
+  } catch (error) {
+    console.error('Failed to get generations:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+
+/**
+ * GET /api/experiment/generations/:generationId
+ * 生成履歴詳細を取得
+ */
+experimentRoutes.get('/generations/:generationId', async (c) => {
+  try {
+    const generationId = c.req.param('generationId');
+
+    const [generation] = await db
+      .select()
+      .from(experimentGenerations)
+      .where(eq(experimentGenerations.id, generationId));
+
+    if (!generation) {
+      return c.json({
+        success: false,
+        error: 'Generation not found'
+      }, 404);
+    }
+
+    return c.json({
+      success: true,
+      generation
+    });
+  } catch (error) {
+    console.error('Failed to get generation:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+
+/**
+ * PATCH /api/experiment/generations/:generationId
+ * 生成履歴更新（レンダリング時間など）
+ */
+experimentRoutes.patch('/generations/:generationId', async (c) => {
+  try {
+    const generationId = c.req.param('generationId');
+    const updates = await c.req.json();
+
+    // バリデーション
+    if (updates.renderDuration === undefined) {
+      return c.json({
+        success: false,
+        error: 'renderDuration is required'
+      }, 400);
+    }
+
+    const [updated] = await db
+      .update(experimentGenerations)
+      .set({
+        renderDuration: updates.renderDuration
+      })
+      .where(eq(experimentGenerations.id, generationId))
+      .returning();
+
+    if (!updated) {
+      return c.json({
+        success: false,
+        error: 'Generation not found'
+      }, 404);
+    }
+
+    return c.json({
+      success: true,
+      generation: updated
+    });
+  } catch (error) {
+    console.error('Failed to update generation:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+
 
 export { experimentRoutes };

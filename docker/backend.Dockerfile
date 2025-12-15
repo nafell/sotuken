@@ -34,9 +34,9 @@ COPY --chown=bunjs:nodejs config/ /config/
 
 USER bunjs
 
-EXPOSE 3000
+EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8000/health || exit 1
 
 CMD ["bun", "run", "dist/index.js"]

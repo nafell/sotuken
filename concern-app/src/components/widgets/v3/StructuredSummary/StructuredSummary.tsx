@@ -14,6 +14,8 @@ import {
   SECTION_TYPE_CONFIG,
   type SectionType,
 } from './StructuredSummaryController';
+import { useReactivePorts } from '../../../../hooks/useReactivePorts';
+import { EmptyState } from '../../../ui/EmptyState';
 import styles from './StructuredSummary.module.css';
 
 /**
@@ -23,7 +25,18 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
   spec,
   onComplete,
   onUpdate,
+  onPortChange,
+  getPortValue,
+  initialPortValues,
 }) => {
+  // Reactive Ports
+  const { emitPort, setCompleted } = useReactivePorts({
+    widgetId: spec.id,
+    onPortChange,
+    getPortValue,
+    initialPortValues,
+  });
+
   const [, forceUpdate] = useState({});
   const [showPreview, setShowPreview] = useState(false);
   const [newItems, setNewItems] = useState<Record<string, string>>({});
@@ -46,12 +59,31 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
   const isComplete = controllerRef.current.isComplete();
 
   /**
+   * 全出力Portに値を発行
+   */
+  const emitAllPorts = useCallback(() => {
+    emitPort('summary_text', controllerRef.current.exportAsPlainText());
+    emitPort('sections', state.sections);
+    emitPort('conclusion', state.conclusion);
+  }, [emitPort, state.sections, state.conclusion]);
+
+  // isComplete状態の変更を検知してsetCompleted発行
+  useEffect(() => {
+    if (isComplete) {
+      setCompleted(true);
+    } else {
+      setCompleted(false, ['2つ以上のセクションに入力']);
+    }
+  }, [isComplete, setCompleted]);
+
+  /**
    * タイトル更新
    */
   const handleTitleChange = useCallback((title: string) => {
     controllerRef.current.setTitle(title);
     forceUpdate({});
-  }, []);
+    emitAllPorts();
+  }, [emitAllPorts]);
 
   /**
    * セクション内容更新
@@ -60,13 +92,14 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
     (sectionId: string, content: string) => {
       controllerRef.current.setSectionContent(sectionId, content);
       forceUpdate({});
+      emitAllPorts();
 
       if (onUpdate) {
         const result = controllerRef.current.getResult(spec.id);
         onUpdate(spec.id, result.data);
       }
     },
-    [onUpdate, spec.id]
+    [onUpdate, spec.id, emitAllPorts]
   );
 
   /**
@@ -76,8 +109,9 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
     (sectionId: string, title: string) => {
       controllerRef.current.updateSection(sectionId, { title });
       forceUpdate({});
+      emitAllPorts();
     },
-    []
+    [emitAllPorts]
   );
 
   /**
@@ -87,13 +121,14 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
     (type: SectionType) => {
       controllerRef.current.addSection(type);
       forceUpdate({});
+      emitAllPorts();
 
       if (onUpdate) {
         const result = controllerRef.current.getResult(spec.id);
         onUpdate(spec.id, result.data);
       }
     },
-    [onUpdate, spec.id]
+    [onUpdate, spec.id, emitAllPorts]
   );
 
   /**
@@ -103,13 +138,14 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
     (sectionId: string) => {
       controllerRef.current.removeSection(sectionId);
       forceUpdate({});
+      emitAllPorts();
 
       if (onUpdate) {
         const result = controllerRef.current.getResult(spec.id);
         onUpdate(spec.id, result.data);
       }
     },
-    [onUpdate, spec.id]
+    [onUpdate, spec.id, emitAllPorts]
   );
 
   /**
@@ -123,8 +159,9 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
         controllerRef.current.moveSectionDown(sectionId);
       }
       forceUpdate({});
+      emitAllPorts();
     },
-    []
+    [emitAllPorts]
   );
 
   /**
@@ -138,13 +175,14 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
       controllerRef.current.addSectionItem(sectionId, item);
       setNewItems((prev) => ({ ...prev, [sectionId]: '' }));
       forceUpdate({});
+      emitAllPorts();
 
       if (onUpdate) {
         const result = controllerRef.current.getResult(spec.id);
         onUpdate(spec.id, result.data);
       }
     },
-    [newItems, onUpdate, spec.id]
+    [newItems, onUpdate, spec.id, emitAllPorts]
   );
 
   /**
@@ -154,13 +192,14 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
     (sectionId: string, itemIndex: number) => {
       controllerRef.current.removeSectionItem(sectionId, itemIndex);
       forceUpdate({});
+      emitAllPorts();
 
       if (onUpdate) {
         const result = controllerRef.current.getResult(spec.id);
         onUpdate(spec.id, result.data);
       }
     },
-    [onUpdate, spec.id]
+    [onUpdate, spec.id, emitAllPorts]
   );
 
   /**
@@ -170,13 +209,14 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
     (conclusion: string) => {
       controllerRef.current.setConclusion(conclusion);
       forceUpdate({});
+      emitAllPorts();
 
       if (onUpdate) {
         const result = controllerRef.current.getResult(spec.id);
         onUpdate(spec.id, result.data);
       }
     },
-    [onUpdate, spec.id]
+    [onUpdate, spec.id, emitAllPorts]
   );
 
   /**
@@ -186,12 +226,13 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
     controllerRef.current.reset();
     setNewItems({});
     forceUpdate({});
+    emitAllPorts();
 
     if (onUpdate) {
       const result = controllerRef.current.getResult(spec.id);
       onUpdate(spec.id, result.data);
     }
-  }, [onUpdate, spec.id]);
+  }, [onUpdate, spec.id, emitAllPorts]);
 
   /**
    * 完了
@@ -205,9 +246,12 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
   /**
    * 結果取得
    */
-  const getResult = (): WidgetResult => {
+  /**
+   * 結果取得
+   */
+  const getResult = useCallback((): WidgetResult => {
     return controllerRef.current.getResult(spec.id);
-  };
+  }, [spec.id]);
 
   // 外部から結果を取得できるようにrefを設定
   useEffect(() => {
@@ -215,7 +259,7 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
     return () => {
       delete (window as any)[`widget_${spec.id}_getResult`];
     };
-  }, [spec.id, state]);
+  }, [spec.id, getResult]);
 
   return (
     <div className={styles.container} role="region" aria-label="構造化まとめ" data-testid="struct-summary-container">
@@ -235,6 +279,15 @@ export const StructuredSummary: React.FC<BaseWidgetProps> = ({
 
       {/* Sections */}
       <div className={styles.sectionsContainer}>
+        {state.sections.length === 0 && (
+          <div className="mb-8">
+            <EmptyState
+              message="セクションを追加してまとめを作成しましょう"
+              description="下のボタンから必要なセクションを選んで追加してください"
+              icon={<span role="img" aria-label="document">📝</span>}
+            />
+          </div>
+        )}
         {state.sections.map((section, index) => {
           const config = SECTION_TYPE_CONFIG[section.type];
           return (

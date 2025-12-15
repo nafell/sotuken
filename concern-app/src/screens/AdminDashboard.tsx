@@ -70,7 +70,7 @@ export const AdminDashboard: React.FC = () => {
     setError(null);
 
     try {
-      const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       const response = await fetch(`${serverUrl}/v1/metrics/engagement`);
 
       if (!response.ok) {
@@ -238,11 +238,10 @@ export const AdminDashboard: React.FC = () => {
                 <div
                   className="bar-fill level-1"
                   style={{
-                    width: `${
-                      (metrics.overall.clarityDistribution.level1 /
+                    width: `${(metrics.overall.clarityDistribution.level1 /
                         metrics.overall.totalFeedbacks) *
                       100
-                    }%`,
+                      }%`,
                   }}
                 />
                 <span className="bar-value">
@@ -257,11 +256,10 @@ export const AdminDashboard: React.FC = () => {
                 <div
                   className="bar-fill level-2"
                   style={{
-                    width: `${
-                      (metrics.overall.clarityDistribution.level2 /
+                    width: `${(metrics.overall.clarityDistribution.level2 /
                         metrics.overall.totalFeedbacks) *
                       100
-                    }%`,
+                      }%`,
                   }}
                 />
                 <span className="bar-value">
@@ -276,11 +274,10 @@ export const AdminDashboard: React.FC = () => {
                 <div
                   className="bar-fill level-3"
                   style={{
-                    width: `${
-                      (metrics.overall.clarityDistribution.level3 /
+                    width: `${(metrics.overall.clarityDistribution.level3 /
                         metrics.overall.totalFeedbacks) *
                       100
-                    }%`,
+                      }%`,
                   }}
                 />
                 <span className="bar-value">

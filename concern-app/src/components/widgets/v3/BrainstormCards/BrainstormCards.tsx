@@ -6,13 +6,15 @@
  * 自由にアイデアカードを追加・編集・削除できるWidget
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import type { BaseWidgetProps } from '../../../../types/widget.types';
 import type { WidgetResult } from '../../../../types/result.types';
 import {
   BrainstormCardsController,
   type BrainstormCard,
 } from './BrainstormCardsController';
+import { useReactivePorts } from '../../../../hooks/useReactivePorts';
+import { EmptyState } from '../../../ui/EmptyState';
 import styles from './BrainstormCards.module.css';
 
 /**
@@ -22,7 +24,18 @@ export const BrainstormCards: React.FC<BaseWidgetProps> = ({
   spec,
   onComplete,
   onUpdate,
+  onPortChange,
+  getPortValue,
+  initialPortValues,
 }) => {
+  // Reactive Ports
+  const { emitPort, setCompleted, setError } = useReactivePorts({
+    widgetId: spec.id,
+    onPortChange,
+    getPortValue,
+    initialPortValues,
+  });
+
   const [cards, setCards] = useState<BrainstormCard[]>([]);
   const [newCardText, setNewCardText] = useState<string>('');
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
@@ -32,15 +45,26 @@ export const BrainstormCards: React.FC<BaseWidgetProps> = ({
   );
 
   /**
+   * 全出力Portに値を発行
+   */
+  const emitAllPorts = useCallback(() => {
+    emitPort('cards', controllerRef.current.getCards());
+    emitPort('summary', controllerRef.current.generateSummary());
+  }, [emitPort]);
+
+  /**
    * カード追加ハンドラー
    */
-  const handleAddCard = () => {
+  const handleAddCard = useCallback(() => {
     if (newCardText.trim() === '') return;
 
     try {
       controllerRef.current.addCard(newCardText);
       setCards(controllerRef.current.getCards());
       setNewCardText('');
+
+      // Reactive Port出力
+      emitAllPorts();
 
       // 親コンポーネントに通知
       if (onUpdate) {
@@ -50,7 +74,7 @@ export const BrainstormCards: React.FC<BaseWidgetProps> = ({
     } catch (error) {
       alert(error instanceof Error ? error.message : 'エラーが発生しました');
     }
-  };
+  }, [newCardText, emitAllPorts, onUpdate, spec.id]);
 
   /**
    * カード編集開始
@@ -71,7 +95,7 @@ export const BrainstormCards: React.FC<BaseWidgetProps> = ({
   /**
    * カード編集保存
    */
-  const handleSaveEdit = () => {
+  const handleSaveEdit = useCallback(() => {
     if (!editingCardId) return;
 
     try {
@@ -79,6 +103,9 @@ export const BrainstormCards: React.FC<BaseWidgetProps> = ({
       setCards(controllerRef.current.getCards());
       setEditingCardId(null);
       setEditingText('');
+
+      // Reactive Port出力
+      emitAllPorts();
 
       // 親コンポーネントに通知
       if (onUpdate) {
@@ -88,15 +115,18 @@ export const BrainstormCards: React.FC<BaseWidgetProps> = ({
     } catch (error) {
       alert(error instanceof Error ? error.message : 'エラーが発生しました');
     }
-  };
+  }, [editingCardId, editingText, emitAllPorts, onUpdate, spec.id]);
 
   /**
    * カード削除ハンドラー
    */
-  const handleDeleteCard = (cardId: string) => {
+  const handleDeleteCard = useCallback((cardId: string) => {
     if (confirm('このカードを削除しますか？')) {
       controllerRef.current.deleteCard(cardId);
       setCards(controllerRef.current.getCards());
+
+      // Reactive Port出力
+      emitAllPorts();
 
       // 親コンポーネントに通知
       if (onUpdate) {
@@ -104,7 +134,7 @@ export const BrainstormCards: React.FC<BaseWidgetProps> = ({
         onUpdate(spec.id, result.data);
       }
     }
-  };
+  }, [emitAllPorts, onUpdate, spec.id]);
 
   /**
    * Enterキーでカード追加
@@ -131,23 +161,30 @@ export const BrainstormCards: React.FC<BaseWidgetProps> = ({
   /**
    * 完了ハンドラー
    */
-  const handleComplete = () => {
+  const handleComplete = useCallback(() => {
     if (cards.length === 0) {
+      setError(true, ['少なくとも1つのアイデアを追加してください']);
       alert('少なくとも1つのアイデアを追加してください');
       return;
     }
 
+    setError(false);
+    setCompleted(true);
+
     if (onComplete) {
       onComplete(spec.id);
     }
-  };
+  }, [cards.length, setError, setCompleted, onComplete, spec.id]);
 
   /**
    * 結果取得メソッド（外部から呼び出し可能）
    */
-  const getResult = (): WidgetResult => {
+  /**
+   * 結果取得メソッド（外部から呼び出し可能）
+   */
+  const getResult = useCallback((): WidgetResult => {
     return controllerRef.current.getResult(spec.id);
-  };
+  }, [spec.id]);
 
   // 外部から結果を取得できるようにrefを設定
   useEffect(() => {
@@ -155,7 +192,7 @@ export const BrainstormCards: React.FC<BaseWidgetProps> = ({
     return () => {
       delete (window as any)[`widget_${spec.id}_getResult`];
     };
-  }, [spec.id, cards]);
+  }, [spec.id, getResult]);
 
   return (
     <div className={styles.container} role="region" aria-label="ブレインストーム" data-testid="brainstorm-cards-container">
@@ -185,6 +222,17 @@ export const BrainstormCards: React.FC<BaseWidgetProps> = ({
             onEditKeyDown={handleEditKeyDown}
           />
         ))}
+
+        {/* Empty State */}
+        {cards.length === 0 && (
+          <div className="col-span-full mb-4">
+            <EmptyState
+              message="アイデアがまだありません"
+              description="思いついたことを自由に入力してみましょう！"
+              icon={<span role="img" aria-label="idea">💡</span>}
+            />
+          </div>
+        )}
 
         {/* 新規カード追加フォーム */}
         {controllerRef.current.getRemainingCards() > 0 && (

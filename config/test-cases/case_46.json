@@ -1,0 +1,64 @@
+{
+  "caseId": "case_46",
+  "title": "中文・学習（複数Binding）",
+  "complexity": "medium",
+  "hasReactivity": true,
+
+  "concernText": "資格取得の勉強計画を立てたい。範囲を洗い出して、依存関係を整理して、時系列で計画を立てたい",
+
+  "contextFactors": {
+    "category": "学習・自己啓発",
+    "urgency": "medium",
+    "emotionalState": "motivated",
+    "timeAvailable": 45
+  },
+
+  "expectedBottlenecks": [
+    "dont_know_where_to_start",
+    "unorganized_info"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "学習トピックを洗い出す"
+    },
+    "organize": {
+      "widgets": ["dependency_mapping", "timeline_slider"],
+      "purpose": "依存関係と時系列配置"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "学習優先度を設定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "dependency_mapping.nodes",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.map(c => ({id: c.id, label: c.text}))"
+        },
+        "updateMode": "realtime"
+      },
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "timeline_slider.events",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.map((c, i) => ({id: c.id, label: c.text, position: i * 10}))"
+        },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "dependency + timelineへの並列分岐",
+    "学習計画への複数Binding適用",
+    "同一ソースからの2種類のJS変換"
+  ]
+}

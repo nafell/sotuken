@@ -1,12 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useExperimentFlow } from './hooks/useExperimentFlow';
 import { ExperimentCapture } from './phases/ExperimentCapture';
-import { ExperimentPlan } from './phases/ExperimentPlan';
+import { ExperimentPlanUnified, type PlanUnifiedResult } from './phases/ExperimentPlanUnified';
 import { ExperimentBreakdown } from './phases/ExperimentBreakdown';
 import { PlanPreview } from '../v4/PlanPreview';
 import { apiService } from '../../services/api/ApiService';
-import type { PlanStage } from './types';
-import { createEmptyWidgetSelectionResult, type WidgetSelectionResult } from '../../types/v4/widget-selection.types';
+import { createEmptyWidgetSelectionResult, type WidgetSelectionResult, type SkippedStages } from '../../types/v4/widget-selection.types';
 
 interface ExperimentExecutorProps {
     sessionId: string;
@@ -16,23 +15,31 @@ interface ExperimentExecutorProps {
         bottleneckType?: string;
     };
     onComplete: () => void;
+    /** モックWidget選定を使用するかどうか */
+    useMockWidgetSelection?: boolean;
+    /** テストケースID（モックモード時必須） */
+    caseId?: string;
+    /** LLMプロバイダー（gemini または azure） */
+    provider?: 'gemini' | 'azure';
+    /** 使用するモデルID */
+    modelId?: string;
 }
-
-const PLAN_STAGES: PlanStage[] = ['diverge', 'organize', 'converge', 'summary'];
 
 export function ExperimentExecutor({
     sessionId,
     mode,
     initialContext,
-    onComplete
+    onComplete,
+    useMockWidgetSelection,
+    caseId,
+    provider,
+    modelId
 }: ExperimentExecutorProps) {
     const { state, actions } = useExperimentFlow({
         sessionId,
         initialContext,
         onComplete
     });
-
-    const [currentPlanStage, setCurrentPlanStage] = useState<PlanStage>('diverge');
 
     // PlanPreviewフェーズ用の状態
     const [planPreviewLoading, setPlanPreviewLoading] = useState(false);
@@ -46,11 +53,19 @@ export function ExperimentExecutor({
                 setPlanPreviewLoading(true);
                 try {
                     console.log('🔍 Fetching widget selection (Widget選定専用API)...');
+                    console.log(`🧪 Mock mode: ${useMockWidgetSelection}, caseId: ${caseId || 'N/A'}`);
+                    console.log(`🤖 Provider: ${provider || 'default'}, Model: ${modelId || 'default'}`);
                     // Widget選定専用APIを呼び出す（ORS/UISpec生成は行わない）
                     const response = await apiService.generateWidgetSelection(
                         state.concernText,
                         sessionId,
-                        { bottleneckType: state.bottleneckType || 'thought' }
+                        {
+                            bottleneckType: state.bottleneckType || 'thought',
+                            useMockWidgetSelection,
+                            caseId,
+                            provider,
+                            modelId
+                        }
                     );
 
                     if (response.success && response.widgetSelectionResult) {
@@ -82,29 +97,27 @@ export function ExperimentExecutor({
 
             fetchWidgetSelection();
         }
-    }, [state.currentPhase, state.concernText, state.bottleneckType, sessionId, widgetSelectionResult, planPreviewLoading, actions]);
+    }, [state.currentPhase, state.concernText, state.bottleneckType, sessionId, widgetSelectionResult, planPreviewLoading, actions, useMockWidgetSelection, caseId, provider, modelId]);
 
-    // Planフェーズのステージ遷移
-    const handleNextPlanStage = useCallback(() => {
-        const currentIndex = PLAN_STAGES.indexOf(currentPlanStage);
-        if (currentIndex < PLAN_STAGES.length - 1) {
-            setCurrentPlanStage(PLAN_STAGES[currentIndex + 1]);
-        } else {
-            actions.handlePlanComplete();
-        }
-    }, [currentPlanStage, actions]);
-
-    const handlePrevPlanStage = useCallback(() => {
-        const currentIndex = PLAN_STAGES.indexOf(currentPlanStage);
-        if (currentIndex > 0) {
-            setCurrentPlanStage(PLAN_STAGES[currentIndex - 1]);
-        }
-    }, [currentPlanStage]);
+    // Plan統合フェーズの結果ハンドラ
+    const handlePlanUnifiedResult = useCallback((
+        result: PlanUnifiedResult,
+        generationId?: string,
+        renderDuration?: number
+    ) => {
+        // フックのhandlePlanStageCompleteを使用してPlan統合結果を保存
+        actions.handlePlanStageComplete('plan', {
+            planUiSpec: result.planUiSpec,
+            planOrs: result.planOrs,
+            widgetResults: result.widgetResults,
+            errors: result.errors,
+        }, generationId, renderDuration);
+    }, [actions]);
 
     // PlanPreviewの確認ボタンハンドラ
-    const handlePlanPreviewConfirm = useCallback(() => {
+    const handlePlanPreviewConfirm = useCallback((skippedStages: SkippedStages) => {
         if (widgetSelectionResult) {
-            actions.handlePlanPreviewConfirm(widgetSelectionResult);
+            actions.handlePlanPreviewConfirm(widgetSelectionResult, skippedStages);
         }
     }, [widgetSelectionResult, actions]);
 
@@ -136,6 +149,7 @@ export function ExperimentExecutor({
                                 onCancel={actions.handlePlanPreviewCancel}
                                 isLoading={false}
                                 showDetails={true}
+                                hideSkipControls={true}
                             />
                         )}
                     </div>
@@ -143,22 +157,19 @@ export function ExperimentExecutor({
 
             case 'plan':
                 return (
-                    <ExperimentPlan
+                    <ExperimentPlanUnified
                         sessionId={sessionId}
-                        mode={mode}
                         concernText={state.concernText}
-                        currentStage={currentPlanStage}
-                        stageResults={state.planStageResults}
                         bottleneckType={state.bottleneckType || undefined}
-                        onStageResult={actions.handlePlanStageComplete}
-                        onWidgetUpdate={(stage, result) => {
-                            // Widget更新は現状ログのみか、必要ならState更新
-                            console.log('Widget update:', stage, result);
+                        onPlanResult={handlePlanUnifiedResult}
+                        onWidgetUpdate={(widgetId, result) => {
+                            console.log('Widget update:', widgetId, result);
                         }}
-                        onNextStage={handleNextPlanStage}
-                        onPrevStage={handlePrevPlanStage}
-                        canGoNext={true} // 基本的にいつでも次へ行ける（生成済みなら）
-                        canGoPrev={PLAN_STAGES.indexOf(currentPlanStage) > 0}
+                        onComplete={actions.handlePlanComplete}
+                        onBack={actions.handlePlanPreviewCancel}
+                        mode={mode}
+                        provider={provider}
+                        modelId={modelId}
                     />
                 );
 

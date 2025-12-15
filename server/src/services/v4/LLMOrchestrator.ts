@@ -17,8 +17,10 @@ import {
   type LLMCallMetrics,
   type ModelConfig,
   DEFAULT_LLM_TASK_CONFIGS,
+  LLM_ERROR_TYPES,
 } from '../../types/v4/llm-task.types';
 import { GeminiService, createGeminiService } from '../GeminiService';
+import { AzureOpenAIService, createAzureOpenAIService } from '../AzureOpenAIService';
 
 // V4プロンプトテンプレートをインポート
 import {
@@ -27,6 +29,9 @@ import {
   ORS_GENERATION_PROMPT,
   UISPEC_GENERATION_PROMPT,
   SUMMARY_GENERATION_PROMPT,
+  // DSL v5: Plan統合プロンプト
+  PLAN_ORS_GENERATION_PROMPT,
+  PLAN_UISPEC_GENERATION_PROMPT,
 } from '../../prompts/v4';
 
 // =============================================================================
@@ -225,7 +230,7 @@ export class LLMOrchestrator {
     return {
       success: false,
       error: {
-        type: 'api_error',
+        type: LLM_ERROR_TYPES.API_ERROR,
         message: `All retries failed: ${lastError}`,
       },
       metrics,
@@ -280,7 +285,7 @@ export class LLMOrchestrator {
         rawOutput: undefined,
         prompt, // 使用されたプロンプトを記録
         error: {
-          type: 'api_error',
+          type: LLM_ERROR_TYPES.API_ERROR,
           message: response.error ?? 'Unknown error',
         },
         metrics,
@@ -311,6 +316,9 @@ export class LLMOrchestrator {
     switch (model.provider) {
       case 'gemini':
         service = createGeminiService(model.modelId);
+        break;
+      case 'azure':
+        service = createAzureOpenAIService(model.modelId);
         break;
       case 'openai':
         // TODO: OpenAI サービスの実装
@@ -394,6 +402,9 @@ export function createLLMOrchestratorWithDefaultPrompts(config?: Omit<LLMOrchest
   promptManager.registerTemplate('ors-generation', ORS_GENERATION_PROMPT);
   promptManager.registerTemplate('uispec-generation', UISPEC_GENERATION_PROMPT);
   promptManager.registerTemplate('summary-generation', SUMMARY_GENERATION_PROMPT);
+  // DSL v5: Plan統合プロンプト
+  promptManager.registerTemplate('plan-ors-generation', PLAN_ORS_GENERATION_PROMPT);
+  promptManager.registerTemplate('plan-uispec-generation', PLAN_UISPEC_GENERATION_PROMPT);
 
   return new LLMOrchestrator({
     ...config,

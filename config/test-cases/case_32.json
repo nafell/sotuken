@@ -1,0 +1,55 @@
+{
+  "caseId": "case_32",
+  "title": "長文・メンタルヘルス（JS単純）",
+  "complexity": "simple",
+  "hasReactivity": true,
+
+  "concernText": "最近ずっとストレス溜まってて、何が原因かよくわからない。仕事かもしれないし、人間関係かもしれない。まず今の気持ちを整理して、何に対処すべきか優先順位つけたい。感情的になりすぎて冷静に考えられてない気がする",
+
+  "contextFactors": {
+    "category": "メンタルヘルス",
+    "urgency": "high",
+    "emotionalState": "overwhelmed",
+    "timeAvailable": 30
+  },
+
+  "expectedBottlenecks": [
+    "emotional_block",
+    "unorganized_info"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["emotion_palette"],
+      "purpose": "今感じている複数の感情を可視化"
+    },
+    "organize": {
+      "widgets": ["card_sorting"],
+      "purpose": "感情の原因を分類"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "対処優先度を設定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "emotion_palette.selectedEmotions",
+        "target": "priority_slider_grid.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.map(e => ({id: e.emotion, label: e.emotion, priority: e.intensity}))"
+        },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "長文からのemotion→priority変換",
+    "感情整理へのJS適用",
+    "ストレス対処フロー"
+  ]
+}

@@ -7,7 +7,7 @@
 
 import { Hono } from 'hono';
 import { db } from '../database/index';
-import { experimentSessions, widgetStates, experimentGenerations } from '../database/schema';
+import { experimentSessions, widgetStates, experimentGenerations, experimentTrialLogs } from '../database/schema';
 import { eq, desc } from 'drizzle-orm';
 import { getExperimentConfigService } from '../services/ExperimentConfigService';
 
@@ -31,7 +31,8 @@ experimentRoutes.post('/sessions', async (c) => {
       widgetCount,
       modelId,
       concernText,
-      contextFactors
+      contextFactors,
+      useMockWidgetSelection
     } = body;
 
     // バリデーション
@@ -49,7 +50,8 @@ experimentRoutes.post('/sessions', async (c) => {
       }, 400);
     }
 
-    console.log(`📝 Creating experiment session: type=${experimentType}, case=${caseId}, model=${modelId}`);
+    const mockMode = useMockWidgetSelection === true;
+    console.log(`📝 Creating experiment session: type=${experimentType}, case=${caseId}, model=${modelId}, mock=${mockMode}`);
 
     const [session] = await db
       .insert(experimentSessions)
@@ -61,6 +63,7 @@ experimentRoutes.post('/sessions', async (c) => {
         modelId,
         concernText,
         contextFactors,
+        useMockWidgetSelection: mockMode,
         startedAt: new Date()
       })
       .returning();
@@ -537,6 +540,109 @@ experimentRoutes.patch('/generations/:generationId', async (c) => {
     });
   } catch (error) {
     console.error('Failed to update generation:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+
+// ========================================
+// Layer1/Layer4 実験用エンドポイント
+// ========================================
+
+/**
+ * POST /api/experiment/trials/:trialId/render-feedback
+ * フロントエンドからのレンダー結果フィードバックを受信
+ *
+ * ヘッドレスモードでのrender_errors収集に使用
+ * @see specs/system-design/experiment_spec_layer_1_layer_4.md
+ */
+experimentRoutes.post('/trials/:trialId/render-feedback', async (c) => {
+  try {
+    const trialId = c.req.param('trialId');
+    const body = await c.req.json();
+    const {
+      stage,
+      renderErrors,
+      reactComponentErrors,
+      jotaiAtomErrors,
+      typeErrorCount,
+      referenceErrorCount,
+      cycleDetected,
+      renderDuration
+    } = body;
+
+    // バリデーション
+    if (typeof stage !== 'number' || stage < 1 || stage > 3) {
+      return c.json({
+        success: false,
+        error: 'Invalid stage: must be 1, 2, or 3'
+      }, 400);
+    }
+
+    console.log(`📝 Received render feedback for trial ${trialId}, stage ${stage}`);
+
+    // trial logを更新
+    const [updated] = await db
+      .update(experimentTrialLogs)
+      .set({
+        renderErrors: renderErrors,
+        reactComponentErrors: reactComponentErrors ?? null,
+        jotaiAtomErrors: jotaiAtomErrors ?? null,
+        typeErrorCount: typeErrorCount ?? 0,
+        referenceErrorCount: referenceErrorCount ?? 0,
+        cycleDetected: cycleDetected ?? false,
+      })
+      .where(eq(experimentTrialLogs.id, trialId))
+      .returning();
+
+    if (!updated) {
+      return c.json({
+        success: false,
+        error: 'Trial log not found'
+      }, 404);
+    }
+
+    return c.json({
+      success: true,
+      trialLog: updated
+    });
+  } catch (error) {
+    console.error('Failed to update render feedback:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+
+/**
+ * GET /api/experiment/trials/:trialId
+ * 実験試行ログを取得
+ */
+experimentRoutes.get('/trials/:trialId', async (c) => {
+  try {
+    const trialId = c.req.param('trialId');
+
+    const [trial] = await db
+      .select()
+      .from(experimentTrialLogs)
+      .where(eq(experimentTrialLogs.id, trialId));
+
+    if (!trial) {
+      return c.json({
+        success: false,
+        error: 'Trial log not found'
+      }, 404);
+    }
+
+    return c.json({
+      success: true,
+      trial
+    });
+  } catch (error) {
+    console.error('Failed to get trial log:', error);
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'

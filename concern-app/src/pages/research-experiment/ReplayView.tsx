@@ -10,7 +10,7 @@
  * - メタ情報・メトリクス表示
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   experimentApi,
@@ -18,6 +18,8 @@ import {
   type ExperimentGeneration
 } from '../../services/ExperimentApiService';
 import UIRendererV3 from '../../services/ui-generation/UIRendererV3';
+import { analyzeW2WRFromUISpec, type W2WRAnalysis } from '../../utils/w2wrAnalyzer';
+import { flattenPlanUISpecToUISpec, isPlanUISpec } from '../../types/v4/ui-spec.types';
 
 type ViewMode = 'widget' | 'data';
 
@@ -96,8 +98,92 @@ export default function ReplayView() {
     return JSON.stringify(obj, null, 2);
   };
 
+  // 2段階プロンプトデータ（ORS/DpG + UISpec）のパース用型定義
+  interface ParsedPromptData {
+    widgetSelection?: {
+      prompt: string | null;
+      inputParams?: Record<string, unknown>;
+    };
+    ors?: {
+      prompt: string | null;
+      inputParams?: {
+        concernText?: string;
+        stage?: string;
+        stageSelection?: unknown;
+      };
+    };
+    uiSpec?: {
+      prompt: string | null;
+      inputParams?: {
+        stage?: string;
+        enableReactivity?: boolean;
+        stageSelection?: unknown;
+      };
+    };
+    // DSL v5 Plan統合用
+    planOrs?: {
+      prompt: string | null;
+      inputParams?: {
+        concernText?: string;
+        bottleneckType?: string;
+        widgetSelection?: unknown;
+      };
+    };
+    planUiSpec?: {
+      prompt: string | null;
+      inputParams?: {
+        concernText?: string;
+        enableReactivity?: boolean;
+        widgetSelection?: unknown;
+      };
+    };
+  }
+
+  // プロンプトデータをパースするヘルパー
+  const parsePromptData = (prompt: string | undefined): ParsedPromptData | null => {
+    if (!prompt) return null;
+    try {
+      if (typeof prompt === 'string' && prompt.startsWith('{')) {
+        return JSON.parse(prompt) as ParsedPromptData;
+      }
+    } catch {
+      // パースに失敗した場合はnullを返す
+    }
+    return null;
+  };
+
+  // 各段階のプロンプト展開状態
+  const [expandedPromptStages, setExpandedPromptStages] = useState<{ widgetSelection: boolean; ors: boolean; uiSpec: boolean }>({ widgetSelection: false, ors: false, uiSpec: false });
+
+  const togglePromptStage = (stage: 'widgetSelection' | 'ors' | 'uiSpec') => {
+    setExpandedPromptStages(prev => ({ ...prev, [stage]: !prev[stage] }));
+  };
+
+  // W2WR展開状態
+  const [w2wrExpanded, setW2wrExpanded] = useState(true);
+  const [expandedDependencies, setExpandedDependencies] = useState<Set<number>>(new Set());
+
+  const toggleW2wrSection = () => setW2wrExpanded(prev => !prev);
+  const toggleDependency = (index: number) => {
+    setExpandedDependencies(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  };
+
   // Get current generation
   const currentGeneration = generations[currentStep];
+
+  // W2WR解析結果（現在のgenerationのUISpecから）
+  const w2wrAnalysis = useMemo<W2WRAnalysis | null>(() => {
+    if (!currentGeneration?.generatedUiSpec) return null;
+    return analyzeW2WRFromUISpec(currentGeneration.generatedUiSpec);
+  }, [currentGeneration?.generatedUiSpec]);
 
   // Calculate aggregated metrics from generations (V4対応)
   const aggregatedMetrics = {
@@ -111,10 +197,12 @@ export default function ReplayView() {
 
   // Stage display names
   const stageNames: Record<string, string> = {
+    widget_selection: 'Widget選定 (Selection)',
     diverge: '発散 (Diverge)',
     organize: '整理 (Organize)',
     converge: '収束 (Converge)',
-    summary: 'まとめ (Summary)'
+    summary: 'まとめ (Summary)',
+    plan: '📋 Plan統合 (Unified)'
   };
 
   // Dummy handlers for UIRendererV3 (read-only mode)
@@ -167,6 +255,13 @@ export default function ReplayView() {
 
   return (
     <div style={styles.container}>
+      {/* In Progress Banner */}
+      {!session.completedAt && (
+        <div style={styles.inProgressBanner}>
+          This session is still in progress. Some stages may not be available yet.
+        </div>
+      )}
+
       {/* Header */}
       <header style={styles.header}>
         <div style={styles.headerLeft}>
@@ -174,7 +269,12 @@ export default function ReplayView() {
             Back
           </Link>
           <div>
-            <h1 style={styles.title}>Session Replay</h1>
+            <h1 style={styles.title}>
+              Session Replay
+              {!session.completedAt && (
+                <span style={styles.inProgressTitleBadge}>In Progress</span>
+              )}
+            </h1>
             <p style={styles.sessionInfo}>
               {session.caseId} | {session.modelId} | {session.widgetCount} widgets
             </p>
@@ -301,21 +401,31 @@ export default function ReplayView() {
 
           {/* Step Indicator Pills */}
           <div style={styles.stepIndicators}>
-            {generations.map((gen, idx) => (
-              <button
-                key={gen.id}
-                onClick={() => goToStep(idx)}
-                style={{
-                  ...styles.stepPill,
-                  backgroundColor: idx === currentStep ? '#3B82F6' :
-                                   idx < currentStep ? '#10B981' : '#E5E7EB',
-                  color: idx <= currentStep ? '#fff' : '#6B7280'
-                }}
-                title={`Stage ${idx + 1}: ${stageNames[gen.stage] || gen.stage}`}
-              >
-                {idx + 1}
-              </button>
-            ))}
+            {generations.map((gen, idx) => {
+              const isPlanUnified = gen.stage === 'plan';
+              const isWidgetSelection = gen.stage === 'widget_selection';
+              const getBackgroundColor = () => {
+                if (idx === currentStep) {
+                  return isPlanUnified ? '#0ea5e9' : isWidgetSelection ? '#7c3aed' : '#3B82F6';
+                }
+                if (idx < currentStep) return '#10B981';
+                return '#E5E7EB';
+              };
+              return (
+                <button
+                  key={gen.id}
+                  onClick={() => goToStep(idx)}
+                  style={{
+                    ...styles.stepPill,
+                    backgroundColor: getBackgroundColor(),
+                    color: idx <= currentStep ? '#fff' : '#6B7280'
+                  }}
+                  title={`Stage ${idx + 1}: ${stageNames[gen.stage] || gen.stage}`}
+                >
+                  {isPlanUnified ? '📋' : idx + 1}
+                </button>
+              );
+            })}
           </div>
 
           {/* Current Generation Display */}
@@ -337,7 +447,12 @@ export default function ReplayView() {
               <div style={styles.metricsBar}>
                 <div style={styles.metricItem}>
                   <span style={styles.metricLabel}>Model:</span>
-                  <span style={styles.metricValue}>{currentGeneration.modelId}</span>
+                  <span style={styles.metricValue}>
+                    {currentGeneration.modelId}
+                    {currentGeneration.modelId === 'mock' && (
+                      <span style={styles.mockBadge}>Mock</span>
+                    )}
+                  </span>
                 </div>
                 <div style={styles.metricItem}>
                   <span style={styles.metricLabel}>Prompt:</span>
@@ -377,20 +492,27 @@ export default function ReplayView() {
               </div>
 
               {/* Widget View Mode - V4: generatedUiSpec を優先, fallback to generatedDsl */}
-              {viewMode === 'widget' && (currentGeneration.generatedUiSpec || currentGeneration.generatedDsl) && (
-                <div style={styles.widgetRenderArea}>
-                  <div style={styles.readOnlyBanner}>
-                    Read-Only Preview - Interactions are disabled
+              {/* DSL v5: PlanUISpecの場合はflattenしてからUIRendererV3に渡す */}
+              {viewMode === 'widget' && (currentGeneration.generatedUiSpec || currentGeneration.generatedDsl) && (() => {
+                const rawUiSpec = currentGeneration.generatedUiSpec || currentGeneration.generatedDsl;
+                const uiSpecForRenderer = isPlanUISpec(rawUiSpec)
+                  ? flattenPlanUISpecToUISpec(rawUiSpec)
+                  : rawUiSpec;
+                return (
+                  <div style={styles.widgetRenderArea}>
+                    <div style={styles.readOnlyBanner}>
+                      Read-Only Preview - Interactions are disabled
+                    </div>
+                    <div style={styles.widgetContainer}>
+                      <UIRendererV3
+                        uiSpec={uiSpecForRenderer}
+                        onWidgetUpdate={handleWidgetUpdate}
+                        onWidgetComplete={handleWidgetComplete}
+                      />
+                    </div>
                   </div>
-                  <div style={styles.widgetContainer}>
-                    <UIRendererV3
-                      uiSpec={currentGeneration.generatedUiSpec || currentGeneration.generatedDsl}
-                      onWidgetUpdate={handleWidgetUpdate}
-                      onWidgetComplete={handleWidgetComplete}
-                    />
-                  </div>
-                </div>
-              )}
+                );
+              })()}
 
               {viewMode === 'widget' && !currentGeneration.generatedUiSpec && !currentGeneration.generatedDsl && (
                 <div style={styles.noWidgetMessage}>
@@ -401,27 +523,242 @@ export default function ReplayView() {
               {/* Data View Mode (V4対応) */}
               {viewMode === 'data' && (
                 <>
-                  {/* Prompt (collapsible) */}
-                  {currentGeneration.prompt && (
-                    <div style={styles.widgetSection}>
-                      <div style={styles.sectionHeader}>
-                        <h4 style={styles.sectionTitle}>Prompt</h4>
-                        <button
-                          onClick={() => setShowPrompt(!showPrompt)}
-                          style={styles.expandButton}
-                        >
-                          {showPrompt ? 'Hide' : 'Show'}
-                        </button>
-                      </div>
-                      {showPrompt && (
-                        <pre style={styles.promptPre}>
-                          {typeof currentGeneration.prompt === 'string' && currentGeneration.prompt.startsWith('{')
-                            ? formatJson(JSON.parse(currentGeneration.prompt))
-                            : currentGeneration.prompt}
-                        </pre>
-                      )}
-                    </div>
-                  )}
+                  {/* 2段階プロンプト表示 (ORS/DpG + UISpec / Plan ORS + Plan UISpec) */}
+                  {(() => {
+                    const parsedPrompt = parsePromptData(currentGeneration.prompt);
+
+                    // Widget Selectionモード (widgetSelection)
+                    if (parsedPrompt && parsedPrompt.widgetSelection) {
+                      return (
+                        <div style={styles.promptStagesContainer}>
+                          <div style={styles.promptStageCard}>
+                            <div
+                              style={styles.promptStageHeader}
+                              onClick={() => togglePromptStage('widgetSelection')}
+                            >
+                              <div style={styles.promptStageHeaderLeft}>
+                                <span style={styles.promptStageIcon}>
+                                  {expandedPromptStages.widgetSelection ? '▼' : '▶'}
+                                </span>
+                                <span style={styles.promptStageBadgeWidgetSelection}>Widget Selection</span>
+                                <span style={styles.promptStageTitle}>Generation Prompt</span>
+                              </div>
+                              <div style={styles.promptStageHeaderRight}>
+                                {currentGeneration.widgetSelectionDuration && (
+                                  <span style={styles.promptStageMetric}>{currentGeneration.widgetSelectionDuration}ms</span>
+                                )}
+                              </div>
+                            </div>
+                            {expandedPromptStages.widgetSelection && (
+                              <div style={styles.promptStageBody}>
+                                {parsedPrompt.widgetSelection.inputParams && (
+                                  <div style={styles.inputParamsBox}>
+                                    <div style={styles.inputParamsTitle}>Input Parameters</div>
+                                    <div style={styles.inputParamsGrid}>
+                                      {Object.entries(parsedPrompt.widgetSelection.inputParams).map(([key, value]) => (
+                                        <div key={key}><span style={styles.inputParamLabel}>{key}:</span> {String(value ?? '-')}</div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                <pre style={styles.promptPreWidgetSelection}>
+                                  {parsedPrompt.widgetSelection.prompt || 'Prompt not available'}
+                                </pre>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // DSL v5 Plan統合モード (planOrs + planUiSpec)
+                    if (parsedPrompt && (parsedPrompt.planOrs || parsedPrompt.planUiSpec)) {
+                      return (
+                        <div style={styles.promptStagesContainer}>
+                          {/* Plan ORS Generation Prompt */}
+                          {parsedPrompt.planOrs && (
+                            <div style={styles.promptStageCard}>
+                              <div
+                                style={styles.promptStageHeader}
+                                onClick={() => togglePromptStage('ors')}
+                              >
+                                <div style={styles.promptStageHeaderLeft}>
+                                  <span style={styles.promptStageIcon}>
+                                    {expandedPromptStages.ors ? '▼' : '▶'}
+                                  </span>
+                                  <span style={styles.promptStageBadgeOrs}>Plan ORS</span>
+                                  <span style={styles.promptStageTitle}>Generation Prompt</span>
+                                </div>
+                                <div style={styles.promptStageHeaderRight}>
+                                  {currentGeneration.orsDuration && (
+                                    <span style={styles.promptStageMetric}>{currentGeneration.orsDuration}ms</span>
+                                  )}
+                                </div>
+                              </div>
+                              {expandedPromptStages.ors && (
+                                <div style={styles.promptStageBody}>
+                                  {parsedPrompt.planOrs.inputParams && (
+                                    <div style={styles.inputParamsBox}>
+                                      <div style={styles.inputParamsTitle}>Input Parameters</div>
+                                      <div style={styles.inputParamsGrid}>
+                                        <div><span style={styles.inputParamLabel}>bottleneckType:</span> {parsedPrompt.planOrs.inputParams.bottleneckType || '-'}</div>
+                                      </div>
+                                    </div>
+                                  )}
+                                  <pre style={styles.promptPreOrs}>
+                                    {parsedPrompt.planOrs.prompt || 'Prompt not available'}
+                                  </pre>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Plan UISpec Generation Prompt */}
+                          {parsedPrompt.planUiSpec && (
+                            <div style={styles.promptStageCard}>
+                              <div
+                                style={styles.promptStageHeader}
+                                onClick={() => togglePromptStage('uiSpec')}
+                              >
+                                <div style={styles.promptStageHeaderLeft}>
+                                  <span style={styles.promptStageIcon}>
+                                    {expandedPromptStages.uiSpec ? '▼' : '▶'}
+                                  </span>
+                                  <span style={styles.promptStageBadgeUiSpec}>Plan UISpec</span>
+                                  <span style={styles.promptStageTitle}>Generation Prompt</span>
+                                </div>
+                                <div style={styles.promptStageHeaderRight}>
+                                  {currentGeneration.uiSpecDuration && (
+                                    <span style={styles.promptStageMetric}>{currentGeneration.uiSpecDuration}ms</span>
+                                  )}
+                                </div>
+                              </div>
+                              {expandedPromptStages.uiSpec && (
+                                <div style={styles.promptStageBody}>
+                                  {parsedPrompt.planUiSpec.inputParams && (
+                                    <div style={styles.inputParamsBox}>
+                                      <div style={styles.inputParamsTitle}>Input Parameters</div>
+                                      <div style={styles.inputParamsGrid}>
+                                        <div><span style={styles.inputParamLabel}>enableReactivity:</span> {String(parsedPrompt.planUiSpec.inputParams.enableReactivity ?? '-')}</div>
+                                      </div>
+                                    </div>
+                                  )}
+                                  <pre style={styles.promptPreUiSpec}>
+                                    {parsedPrompt.planUiSpec.prompt || 'Prompt not available'}
+                                  </pre>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    // 通常モード (ors + uiSpec)
+                    if (parsedPrompt && (parsedPrompt.ors || parsedPrompt.uiSpec)) {
+                      return (
+                        <div style={styles.promptStagesContainer}>
+                          {/* ORS/DpG Generation Prompt */}
+                          {parsedPrompt.ors && (
+                            <div style={styles.promptStageCard}>
+                              <div
+                                style={styles.promptStageHeader}
+                                onClick={() => togglePromptStage('ors')}
+                              >
+                                <div style={styles.promptStageHeaderLeft}>
+                                  <span style={styles.promptStageIcon}>
+                                    {expandedPromptStages.ors ? '▼' : '▶'}
+                                  </span>
+                                  <span style={styles.promptStageBadgeOrs}>ORS/DpG</span>
+                                  <span style={styles.promptStageTitle}>Generation Prompt</span>
+                                </div>
+                                <div style={styles.promptStageHeaderRight}>
+                                  {currentGeneration.orsDuration && (
+                                    <span style={styles.promptStageMetric}>{currentGeneration.orsDuration}ms</span>
+                                  )}
+                                </div>
+                              </div>
+                              {expandedPromptStages.ors && (
+                                <div style={styles.promptStageBody}>
+                                  {parsedPrompt.ors.inputParams && (
+                                    <div style={styles.inputParamsBox}>
+                                      <div style={styles.inputParamsTitle}>Input Parameters</div>
+                                      <div style={styles.inputParamsGrid}>
+                                        <div><span style={styles.inputParamLabel}>stage:</span> {parsedPrompt.ors.inputParams.stage || '-'}</div>
+                                      </div>
+                                    </div>
+                                  )}
+                                  <pre style={styles.promptPreOrs}>
+                                    {parsedPrompt.ors.prompt || 'Prompt not available'}
+                                  </pre>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* UISpec Generation Prompt */}
+                          {parsedPrompt.uiSpec && (
+                            <div style={styles.promptStageCard}>
+                              <div
+                                style={styles.promptStageHeader}
+                                onClick={() => togglePromptStage('uiSpec')}
+                              >
+                                <div style={styles.promptStageHeaderLeft}>
+                                  <span style={styles.promptStageIcon}>
+                                    {expandedPromptStages.uiSpec ? '▼' : '▶'}
+                                  </span>
+                                  <span style={styles.promptStageBadgeUiSpec}>UISpec</span>
+                                  <span style={styles.promptStageTitle}>Generation Prompt</span>
+                                </div>
+                                <div style={styles.promptStageHeaderRight}>
+                                  {currentGeneration.uiSpecDuration && (
+                                    <span style={styles.promptStageMetric}>{currentGeneration.uiSpecDuration}ms</span>
+                                  )}
+                                </div>
+                              </div>
+                              {expandedPromptStages.uiSpec && (
+                                <div style={styles.promptStageBody}>
+                                  {parsedPrompt.uiSpec.inputParams && (
+                                    <div style={styles.inputParamsBox}>
+                                      <div style={styles.inputParamsTitle}>Input Parameters</div>
+                                      <div style={styles.inputParamsGrid}>
+                                        <div><span style={styles.inputParamLabel}>stage:</span> {parsedPrompt.uiSpec.inputParams.stage || '-'}</div>
+                                        <div><span style={styles.inputParamLabel}>enableReactivity:</span> {String(parsedPrompt.uiSpec.inputParams.enableReactivity ?? '-')}</div>
+                                      </div>
+                                    </div>
+                                  )}
+                                  <pre style={styles.promptPreUiSpec}>
+                                    {parsedPrompt.uiSpec.prompt || 'Prompt not available'}
+                                  </pre>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    // Legacy: 旧形式のプロンプト
+                    if (currentGeneration.prompt) {
+                      return (
+                        <div style={styles.widgetSection}>
+                          <div style={styles.sectionHeader}>
+                            <h4 style={styles.sectionTitle}>Prompt (Legacy)</h4>
+                            <button
+                              onClick={() => setShowPrompt(!showPrompt)}
+                              style={styles.expandButton}
+                            >
+                              {showPrompt ? 'Hide' : 'Show'}
+                            </button>
+                          </div>
+                          {showPrompt && (
+                            <pre style={styles.promptPre}>{currentGeneration.prompt}</pre>
+                          )}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
 
                   {/* V4: Widget Selection Result */}
                   {currentGeneration.generatedWidgetSelection && (
@@ -450,6 +787,179 @@ export default function ReplayView() {
                       <pre style={styles.jsonPre}>
                         {formatJson(currentGeneration.generatedUiSpec)}
                       </pre>
+                    </div>
+                  )}
+
+                  {/* W2WR Reactivity Analysis */}
+                  {w2wrAnalysis && (
+                    <div style={styles.w2wrSection}>
+                      {/* W2WR Header */}
+                      <div
+                        style={styles.w2wrHeader}
+                        onClick={toggleW2wrSection}
+                      >
+                        <div style={styles.w2wrHeaderLeft}>
+                          <span style={styles.w2wrIcon}>
+                            {w2wrExpanded ? '\u25BC' : '\u25B6'}
+                          </span>
+                          <span style={styles.w2wrBadge}>W2WR</span>
+                          <span style={styles.w2wrTitle}>Reactivity Analysis</span>
+                        </div>
+                        <div style={styles.w2wrHeaderRight}>
+                          <span style={styles.w2wrMetric}>
+                            {w2wrAnalysis.totalCount} dependencies
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* W2WR Content */}
+                      {w2wrExpanded && (
+                        <div style={styles.w2wrBody}>
+                          {/* Source Info */}
+                          <div style={styles.w2wrSourceInfo}>
+                            <span style={styles.w2wrSourceLabel}>Source:</span>
+                            <span style={{
+                              ...styles.w2wrSourceBadge,
+                              backgroundColor: w2wrAnalysis.source === 'reactiveBindings' ? '#3B82F6' :
+                                              w2wrAnalysis.source === 'dpg' ? '#8B5CF6' : '#6B7280'
+                            }}>
+                              {w2wrAnalysis.source === 'reactiveBindings' ? 'reactiveBindings (v4/v5)' :
+                               w2wrAnalysis.source === 'dpg' ? 'dpg (v3)' : 'none'}
+                            </span>
+                            {w2wrAnalysis.dslVersion && (
+                              <span style={styles.w2wrVersionBadge}>v{w2wrAnalysis.dslVersion}</span>
+                            )}
+                          </div>
+
+                          {/* Summary */}
+                          <div style={styles.w2wrSummary}>
+                            <div style={styles.w2wrSummaryRow}>
+                              <span style={styles.w2wrSummaryLabel}>Total:</span>
+                              <span style={styles.w2wrSummaryValue}>{w2wrAnalysis.totalCount}</span>
+                            </div>
+                            <div style={styles.w2wrSummaryRow}>
+                              <span style={styles.w2wrSummaryLabel}>Valid:</span>
+                              <span style={{
+                                ...styles.w2wrSummaryValue,
+                                color: '#10B981'
+                              }}>
+                                {w2wrAnalysis.validCount}
+                              </span>
+                            </div>
+                            <div style={styles.w2wrSummaryRow}>
+                              <span style={styles.w2wrSummaryLabel}>Errors:</span>
+                              <span style={{
+                                ...styles.w2wrSummaryValue,
+                                color: w2wrAnalysis.errorCount > 0 ? '#EF4444' : '#6B7280'
+                              }}>
+                                {w2wrAnalysis.errorCount}
+                              </span>
+                            </div>
+                            <div style={styles.w2wrSummaryRow}>
+                              <span style={styles.w2wrSummaryLabel}>Cycle:</span>
+                              {w2wrAnalysis.hasCycle ? (
+                                <span style={styles.w2wrBadgeError}>Detected</span>
+                              ) : (
+                                <span style={styles.w2wrBadgeOk}>OK</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Cycle Error Message */}
+                          {w2wrAnalysis.cycleError && (
+                            <div style={styles.w2wrCycleError}>
+                              {w2wrAnalysis.cycleError}
+                            </div>
+                          )}
+
+                          {/* Dependencies List */}
+                          {w2wrAnalysis.dependencies.length > 0 && (
+                            <div style={styles.w2wrDependenciesList}>
+                              <div style={styles.w2wrListHeader}>Dependencies</div>
+                              {w2wrAnalysis.dependencies.map((dep, index) => (
+                                <div key={index} style={styles.w2wrDependencyItem}>
+                                  {/* Dependency Header */}
+                                  <div
+                                    style={styles.w2wrDepHeader}
+                                    onClick={() => toggleDependency(index)}
+                                  >
+                                    <div style={styles.w2wrDepHeaderLeft}>
+                                      <span style={styles.w2wrDepIcon}>
+                                        {expandedDependencies.has(index) ? '\u25BC' : '\u25B6'}
+                                      </span>
+                                      <span style={styles.w2wrDepIndex}>#{index + 1}</span>
+                                      <span style={styles.w2wrDepPath}>
+                                        {dep.source} <span style={styles.w2wrDepArrow}>\u2192</span> {dep.target}
+                                      </span>
+                                    </div>
+                                    <div style={styles.w2wrDepHeaderRight}>
+                                      {dep.validation.isValid ? (
+                                        <span style={styles.w2wrBadgeOk}>OK</span>
+                                      ) : (
+                                        <span style={styles.w2wrBadgeError}>Error</span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Dependency Details */}
+                                  {expandedDependencies.has(index) && (
+                                    <div style={styles.w2wrDepDetails}>
+                                      <div style={styles.w2wrDepDetailRow}>
+                                        <span style={styles.w2wrDepDetailLabel}>Mechanism:</span>
+                                        <span style={styles.w2wrDepDetailValue}>{dep.mechanism || '-'}</span>
+                                      </div>
+                                      <div style={styles.w2wrDepDetailRow}>
+                                        <span style={styles.w2wrDepDetailLabel}>Update Mode:</span>
+                                        <span style={styles.w2wrDepDetailValue}>{dep.updateMode || '-'}</span>
+                                      </div>
+                                      <div style={styles.w2wrDepDetailRow}>
+                                        <span style={styles.w2wrDepDetailLabel}>Relationship:</span>
+                                        <span style={styles.w2wrDepDetailValue}>{dep.relationshipType || '-'}</span>
+                                      </div>
+                                      {dep.javascriptCode && (
+                                        <div style={styles.w2wrDepCodeBlock}>
+                                          <div style={styles.w2wrDepCodeLabel}>JavaScript:</div>
+                                          <pre style={styles.w2wrDepCode}>{dep.javascriptCode}</pre>
+                                        </div>
+                                      )}
+                                      {dep.transformFunction && (
+                                        <div style={styles.w2wrDepDetailRow}>
+                                          <span style={styles.w2wrDepDetailLabel}>Transform:</span>
+                                          <code style={styles.w2wrDepDetailCode}>{dep.transformFunction}</code>
+                                        </div>
+                                      )}
+                                      {dep.llmPrompt && (
+                                        <div style={styles.w2wrDepCodeBlock}>
+                                          <div style={styles.w2wrDepCodeLabel}>LLM Prompt:</div>
+                                          <pre style={styles.w2wrDepCode}>{dep.llmPrompt}</pre>
+                                        </div>
+                                      )}
+                                      {/* Validation Errors */}
+                                      {!dep.validation.isValid && dep.validation.errors.length > 0 && (
+                                        <div style={styles.w2wrDepErrors}>
+                                          <div style={styles.w2wrDepErrorsLabel}>Validation Errors:</div>
+                                          <ul style={styles.w2wrDepErrorsList}>
+                                            {dep.validation.errors.map((err, errIdx) => (
+                                              <li key={errIdx} style={styles.w2wrDepErrorItem}>{err}</li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* No Dependencies Message */}
+                          {w2wrAnalysis.dependencies.length === 0 && (
+                            <div style={styles.w2wrNoDeps}>
+                              No W2WR dependencies defined in this stage.
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -537,6 +1047,25 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: '100vh',
     backgroundColor: '#F3F4F6',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  },
+  inProgressBanner: {
+    backgroundColor: '#FEF3C7',
+    color: '#92400E',
+    padding: '10px 24px',
+    fontSize: '13px',
+    fontWeight: 500,
+    textAlign: 'center',
+    borderBottom: '1px solid #FCD34D'
+  },
+  inProgressTitleBadge: {
+    marginLeft: '12px',
+    fontSize: '12px',
+    fontWeight: 600,
+    backgroundColor: '#F59E0B',
+    color: '#fff',
+    padding: '4px 8px',
+    borderRadius: '4px',
+    verticalAlign: 'middle'
   },
   loadingState: {
     display: 'flex',
@@ -804,6 +1333,16 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 500,
     fontFamily: 'monospace'
   },
+  mockBadge: {
+    marginLeft: '8px',
+    padding: '2px 8px',
+    backgroundColor: '#FCD34D',
+    color: '#92400E',
+    borderRadius: '4px',
+    fontSize: '11px',
+    fontWeight: 600,
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  },
   widgetRenderArea: {
     padding: '0'
   },
@@ -900,5 +1439,411 @@ const styles: Record<string, React.CSSProperties> = {
   navKeys: {
     fontSize: '12px',
     color: '#9CA3AF'
+  },
+  // 2段階プロンプト表示用スタイル
+  promptStagesContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    padding: '16px 20px'
+  },
+  promptStageCard: {
+    border: '1px solid #E5E7EB',
+    borderRadius: '8px',
+    overflow: 'hidden'
+  },
+  promptStageHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '10px 14px',
+    backgroundColor: '#F9FAFB',
+    cursor: 'pointer',
+    userSelect: 'none'
+  },
+  promptStageHeaderLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px'
+  },
+  promptStageHeaderRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  },
+  promptStageIcon: {
+    fontSize: '10px',
+    color: '#6B7280',
+    width: '12px'
+  },
+  promptStageBadgeWidgetSelection: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#7C3AED',
+    backgroundColor: '#EDE9FE',
+    padding: '3px 8px',
+    borderRadius: '4px'
+  },
+  promptStageBadgeOrs: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#0369A1',
+    backgroundColor: '#E0F2FE',
+    padding: '3px 8px',
+    borderRadius: '4px'
+  },
+  promptStageBadgeUiSpec: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#7C3AED',
+    backgroundColor: '#EDE9FE',
+    padding: '3px 8px',
+    borderRadius: '4px'
+  },
+  promptStageTitle: {
+    fontSize: '13px',
+    fontWeight: 500,
+    color: '#374151'
+  },
+  promptStageMetric: {
+    fontSize: '12px',
+    color: '#6B7280',
+    fontFamily: 'monospace'
+  },
+  promptStageBody: {
+    padding: '12px 14px',
+    borderTop: '1px solid #E5E7EB'
+  },
+  inputParamsBox: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: '6px',
+    padding: '10px 12px',
+    marginBottom: '12px'
+  },
+  inputParamsTitle: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#6B7280',
+    marginBottom: '6px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px'
+  },
+  inputParamsGrid: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px 16px',
+    fontSize: '12px',
+    color: '#374151'
+  },
+  inputParamLabel: {
+    fontWeight: 500,
+    color: '#6B7280'
+  },
+  promptPreWidgetSelection: {
+    backgroundColor: '#FAF5FF',
+    padding: '12px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    overflow: 'auto',
+    maxHeight: '400px',
+    margin: 0,
+    fontFamily: 'monospace',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+    border: '1px solid #DDD6FE'
+  },
+  promptPreOrs: {
+    backgroundColor: '#F0F9FF',
+    padding: '12px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    overflow: 'auto',
+    maxHeight: '400px',
+    margin: 0,
+    fontFamily: 'monospace',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+    border: '1px solid #BAE6FD'
+  },
+  promptPreUiSpec: {
+    backgroundColor: '#FAF5FF',
+    padding: '12px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    overflow: 'auto',
+    maxHeight: '400px',
+    margin: 0,
+    fontFamily: 'monospace',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+    border: '1px solid #DDD6FE'
+  },
+  // W2WR Reactivity Analysis スタイル
+  w2wrSection: {
+    margin: '16px 20px',
+    border: '1px solid #F59E0B',
+    borderRadius: '8px',
+    overflow: 'hidden',
+    backgroundColor: '#FFFBEB'
+  },
+  w2wrHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '10px 14px',
+    backgroundColor: '#FEF3C7',
+    cursor: 'pointer',
+    userSelect: 'none'
+  },
+  w2wrHeaderLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px'
+  },
+  w2wrHeaderRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  },
+  w2wrIcon: {
+    fontSize: '10px',
+    color: '#92400E',
+    width: '12px'
+  },
+  w2wrBadge: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#92400E',
+    backgroundColor: '#FCD34D',
+    padding: '3px 8px',
+    borderRadius: '4px'
+  },
+  w2wrTitle: {
+    fontSize: '13px',
+    fontWeight: 500,
+    color: '#92400E'
+  },
+  w2wrMetric: {
+    fontSize: '12px',
+    color: '#92400E',
+    fontFamily: 'monospace'
+  },
+  w2wrBody: {
+    padding: '12px 14px',
+    borderTop: '1px solid #FCD34D',
+    backgroundColor: '#FFFBEB'
+  },
+  w2wrSourceInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '12px',
+    padding: '8px 12px',
+    backgroundColor: '#F3F4F6',
+    borderRadius: '6px'
+  },
+  w2wrSourceLabel: {
+    fontSize: '12px',
+    color: '#4B5563',
+    fontWeight: 500
+  },
+  w2wrSourceBadge: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#FFFFFF',
+    padding: '3px 10px',
+    borderRadius: '4px'
+  },
+  w2wrVersionBadge: {
+    fontSize: '11px',
+    fontWeight: 500,
+    color: '#6B7280',
+    backgroundColor: '#E5E7EB',
+    padding: '3px 8px',
+    borderRadius: '4px'
+  },
+  w2wrSummary: {
+    display: 'flex',
+    gap: '24px',
+    padding: '10px 12px',
+    backgroundColor: '#FEF3C7',
+    borderRadius: '6px',
+    marginBottom: '12px'
+  },
+  w2wrSummaryRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px'
+  },
+  w2wrSummaryLabel: {
+    fontSize: '12px',
+    color: '#92400E',
+    fontWeight: 500
+  },
+  w2wrSummaryValue: {
+    fontSize: '12px',
+    fontWeight: 600,
+    fontFamily: 'monospace'
+  },
+  w2wrBadgeOk: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#065F46',
+    backgroundColor: '#D1FAE5',
+    padding: '2px 8px',
+    borderRadius: '4px'
+  },
+  w2wrBadgeError: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#991B1B',
+    backgroundColor: '#FEE2E2',
+    padding: '2px 8px',
+    borderRadius: '4px'
+  },
+  w2wrCycleError: {
+    padding: '10px 12px',
+    backgroundColor: '#FEE2E2',
+    color: '#991B1B',
+    borderRadius: '6px',
+    fontSize: '12px',
+    marginBottom: '12px',
+    border: '1px solid #FECACA'
+  },
+  w2wrDependenciesList: {
+    border: '1px solid #E5E7EB',
+    borderRadius: '6px',
+    overflow: 'hidden',
+    backgroundColor: '#fff'
+  },
+  w2wrListHeader: {
+    padding: '8px 12px',
+    backgroundColor: '#F9FAFB',
+    borderBottom: '1px solid #E5E7EB',
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px'
+  },
+  w2wrDependencyItem: {
+    borderBottom: '1px solid #E5E7EB'
+  },
+  w2wrDepHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '10px 12px',
+    cursor: 'pointer',
+    userSelect: 'none',
+    backgroundColor: '#fff'
+  },
+  w2wrDepHeaderLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  },
+  w2wrDepHeaderRight: {
+    display: 'flex',
+    alignItems: 'center'
+  },
+  w2wrDepIcon: {
+    fontSize: '10px',
+    color: '#6B7280',
+    width: '12px'
+  },
+  w2wrDepIndex: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#6B7280',
+    backgroundColor: '#F3F4F6',
+    padding: '2px 6px',
+    borderRadius: '4px'
+  },
+  w2wrDepPath: {
+    fontSize: '12px',
+    fontFamily: 'monospace',
+    color: '#374151'
+  },
+  w2wrDepArrow: {
+    color: '#9CA3AF',
+    margin: '0 4px'
+  },
+  w2wrDepDetails: {
+    padding: '12px',
+    backgroundColor: '#F9FAFB',
+    borderTop: '1px solid #E5E7EB'
+  },
+  w2wrDepDetailRow: {
+    display: 'flex',
+    gap: '8px',
+    marginBottom: '6px',
+    fontSize: '12px'
+  },
+  w2wrDepDetailLabel: {
+    fontWeight: 500,
+    color: '#6B7280',
+    minWidth: '100px'
+  },
+  w2wrDepDetailValue: {
+    color: '#374151',
+    fontFamily: 'monospace'
+  },
+  w2wrDepDetailCode: {
+    backgroundColor: '#E5E7EB',
+    padding: '2px 6px',
+    borderRadius: '4px',
+    fontSize: '11px'
+  },
+  w2wrDepCodeBlock: {
+    marginTop: '8px',
+    marginBottom: '8px'
+  },
+  w2wrDepCodeLabel: {
+    fontSize: '11px',
+    fontWeight: 500,
+    color: '#6B7280',
+    marginBottom: '4px'
+  },
+  w2wrDepCode: {
+    backgroundColor: '#1F2937',
+    color: '#F3F4F6',
+    padding: '10px 12px',
+    borderRadius: '6px',
+    fontSize: '11px',
+    fontFamily: 'monospace',
+    overflow: 'auto',
+    maxHeight: '200px',
+    margin: 0,
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word'
+  },
+  w2wrDepErrors: {
+    marginTop: '8px',
+    padding: '10px 12px',
+    backgroundColor: '#FEE2E2',
+    borderRadius: '6px',
+    border: '1px solid #FECACA'
+  },
+  w2wrDepErrorsLabel: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#991B1B',
+    marginBottom: '6px'
+  },
+  w2wrDepErrorsList: {
+    margin: 0,
+    paddingLeft: '20px'
+  },
+  w2wrDepErrorItem: {
+    fontSize: '12px',
+    color: '#991B1B',
+    marginBottom: '2px'
+  },
+  w2wrNoDeps: {
+    padding: '20px',
+    textAlign: 'center',
+    color: '#6B7280',
+    fontSize: '13px'
   }
 };

@@ -259,3 +259,67 @@ export interface UISpec {
   layout: ScreenLayout;
   metadata: UISpecMetadata;
 }
+
+// ============================================================
+// generatedValue Types (v4.1)
+// ============================================================
+
+/**
+ * 生成されたサンプルアイテム
+ *
+ * LLMがUISpec生成時に生成するサンプルデータ。
+ * isGenerated: true により生成コンテンツであることを識別。
+ *
+ * @since DSL v4.1
+ */
+export interface GeneratedSampleItem {
+  /** アイテムID */
+  id: string;
+  /** テキスト内容 */
+  text: string;
+  /** 色（オプション） */
+  color?: string;
+  /** 生成コンテンツマーカー（常にtrue） */
+  isGenerated: true;
+  /** その他のプロパティ */
+  [key: string]: unknown;
+}
+
+/**
+ * 生成コンテンツのコンテナ
+ *
+ * WidgetSpec.config内に配置される生成コンテンツのコンテナ。
+ *
+ * @since DSL v4.1
+ */
+export interface GeneratedContentContainer<T = GeneratedSampleItem> {
+  /** 生成されたアイテムの配列 */
+  items: T[];
+  /** コンテナレベルの生成マーカー（常にtrue） */
+  isGenerated: true;
+}
+
+/**
+ * GeneratedSampleItemの型ガード
+ */
+export function isGeneratedSampleItem(value: unknown): value is GeneratedSampleItem {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.id === 'string' &&
+    typeof v.text === 'string' &&
+    v.isGenerated === true
+  );
+}
+
+/**
+ * GeneratedContentContainerの型ガード
+ */
+export function isGeneratedContentContainer(value: unknown): value is GeneratedContentContainer {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    Array.isArray(v.items) &&
+    v.isGenerated === true
+  );
+}

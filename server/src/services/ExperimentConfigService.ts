@@ -58,6 +58,27 @@ export interface TestCaseReactivity {
   targetWidget: string;
 }
 
+// ========================================
+// W2WR期待値の型定義
+// ========================================
+
+export interface ExpectedW2WRRelationship {
+  type: 'passthrough' | 'javascript';
+  javascript?: string;
+}
+
+export interface ExpectedW2WRBinding {
+  source: string;      // "widgetId.portId" 形式
+  target: string;      // "widgetId.portId" 形式
+  relationship: ExpectedW2WRRelationship;
+  updateMode: 'realtime' | 'debounced' | 'on_confirm';
+  debounceMs?: number;
+}
+
+export interface ExpectedW2WR {
+  bindings: ExpectedW2WRBinding[];
+}
+
 export interface TestCaseStage {
   widgets: string[];
   purpose: string;
@@ -80,6 +101,7 @@ export interface TestCase {
   contextFactors: TestCaseContextFactors;
   expectedBottlenecks: string[];
   expectedFlow: TestCaseExpectedFlow;
+  expectedW2WR?: ExpectedW2WR;  // W2WR期待値（hasReactivity=trueの場合に設定）
   evaluationCriteria: string[];
 }
 

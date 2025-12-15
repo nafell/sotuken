@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { experimentApi, type TestCaseSummary, type ExperimentSettings } from '../../../services/ExperimentApiService';
+import { experimentApi, type TestCaseSummary, type ExperimentSettings, type LLMProvider } from '../../../services/ExperimentApiService';
 
 export default function TechnicalModeConfig() {
     const navigate = useNavigate();
@@ -16,7 +16,9 @@ export default function TechnicalModeConfig() {
     // Config State
     const [selectedCaseIds, setSelectedCaseIds] = useState<Set<string>>(new Set());
     const [widgetCount, setWidgetCount] = useState(12);
+    const [provider, setProvider] = useState<LLMProvider>('gemini');
     const [modelId, setModelId] = useState('gemini-2.5-flash-lite');
+    const [useMockWidgetSelection, setUseMockWidgetSelection] = useState(false);
 
     useEffect(() => {
         async function loadData() {
@@ -28,6 +30,7 @@ export default function TechnicalModeConfig() {
                 setSettings(settingsData);
                 setTestCases(casesData);
                 setWidgetCount(settingsData.defaults.widgetCount);
+                setProvider(settingsData.defaults.provider || 'gemini');
                 setModelId(settingsData.defaults.modelId);
 
                 // Default select all cases
@@ -68,7 +71,7 @@ export default function TechnicalModeConfig() {
 
         // Pass configuration via state or URL params
         // In a real implementation, we might create a "BatchSession" here
-        navigate(`/research-experiment/execute/${firstCaseId}?mode=technical&model=${modelId}&widgets=${widgetCount}`);
+        navigate(`/research-experiment/execute/${firstCaseId}?mode=technical&provider=${provider}&model=${modelId}&widgets=${widgetCount}&useMock=${useMockWidgetSelection}`);
     };
 
     if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading...</div>;
@@ -85,15 +88,38 @@ export default function TechnicalModeConfig() {
                 <div style={styles.configSection}>
                     <h2 style={styles.sectionTitle}>1. Environment Settings</h2>
                     <div style={styles.formGroup}>
+                        <label style={styles.label}>LLM Provider</label>
+                        <select
+                            value={provider}
+                            onChange={e => {
+                                const newProvider = e.target.value as LLMProvider;
+                                setProvider(newProvider);
+                                // プロバイダー変更時に対応するデフォルトモデルを選択
+                                const defaultModel = settings?.modelConditions.find(
+                                    m => (m.provider || 'gemini') === newProvider
+                                );
+                                if (defaultModel) {
+                                    setModelId(defaultModel.modelId);
+                                }
+                            }}
+                            style={styles.select}
+                        >
+                            <option value="gemini">Google AI Studio (Gemini)</option>
+                            <option value="azure">Azure OpenAI</option>
+                        </select>
+                    </div>
+                    <div style={styles.formGroup}>
                         <label style={styles.label}>Model</label>
                         <select
                             value={modelId}
                             onChange={e => setModelId(e.target.value)}
                             style={styles.select}
                         >
-                            {settings?.modelConditions.map(m => (
-                                <option key={m.id} value={m.modelId}>{m.modelId} ({m.description})</option>
-                            ))}
+                            {settings?.modelConditions
+                                .filter(m => (m.provider || 'gemini') === provider)
+                                .map(m => (
+                                    <option key={m.id} value={m.modelId}>{m.modelId} ({m.description})</option>
+                                ))}
                         </select>
                     </div>
                     <div style={styles.formGroup}>
@@ -107,6 +133,21 @@ export default function TechnicalModeConfig() {
                                 <option key={c.id} value={c.widgetCount}>{c.widgetCount} Widgets - {c.description}</option>
                             ))}
                         </select>
+                    </div>
+                    <div style={styles.formGroup}>
+                        <label style={styles.checkboxLabel}>
+                            <input
+                                type="checkbox"
+                                checked={useMockWidgetSelection}
+                                onChange={e => setUseMockWidgetSelection(e.target.checked)}
+                                style={styles.checkbox}
+                            />
+                            モックWidget選定を使用
+                        </label>
+                        <p style={styles.hint}>
+                            有効にすると、LLM呼び出しをスキップしてテストケースのexpectedFlowを使用します。
+                            再現性の高いテストに有効です。
+                        </p>
                     </div>
                 </div>
 
@@ -178,5 +219,7 @@ const styles: Record<string, React.CSSProperties> = {
     caseTitle: { fontSize: '14px', fontWeight: 500 },
     textButton: { background: 'none', border: 'none', color: '#3B82F6', cursor: 'pointer', fontSize: '14px' },
     actions: { textAlign: 'right' },
-    startButton: { padding: '12px 24px', backgroundColor: '#0284C7', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 600 }
+    startButton: { padding: '12px 24px', backgroundColor: '#0284C7', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 600 },
+    checkboxLabel: { display: 'flex', alignItems: 'center', fontSize: '14px', fontWeight: 500, color: '#374151', cursor: 'pointer' },
+    hint: { fontSize: '12px', color: '#6B7280', margin: '4px 0 0 24px' }
 };

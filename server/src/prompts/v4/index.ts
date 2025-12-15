@@ -12,6 +12,8 @@ export { WIDGET_SELECTION_PROMPT } from './widget-selection.prompt';
 export { ORS_GENERATION_PROMPT } from './ors-generation.prompt';
 export { UISPEC_GENERATION_PROMPT } from './uispec-generation.prompt';
 export { SUMMARY_GENERATION_PROMPT } from './summary-generation.prompt';
+// DSL v5.0: Plan統合プロンプト
+export { PLAN_ORS_GENERATION_PROMPT, PLAN_UISPEC_GENERATION_PROMPT } from './plan-unified.prompt';
 
 /**
  * プロンプトテンプレートマップ
@@ -22,6 +24,9 @@ export const PROMPT_TEMPLATES = {
   'ors-generation': () => import('./ors-generation.prompt').then((m) => m.ORS_GENERATION_PROMPT),
   'uispec-generation': () => import('./uispec-generation.prompt').then((m) => m.UISPEC_GENERATION_PROMPT),
   'summary-generation': () => import('./summary-generation.prompt').then((m) => m.SUMMARY_GENERATION_PROMPT),
+  // DSL v5.0: Plan統合プロンプト
+  'plan-ors-generation': () => import('./plan-unified.prompt').then((m) => m.PLAN_ORS_GENERATION_PROMPT),
+  'plan-uispec-generation': () => import('./plan-unified.prompt').then((m) => m.PLAN_UISPEC_GENERATION_PROMPT),
 } as const;
 
 export type PromptTemplateId = keyof typeof PROMPT_TEMPLATES;

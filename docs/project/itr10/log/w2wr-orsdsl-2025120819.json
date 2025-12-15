@@ -1,0 +1,45 @@
+{
+  "version": "5.0",
+  "entities": [
+    {
+      "id": "concern",
+      "type": "concern",
+      "attributes": [
+        {
+          "name": "text",
+          "valueType": "string",
+          "description": "ユーザーの元の悩みテキスト",
+          "structuralType": "SVAL"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "llmModel": "fallback",
+    "sections": [
+      "diverge",
+      "organize",
+      "converge"
+    ],
+    "sessionId": "cbe73fd2-e44a-4f66-b84b-aea12978e4ee",
+    "concernText": "転職活動中。候補企業をリストアップしたが、分類して整理したい",
+    "generatedAt": 1765189276619,
+    "bottleneckType": "unorganized_info"
+  },
+  "planMetadata": {
+    "sections": [
+      "diverge",
+      "organize",
+      "converge"
+    ],
+    "concernText": "転職活動中。候補企業をリストアップしたが、分類して整理したい",
+    "bottleneckType": "unorganized_info"
+  },
+  "dependencyGraph": {
+    "metadata": {
+      "version": "5.0",
+      "generatedAt": 1765189276619
+    },
+    "dependencies": []
+  }
+}

@@ -49,6 +49,8 @@ export interface ExperimentSession {
   evaluatorId?: string;
   widgetCount: number;
   modelId: string;
+  /** モックWidget選定を使用するかどうか */
+  useMockWidgetSelection?: boolean;
   concernText: string;
   contextFactors: any;
   generatedOodm?: any;
@@ -108,6 +110,9 @@ export interface ExperimentGeneration {
   generateDuration?: number;
 }
 
+/** LLMプロバイダー */
+export type LLMProvider = 'gemini' | 'azure';
+
 export interface ExperimentSettings {
   version: string;
   widgetCountConditions: Array<{
@@ -118,6 +123,7 @@ export interface ExperimentSettings {
   }>;
   modelConditions: Array<{
     id: string;
+    provider?: LLMProvider;
     modelId: string;
     description: string;
   }>;
@@ -128,6 +134,7 @@ export interface ExperimentSettings {
   }>;
   defaults: {
     widgetCount: number;
+    provider?: LLMProvider;
     modelId: string;
     experimentType: string;
   };
@@ -211,6 +218,8 @@ class ExperimentApiService {
     modelId: string;
     concernText: string;
     contextFactors: any;
+    /** モックWidget選定を使用するかどうか */
+    useMockWidgetSelection?: boolean;
   }): Promise<ExperimentSession> {
     const response = await fetch(`${this.baseUrl}/api/experiment/sessions`, {
       method: 'POST',

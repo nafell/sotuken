@@ -2,8 +2,9 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { apiService, type StageExecutionResponse } from '../../../services/api/ApiService';
 import { UIRendererV4 } from '../../../services/ui-generation/UIRendererV4';
 import { PLAN_STAGE_CONFIGS } from '../types';
-import type { PlanStage, StageResult, WidgetResultData } from '../types';
+import type { PlanStage, StageResult, WidgetResultData, ExperimentError } from '../types';
 import type { ORS } from '../../../types/v4/ors.types';
+import type { SkippedStages } from '../../../types/v4/widget-selection.types';
 
 interface ExperimentPlanProps {
     sessionId: string;
@@ -11,6 +12,8 @@ interface ExperimentPlanProps {
     currentStage: PlanStage;
     stageResults: Partial<Record<PlanStage, StageResult>>;
     bottleneckType?: string;
+    /** スキップ予定のステージ */
+    skippedStages?: SkippedStages;
     onStageResult: (stage: PlanStage, result: Partial<StageResult>, generationId?: string, renderDuration?: number) => void;
     onWidgetUpdate: (stage: PlanStage, widgetResult: WidgetResultData) => void;
     onNextStage: () => void;
@@ -30,6 +33,7 @@ export function ExperimentPlan({
     currentStage,
     stageResults,
     bottleneckType,
+    skippedStages,
     onStageResult,
     onWidgetUpdate,
     onNextStage,
@@ -42,6 +46,10 @@ export function ExperimentPlan({
     const [currentResponse, setCurrentResponse] = useState<StageExecutionResponse | null>(null);
     const [currentORS, setCurrentORS] = useState<ORS | null>(null);
     const [renderStartTime, setRenderStartTime] = useState<number>(0);
+    // ステージ中のエラーを収集（Unknown Widget等）
+    const [stageErrors, setStageErrors] = useState<ExperimentError[]>([]);
+    // レンダリング中のエラー通知済みIDを追跡（重複通知防止）
+    const notifiedErrorsRef = useRef<Set<string>>(new Set());
 
     // 生成済みステージを追跡（2重生成防止）
     const generatedStagesRef = useRef<Set<PlanStage>>(new Set());
@@ -51,6 +59,28 @@ export function ExperimentPlan({
     const stageConfig = PLAN_STAGE_CONFIGS.find(c => c.stage === currentStage);
 
     const handleGenerate = useCallback(async () => {
+        // スキップ対象のステージかチェック
+        if (skippedStages?.[currentStage]) {
+            console.log(`⏭️ Skipping stage: ${currentStage}`);
+
+            // スキップ結果を生成
+            const skipResult: Partial<StageResult> = {
+                stage: currentStage,
+                skipped: true,
+                mode: 'widget',
+                widgetResults: [],
+            };
+
+            // 結果を通知
+            onStageResult(currentStage, skipResult, undefined, 0);
+
+            // 少し待ってから次のステージへ自動進行
+            setTimeout(() => {
+                onNextStage();
+            }, 300);
+            return;
+        }
+
         setStatus('generating');
         setError(null);
 
@@ -95,7 +125,7 @@ export function ExperimentPlan({
             setError(err instanceof Error ? err.message : 'Unknown error');
             setStatus('error');
         }
-    }, [currentStage, currentStageIndex, sessionId, concernText, stageResults, bottleneckType]);
+    }, [currentStage, currentStageIndex, sessionId, concernText, stageResults, bottleneckType, skippedStages, onStageResult, onNextStage]);
 
     // ステージ変更時にリセット＆自動生成開始
     useEffect(() => {
@@ -120,6 +150,9 @@ export function ExperimentPlan({
         }
         setError(null);
         setRenderStartTime(0);
+        // ステージ変更時にエラーと通知済みIDをリセット
+        setStageErrors([]);
+        notifiedErrorsRef.current.clear();
         // クリーンアップは不要（フラグをリセットしない）
     }, [currentStage, existingResult, handleGenerate]);
 
@@ -130,7 +163,7 @@ export function ExperimentPlan({
             const duration = Math.round(endTime - renderStartTime);
             console.log(`🎨 Render duration for ${currentStage}: ${duration}ms`);
 
-            // 結果を保存 (レンダリング時間含む)
+            // 結果を保存 (レンダリング時間 + エラー含む)
             onStageResult(
                 currentStage,
                 {
@@ -140,7 +173,8 @@ export function ExperimentPlan({
                     ors: currentResponse.ors, // V4で追加
                     widgetResults: [],
                     generationId: currentResponse.generationId, // サーバーから返却されたID
-                    renderDuration: duration
+                    renderDuration: duration,
+                    errors: stageErrors.length > 0 ? stageErrors : undefined,
                 },
                 currentResponse.generationId,
                 duration
@@ -155,7 +189,7 @@ export function ExperimentPlan({
                 }, 2000);
             }
         }
-    }, [status, renderStartTime, currentResponse, currentStage, onStageResult, mode, onNextStage]);
+    }, [status, renderStartTime, currentResponse, currentStage, onStageResult, mode, onNextStage, stageErrors]);
 
     // ... (rest of the file)
 
@@ -240,6 +274,25 @@ export function ExperimentPlan({
                             ors={currentORS}
                             onWidgetUpdate={handleWidgetUpdate}
                             onWidgetComplete={() => { }}
+                            onUnknownWidget={(widgetId, componentName) => {
+                                // 重複通知を防ぐ
+                                const errorKey = `unknown_widget:${widgetId}`;
+                                if (notifiedErrorsRef.current.has(errorKey)) {
+                                    return;
+                                }
+                                notifiedErrorsRef.current.add(errorKey);
+
+                                const errorEntry: ExperimentError = {
+                                    type: 'unknown_widget',
+                                    message: `Unknown widget: ${componentName}`,
+                                    stage: currentStage,
+                                    timestamp: Date.now(),
+                                    recoverable: true, // Unknown Widgetは継続可能
+                                    details: { widgetId, componentName },
+                                };
+                                setStageErrors(prev => [...prev, errorEntry]);
+                                console.warn(`Unknown Widget detected: ${componentName} (ID: ${widgetId}) in stage: ${currentStage}`);
+                            }}
                             contextSummary={concernText ? `Your Concern: ${concernText}` : undefined}
                         />
                     </div>

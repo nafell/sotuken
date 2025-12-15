@@ -17,7 +17,7 @@
 6. [LLM呼び出し構成](#6-llm呼び出し構成)
 7. [アプリケーションフロー](#7-アプリケーションフロー)
 8. [型システム](#8-型システム)
-9. [generatedValue（将来拡張）](#9-generatedvalue将来拡張)
+9. [generatedValue](#9-generatedvalue)
 10. [Jellyとの対応関係](#10-jellyとの対応関係)
 11. [付録A: 用語対応表（v3→v4）](#11-付録a-用語対応表v3v4)
 
@@ -769,48 +769,130 @@ type PortDataType =
 
 ---
 
-## 9. generatedValue（将来拡張）
+## 9. generatedValue
 
 ### 9.1 概要
 
-generatedValueは、LLMが動的に生成するWidget内のコンテンツを定義する仕組み。v4では設計のみ記載し、実装は将来バージョンで行う。
+generatedValueは、LLMがUISpec生成時（第3段階）にWidget内のコンテンツを動的に生成する仕組み。Cold Start Problem（空のWidgetから始める認知負荷）を解決し、ユーザーの思考を促すきっかけを提供する。
 
 ### 9.2 分類
 
-| 分類 | 説明 | 例 |
-|------|------|-----|
-| A. ラベル・説明文 | UIの「枠」を埋めるもの | 感情ラベル、象限説明文 |
-| B. サンプルデータ | ユーザー入力の叩き台 | 初期カード、サンプル項目 |
+| 分類 | 説明 | 例 | 実装状況 |
+|------|------|-----|----------|
+| A. ラベル・説明文 | UIの「枠」を埋めるもの | 感情ラベル | v4.1実装済み |
+| B. サンプルデータ | ユーザー入力の叩き台 | 初期カード、サンプル項目 | v4.1実装済み |
 
-### 9.3 GenerationSpec（案）
+### 9.3 Widget別実装状況
+
+| Widget | タイプ | 生成内容 | 実装状況 |
+|--------|--------|----------|----------|
+| BrainstormCards | Type B (samples) | 悩みに関連するアイデアカード2-3個 | 実装済み |
+| SwotAnalysis | Type B (samples) | 各象限に1つずつサンプル項目（計4個） | 実装済み |
+| TradeoffBalance | Type B (samples) | 左右それぞれ1-2個の比較項目 | 実装済み |
+| EmotionPalette | Type A (labels) | 悩みに関連する感情ラベル8個 | 実装済み |
+| MindMap | Type B (samples) | 中心トピックから派生するノード | 未実装（v4.2予定） |
+| MatrixPlacement | Type B (samples) | 配置アイテム3つ程度 | 未実装（v4.2予定） |
+| DependencyMapping | Type B (samples) | 関連ノードの洗い出し | 未実装（v4.2予定） |
+| CardSorting | Type B (samples) | 分類対象のカード3-5個 | 未実装（v4.2予定） |
+| PrioritySliderGrid | Type B (samples) | 評価項目3つ程度 | 未実装（v4.2予定） |
+| QuestionCardChain | - | config.questionsで対応済み | 対象外 |
+| TimelineSlider | - | 個別設計が必要 | 対象外 |
+| StageSummary | - | 前ステージデータを使用 | 対象外 |
+| ExportOptions | - | 固定オプション | 対象外 |
+
+### 9.4 型定義
 
 ```typescript
-interface GenerationSpec {
-  type: 'label' | 'sample';
-  instruction: string;              // LLMへの生成指示
-  count?: number;                   // 生成数（サンプルの場合）
-  schema?: Record<string, any>;     // 生成値のスキーマ
+/**
+ * 生成されたサンプルアイテム
+ */
+interface GeneratedSampleItem {
+  id: string;
+  text: string;
+  color?: string;
+  isGenerated: true;  // 生成コンテンツを識別するマーカー
+  [key: string]: unknown;
+}
+
+/**
+ * 生成コンテンツのコンテナ
+ */
+interface GeneratedContentContainer<T = GeneratedSampleItem> {
+  items: T[];
+  isGenerated: true;  // コンテナレベルのマーカー
+}
+
+/**
+ * Widget定義に追加する生成ヒント
+ */
+interface WidgetGenerationHints {
+  labels?: {
+    field: string;              // 配置先のconfigフィールド名
+    instruction: string;        // LLMへの生成指示
+    count?: number;             // 生成数
+    schema: Record<string, string>;  // アイテムのスキーマ
+  };
+  samples?: {
+    field: string;              // 配置先のconfigフィールド名
+    instruction: string;        // LLMへの生成指示
+    count: { min: number; max: number };  // 生成数の範囲
+    schema: Record<string, string>;  // アイテムのスキーマ
+  };
 }
 ```
 
-### 9.4 Attribute内での使用例（案）
+### 9.5 UISpec.config内での使用
+
+generatedValueはWidgetSpec.config内に配置される。
 
 ```json
 {
-  "name": "emotions",
-  "structuralType": "ARRY",
-  "itemType": "DICT",
-  "schema": {
-    "label": "string",
-    "color": "string"
-  },
-  "generation": {
-    "type": "label",
-    "instruction": "ユーザーの悩みに関連する感情を8個生成してください",
-    "count": 8
+  "id": "brainstorm_0",
+  "component": "brainstorm_cards",
+  "position": 0,
+  "config": {
+    "title": "転職について考えてみましょう",
+    "sampleCards": {
+      "items": [
+        { "id": "sample_1", "text": "現職で得られるスキル", "isGenerated": true },
+        { "id": "sample_2", "text": "転職先に求める条件", "isGenerated": true }
+      ],
+      "isGenerated": true
+    }
   }
 }
 ```
+
+### 9.6 Widget定義でのgenerationHints
+
+```typescript
+// BrainstormCardsの例
+{
+  id: 'brainstorm_cards',
+  // ...他のフィールド
+  generationHints: {
+    samples: {
+      field: 'sampleCards',
+      instruction: 'ユーザーの悩みに関連するアイデアの種となるカードを2-3個生成',
+      count: { min: 2, max: 3 },
+      schema: { id: 'string', text: 'string', color: 'string (optional)' },
+    },
+  },
+}
+```
+
+### 9.7 フロントエンドでの表示
+
+- `isGenerated: true`のアイテムは視覚的に区別（✨AI提案バッジ等）
+- ユーザーは「使う」「却下」を選択可能
+- 採用されたサンプルはユーザー入力として扱われる（isGeneratedマーカーは除去）
+
+### 9.8 設計原則
+
+1. **追加LLM呼び出しなし**: UISpec生成時に同時生成（3段階構成を維持）
+2. **後方互換性**: generationHintsがないWidgetは従来通り動作
+3. **明示的マーキング**: 生成コンテンツは`isGenerated: true`で識別
+4. **編集可能性**: 生成コンテンツはユーザーが自由に編集・削除可能
 
 ---
 
@@ -892,3 +974,4 @@ v3までの「OODM」という呼称は、データモデル層（Layer 1全体�
 |---------|------|---------|
 | 4.0 | 2025-12-02 | 初版作成 |
 | 4.0.1 | 2025-12-02 | OODM→ORS/TDDM用語変更、付録A追加 |
+| 4.1 | 2025-12-08 | generatedValue正式仕様化（Section 9更新） |

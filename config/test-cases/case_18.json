@@ -1,0 +1,52 @@
+{
+  "caseId": "case_18",
+  "title": "中文・学習（Passthrough）",
+  "complexity": "simple",
+  "hasReactivity": true,
+
+  "concernText": "資格試験の勉強範囲が広すぎる。まず全体像を把握してから、分野ごとに整理したい",
+
+  "contextFactors": {
+    "category": "学習・自己啓発",
+    "urgency": "medium",
+    "emotionalState": "overwhelmed",
+    "timeAvailable": 30
+  },
+
+  "expectedBottlenecks": [
+    "unorganized_info",
+    "dont_know_where_to_start"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "試験範囲のトピックを書き出す"
+    },
+    "organize": {
+      "widgets": ["card_sorting"],
+      "purpose": "分野別・難易度別に分類"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "学習順序の優先度を設定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "card_sorting.cards",
+        "relationship": { "type": "passthrough" },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "学習整理へのpassthrough適用",
+    "diverge→organizeの自然な連携",
+    "passthrough relationshipの正確な生成"
+  ]
+}

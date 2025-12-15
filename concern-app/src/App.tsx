@@ -41,6 +41,12 @@ const SessionList = lazy(() => import('./pages/research-experiment/SessionList')
 const SessionDetail = lazy(() => import('./pages/research-experiment/SessionDetail'));
 const ReplayView = lazy(() => import('./pages/research-experiment/ReplayView'));
 
+// Layer1/Layer4 Batch Experiment Pages
+const BatchExperiment = lazy(() => import('./pages/research-experiment/BatchExperiment'));
+const BatchProgress = lazy(() => import('./pages/research-experiment/BatchProgress'));
+const BatchResults = lazy(() => import('./pages/research-experiment/BatchResults'));
+const BatchList = lazy(() => import('./pages/research-experiment/BatchList'));
+
 function App() {
   const [condition, setCondition] = useState<ExperimentCondition>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -220,6 +226,49 @@ function App() {
               </Suspense>
             }
           />
+
+          {/* Layer1/Layer4 Batch Experiment Routes */}
+          <Route
+            path="/research-experiment/batch"
+            element={
+              <Suspense fallback={<div style={{ padding: '20px' }}>Loading Batch Experiment...</div>}>
+                <BatchExperiment />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/research-experiment/batch/:batchId/progress"
+            element={
+              <Suspense fallback={<div style={{ padding: '20px' }}>Loading Batch Progress...</div>}>
+                <BatchProgress />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/research-experiment/batch/:batchId/results"
+            element={
+              <Suspense fallback={<div style={{ padding: '20px' }}>Loading Batch Results...</div>}>
+                <BatchResults />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/research-experiment/batch/list"
+            element={
+              <Suspense fallback={<div style={{ padding: '20px' }}>Loading Batch List...</div>}>
+                <BatchList />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/research-experiment/sessions"
+            element={
+              <Suspense fallback={<div style={{ padding: '20px' }}>Loading Session List...</div>}>
+                <SessionList />
+              </Suspense>
+            }
+          />
+
           {/* Backward compatibility redirects */}
           {/* Backward compatibility redirects - Removed to avoid :sessionId literal bug */}
           {/* <Route path="/research-experiment/sessions" element={<Navigate to="/research-experiment/data/sessions" replace />} /> */}

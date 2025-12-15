@@ -1,0 +1,51 @@
+{
+  "caseId": "case_16",
+  "title": "短文・キャリア（Passthrough）",
+  "complexity": "simple",
+  "hasReactivity": true,
+
+  "concernText": "転職先の候補をリストアップして整理したい",
+
+  "contextFactors": {
+    "category": "キャリア",
+    "urgency": "medium",
+    "emotionalState": "focused",
+    "timeAvailable": 25
+  },
+
+  "expectedBottlenecks": [
+    "unorganized_info"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "転職先候補を書き出す"
+    },
+    "organize": {
+      "widgets": ["card_sorting"],
+      "purpose": "業界・条件別に分類"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "志望度の優先順位を設定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "card_sorting.cards",
+        "relationship": { "type": "passthrough" },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "brainstorm→card_sorting間のpassthrough",
+    "短文からの適切なwidget選択",
+    "realtimeモードの設定"
+  ]
+}

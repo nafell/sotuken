@@ -1,0 +1,54 @@
+{
+  "caseId": "case_28",
+  "title": "中文・キャリア（JS単純）",
+  "complexity": "simple",
+  "hasReactivity": true,
+
+  "concernText": "今持ってるスキルを棚卸しして、伸ばすべきスキルの優先度を決めたい。何から手をつけるか明確にしたい",
+
+  "contextFactors": {
+    "category": "キャリア",
+    "urgency": "low",
+    "emotionalState": "analytical",
+    "timeAvailable": 35
+  },
+
+  "expectedBottlenecks": [
+    "cannot_prioritize"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "持っているスキルを洗い出す"
+    },
+    "organize": {
+      "widgets": ["matrix_placement"],
+      "purpose": "現在レベル×将来重要度で配置"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "学習優先度を設定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "matrix_placement.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.map(c => ({id: c.id, text: c.text, x: 50, y: 50}))"
+        },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "cards→matrix変換のJS生成",
+    "初期位置設定のロジック",
+    "スキル評価フローへのW2WR"
+  ]
+}

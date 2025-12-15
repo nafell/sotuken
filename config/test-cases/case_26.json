@@ -1,0 +1,54 @@
+{
+  "caseId": "case_26",
+  "title": "短文・メンタルヘルス（JS単純）",
+  "complexity": "simple",
+  "hasReactivity": true,
+
+  "concernText": "最近イライラしがち。何が原因か整理して落ち着きたい",
+
+  "contextFactors": {
+    "category": "メンタルヘルス",
+    "urgency": "medium",
+    "emotionalState": "irritated",
+    "timeAvailable": 20
+  },
+
+  "expectedBottlenecks": [
+    "emotional_block"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["emotion_palette"],
+      "purpose": "今感じている感情を可視化"
+    },
+    "organize": {
+      "widgets": ["card_sorting"],
+      "purpose": "感情の原因を分類"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "対処する優先度を設定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "emotion_palette.selectedEmotions",
+        "target": "priority_slider_grid.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.map(e => ({id: e.emotion, label: e.emotion, priority: e.intensity}))"
+        },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "emotion→priority変換のJS生成",
+    "感情データの型マッピング",
+    "単純なmap変換"
+  ]
+}

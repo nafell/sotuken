@@ -1,0 +1,45 @@
+{
+    "version": "5.0",
+    "entities": [
+      {
+        "id": "concern",
+        "type": "concern",
+        "attributes": [
+          {
+            "name": "text",
+            "valueType": "string",
+            "description": "ユーザーの元の悩みテキスト",
+            "structuralType": "SVAL"
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "llmModel": "fallback",
+      "sections": [
+        "diverge",
+        "organize",
+        "converge"
+      ],
+      "sessionId": "batch-6fa5db64-77c6-45d7-b3f8-2cf32525d8a2-1",
+      "concernText": "副業を始めたいが、何から手をつければいいか分からない。アイデアはいくつかあるが整理できていない",
+      "generatedAt": 1765427286129,
+      "bottleneckType": "information"
+    },
+    "planMetadata": {
+      "sections": [
+        "diverge",
+        "organize",
+        "converge"
+      ],
+      "concernText": "副業を始めたいが、何から手をつければいいか分からない。アイデアはいくつかあるが整理できていない",
+      "bottleneckType": "information"
+    },
+    "dependencyGraph": {
+      "metadata": {
+        "version": "5.0",
+        "generatedAt": 1765427286129
+      },
+      "dependencies": []
+    }
+  }

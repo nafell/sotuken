@@ -31,6 +31,13 @@
   margin: 0;
 }
 
+/* 生成バッジ表示用ヘッダー */
+.generatedHeader {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
 /* 感情グリッド */
 .emotionGrid {
   display: grid;

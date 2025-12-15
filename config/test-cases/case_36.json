@@ -1,0 +1,54 @@
+{
+  "caseId": "case_36",
+  "title": "短文・生活（JS複合）",
+  "complexity": "medium",
+  "hasReactivity": true,
+
+  "concernText": "家電買い替えで迷ってる。選択肢比較したい",
+
+  "contextFactors": {
+    "category": "生活",
+    "urgency": "low",
+    "emotionalState": "analytical",
+    "timeAvailable": 25
+  },
+
+  "expectedBottlenecks": [
+    "too_many_options"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "候補製品と特徴を書き出す"
+    },
+    "organize": {
+      "widgets": ["card_sorting"],
+      "purpose": "長所/短所に分類"
+    },
+    "converge": {
+      "widgets": ["tradeoff_balance"],
+      "purpose": "製品間の比較"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "card_sorting.categories",
+        "target": "tradeoff_balance.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "Object.entries(source).flatMap(([cat, items]) => items.map(i => ({text: i.text, side: cat === '長所' ? 'left' : 'right'})))"
+        },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "購入意思決定へのJS複合適用",
+    "カテゴリ名の柔軟な判定",
+    "flatMapによるネスト解除"
+  ]
+}

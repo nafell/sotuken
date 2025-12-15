@@ -1,0 +1,54 @@
+{
+  "caseId": "case_27",
+  "title": "短文・仕事（JS単純）",
+  "complexity": "simple",
+  "hasReactivity": true,
+
+  "concernText": "今日やることをタイムラインに並べて効率よく進めたい",
+
+  "contextFactors": {
+    "category": "仕事",
+    "urgency": "high",
+    "emotionalState": "motivated",
+    "timeAvailable": 15
+  },
+
+  "expectedBottlenecks": [
+    "cannot_prioritize"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "今日のタスクを書き出す"
+    },
+    "organize": {
+      "widgets": ["timeline_slider"],
+      "purpose": "タスクを時系列に配置"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "重要度を調整"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "timeline_slider.events",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.map((c, i) => ({id: c.id, label: c.text, position: i * 10}))"
+        },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "cards→events変換のJS生成",
+    "index活用のposition計算",
+    "timeline連携のW2WR"
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "caseId": "case_50",
+  "title": "長文・人生選択（複数Binding）",
+  "complexity": "medium",
+  "hasReactivity": true,
+
+  "concernText": "人生の大きな決断を控えてる。結婚、転職、引越し、全部同時に考えないといけない。まず全体像を整理して、それぞれの選択肢のメリデメを比較して、最終的にどう進むべきか優先順位をつけたい。複雑すぎて頭がパンクしそうだけど、一度きちんと整理したい",
+
+  "contextFactors": {
+    "category": "人生選択",
+    "urgency": "high",
+    "emotionalState": "overwhelmed",
+    "timeAvailable": 90
+  },
+
+  "expectedBottlenecks": [
+    "fear_of_decision",
+    "multiple_issues"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["mind_map"],
+      "purpose": "人生の決断事項を放射状に展開"
+    },
+    "organize": {
+      "widgets": ["card_sorting", "matrix_placement"],
+      "purpose": "分類と2軸評価"
+    },
+    "converge": {
+      "widgets": ["tradeoff_balance", "priority_slider_grid"],
+      "purpose": "比較と優先度設定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "mind_map.nodes",
+        "target": "card_sorting.cards",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.filter(n => n.depth > 0).map(n => ({id: n.id, text: n.label}))"
+        },
+        "updateMode": "debounced",
+        "debounceMs": 300
+      },
+      {
+        "source": "mind_map.nodes",
+        "target": "matrix_placement.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.filter(n => n.depth > 0).map(n => ({id: n.id, text: n.label, x: 50, y: 50}))"
+        },
+        "updateMode": "debounced",
+        "debounceMs": 300
+      },
+      {
+        "source": "card_sorting.categories",
+        "target": "tradeoff_balance.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "Object.entries(source).flatMap(([cat, items]) => items.map(i => ({text: i.text, side: cat === 'メリット' ? 'left' : 'right'})))"
+        },
+        "updateMode": "debounced",
+        "debounceMs": 300
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "3 Bindingの複雑な連鎖",
+    "mind_map→organize並列 + organize→converge連鎖",
+    "最も複雑なW2WRパターン"
+  ]
+}

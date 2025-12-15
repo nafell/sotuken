@@ -22,6 +22,34 @@
       "when": 1764509425414,
       "tag": "0002_amused_lucky_pierre",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1765361050567,
+      "tag": "0003_uneven_lady_mastermind",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1765394517020,
+      "tag": "0004_light_manta",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1765405288037,
+      "tag": "0005_slim_norman_osborn",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1765411874816,
+      "tag": "0006_early_shiva",
+      "breakpoints": true
     }
   ]
 }

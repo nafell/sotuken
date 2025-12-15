@@ -1,41 +1,54 @@
 {
   "caseId": "case_06",
-  "title": "決断への恐れ（複雑）",
-  "complexity": "complex",
-  "hasReactivity": false,
+  "title": "Timeline連携W2WR",
+  "complexity": "simple",
+  "hasReactivity": true,
 
-  "concernText": "大学院に進学するか就職するか。どちらを選んでも後悔しそう。周りの期待もあって決められない",
+  "concernText": "プロジェクトのタスクを洗い出した。これを時系列に並べて計画を立てたい",
 
   "contextFactors": {
-    "category": "人生選択",
+    "category": "仕事",
     "urgency": "high",
-    "emotionalState": "conflicted",
-    "timeAvailable": 60
+    "emotionalState": "focused",
+    "timeAvailable": 30
   },
 
   "expectedBottlenecks": [
-    "fear_of_decision",
     "unorganized_info"
   ],
 
   "expectedFlow": {
     "diverge": {
-      "widgets": ["emotion_palette", "brainstorm_cards"],
-      "purpose": "不安を可視化 + 各選択肢のメリット・デメリット"
+      "widgets": ["brainstorm_cards"],
+      "purpose": "プロジェクトタスクを書き出す"
     },
     "organize": {
-      "widgets": ["question_card_chain"],
-      "purpose": "シナリオ分岐ツリー（LLMが動的に質問）",
-      "llmFeature": true
+      "widgets": ["timeline_slider"],
+      "purpose": "タスクを時系列に配置"
     },
     "converge": {
-      "widgets": ["tradeoff_balance"],
-      "purpose": "二択比較カード（トーナメント式）で最終決定"
+      "widgets": ["priority_slider_grid"],
+      "purpose": "タスクの優先度を調整"
     }
   },
 
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "timeline_slider.events",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.map((c, i) => ({id: c.id, label: c.text, position: i * 10}))"
+        },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
   "evaluationCriteria": [
-    "不安への対処の適切性",
-    "シナリオシミュレーションの有効性"
+    "cards → events変換の妥当性",
+    "position計算ロジック",
+    "timeline_sliderのevents形式への適合"
   ]
 }

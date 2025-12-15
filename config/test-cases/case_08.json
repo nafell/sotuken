@@ -1,40 +1,40 @@
 {
   "caseId": "case_08",
-  "title": "視点固定（中複雑度）",
-  "complexity": "medium",
+  "title": "短文・メンタルヘルス（No W2WR）",
+  "complexity": "simple",
   "hasReactivity": false,
 
-  "concernText": "現状の仕事に行き詰まっている。でも具体的に何が問題なのか分からない。いつも同じ考えに戻ってしまう",
+  "concernText": "最近なんかモヤモヤしてて気持ちが晴れない",
 
   "contextFactors": {
-    "category": "キャリア",
+    "category": "メンタルヘルス",
     "urgency": "medium",
-    "emotionalState": "stuck",
-    "timeAvailable": 45
+    "emotionalState": "anxious",
+    "timeAvailable": 15
   },
 
   "expectedBottlenecks": [
-    "fixed_perspective",
-    "dont_know_where_to_start"
+    "emotional_block"
   ],
 
   "expectedFlow": {
     "diverge": {
-      "widgets": ["question_card_chain"],
-      "purpose": "アナロジー選択（別の文脈で考えると？）+ ペルソナ視点切替"
+      "widgets": ["emotion_palette"],
+      "purpose": "今の気持ちを色と強度で可視化"
     },
     "organize": {
-      "widgets": ["timeline_slider"],
-      "purpose": "過去/現在/未来で状況を整理"
+      "widgets": ["card_sorting"],
+      "purpose": "感情の原因を分類"
     },
     "converge": {
-      "widgets": ["matrix_placement"],
-      "purpose": "影響度×コントロール可能性で「変えられること」に焦点化"
+      "widgets": ["priority_slider_grid"],
+      "purpose": "対処したい順に優先度設定"
     }
   },
 
   "evaluationCriteria": [
-    "視点切替の多様性",
-    "思考の固定化からの脱出の適切性"
+    "曖昧な感情表現からのwidget選択",
+    "emotion_paletteの適切な選択",
+    "W2WRなしでの独立フロー"
   ]
 }

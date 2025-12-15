@@ -1,0 +1,61 @@
+{
+  "caseId": "case_49",
+  "title": "長文・メンタルヘルス（複数Binding）",
+  "complexity": "medium",
+  "hasReactivity": true,
+
+  "concernText": "最近のストレスを根本から整理したい。まず今の感情を全部出して、原因を分類して、対処の優先度を決めて、最終的にどこから手をつけるか決めたい。感情的になりがちだから、段階的に冷静に進めたい",
+
+  "contextFactors": {
+    "category": "メンタルヘルス",
+    "urgency": "high",
+    "emotionalState": "overwhelmed",
+    "timeAvailable": 45
+  },
+
+  "expectedBottlenecks": [
+    "fear_of_decision",
+    "emotional_block"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["emotion_palette", "brainstorm_cards"],
+      "purpose": "感情と原因を可視化"
+    },
+    "organize": {
+      "widgets": ["card_sorting"],
+      "purpose": "原因をカテゴリ別に分類"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "対処優先度を設定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "emotion_palette.selectedEmotions",
+        "target": "priority_slider_grid.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.map(e => ({id: e.emotion, label: e.emotion, priority: e.intensity}))"
+        },
+        "updateMode": "realtime"
+      },
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "card_sorting.cards",
+        "relationship": { "type": "passthrough" },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "2つのdiverge Widgetからの独立Binding",
+    "emotion + brainstormの並列活用",
+    "メンタルケアへの複数Binding"
+  ]
+}

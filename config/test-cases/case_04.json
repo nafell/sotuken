@@ -1,41 +1,56 @@
 {
   "caseId": "case_04",
-  "title": "何から考えればいいか分からない（中複雑度）",
+  "title": "中複雑度Widget間のW2WR（debounced）",
   "complexity": "medium",
-  "hasReactivity": false,
+  "hasReactivity": true,
 
-  "concernText": "将来のキャリアがぼんやりしている。何がやりたいのか、何ができるのかもよく分からない",
+  "concernText": "人生の選択肢を整理中。マインドマップで書き出した考えを2軸で評価したい",
 
   "contextFactors": {
-    "category": "キャリア",
+    "category": "人生選択",
     "urgency": "low",
-    "emotionalState": "uncertain",
+    "emotionalState": "reflective",
     "timeAvailable": 45
   },
 
   "expectedBottlenecks": [
-    "dont_know_where_to_start",
-    "fixed_perspective"
+    "unorganized_info",
+    "cannot_prioritize"
   ],
 
   "expectedFlow": {
     "diverge": {
-      "widgets": ["question_card_chain"],
-      "purpose": "LLMが動的に質問を生成（5-7問）",
-      "llmFeature": true
+      "widgets": ["mind_map"],
+      "purpose": "人生の選択肢を放射状に展開"
     },
     "organize": {
-      "widgets": ["card_sorting"],
-      "purpose": "ペルソナ視点切替（5年後の自分、尊敬する人）"
+      "widgets": ["matrix_placement"],
+      "purpose": "選択肢を重要度×実現可能性の2軸で配置"
     },
     "converge": {
-      "widgets": ["matrix_placement"],
-      "purpose": "情熱×市場性でキャリア候補を配置"
+      "widgets": ["priority_slider_grid"],
+      "purpose": "配置結果をもとに優先度を調整"
     }
   },
 
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "mind_map.nodes",
+        "target": "matrix_placement.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.map(n => ({id: n.id, text: n.label, x: 50, y: 50}))"
+        },
+        "updateMode": "debounced",
+        "debounceMs": 300
+      }
+    ]
+  },
+
   "evaluationCriteria": [
-    "白紙状態からの思考起動の適切性",
-    "質問生成の質"
+    "updateMode: debouncedの適切な選択",
+    "debounceMs設定の有無",
+    "中複雑度widget間のデータ変換"
   ]
 }

@@ -39,6 +39,34 @@ export default function SessionDetail() {
         setSession(sessionData);
         setWidgetStates(statesData);
         setGenerations(generationsData);
+
+        // DEBUG: 生データをコンソールに出力
+        console.log('=== SessionDetail DEBUG ===');
+        console.log('generationsData:', generationsData);
+        generationsData.forEach((gen, idx) => {
+          console.log(`Generation ${idx}:`, {
+            id: gen.id,
+            stage: gen.stage,
+            modelId: gen.modelId,
+            // V4 各段階トークン
+            widgetSelectionTokens: gen.widgetSelectionTokens,
+            orsTokens: gen.orsTokens,
+            uiSpecTokens: gen.uiSpecTokens,
+            // V4 各段階duration
+            widgetSelectionDuration: gen.widgetSelectionDuration,
+            orsDuration: gen.orsDuration,
+            uiSpecDuration: gen.uiSpecDuration,
+            // 合計
+            totalPromptTokens: gen.totalPromptTokens,
+            totalResponseTokens: gen.totalResponseTokens,
+            totalGenerateDuration: gen.totalGenerateDuration,
+            // Legacy
+            promptTokens: gen.promptTokens,
+            responseTokens: gen.responseTokens,
+            generateDuration: gen.generateDuration,
+          });
+        });
+        console.log('=== END DEBUG ===');
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load data');
       } finally {
@@ -57,19 +85,95 @@ export default function SessionDetail() {
     return JSON.stringify(obj, null, 2);
   };
 
+  // 2段階プロンプトデータ（ORS/DpG + UISpec）のパース用型定義
+  interface ParsedPromptData {
+    widgetSelection?: {
+      prompt: string | null;
+      inputParams?: Record<string, unknown>;
+    };
+    ors?: {
+      prompt: string | null;
+      inputParams?: {
+        concernText?: string;
+        stage?: string;
+        stageSelection?: unknown;
+      };
+    };
+    uiSpec?: {
+      prompt: string | null;
+      inputParams?: {
+        stage?: string;
+        enableReactivity?: boolean;
+        stageSelection?: unknown;
+      };
+    };
+    // DSL v5 Plan統合用
+    planOrs?: {
+      prompt: string | null;
+      inputParams?: {
+        concernText?: string;
+        bottleneckType?: string;
+        widgetSelection?: unknown;
+      };
+    };
+    planUiSpec?: {
+      prompt: string | null;
+      inputParams?: {
+        concernText?: string;
+        enableReactivity?: boolean;
+        widgetSelection?: unknown;
+      };
+    };
+  }
+
+  // プロンプトデータをパースするヘルパー
+  const parsePromptData = (prompt: string | undefined): ParsedPromptData | null => {
+    if (!prompt) return null;
+    try {
+      if (typeof prompt === 'string' && prompt.startsWith('{')) {
+        return JSON.parse(prompt) as ParsedPromptData;
+      }
+    } catch {
+      // パースに失敗した場合はnullを返す
+    }
+    return null;
+  };
+
+  // 各段階のプロンプト展開状態（generation IDごとに管理）
+  const [expandedPromptStages, setExpandedPromptStages] = useState<Record<string, { widgetSelection: boolean; ors: boolean; uiSpec: boolean }>>({});
+
+  const togglePromptStage = (genId: string, stage: 'widgetSelection' | 'ors' | 'uiSpec') => {
+    setExpandedPromptStages(prev => ({
+      ...prev,
+      [genId]: {
+        widgetSelection: prev[genId]?.widgetSelection ?? false,
+        ors: prev[genId]?.ors ?? false,
+        uiSpec: prev[genId]?.uiSpec ?? false,
+        [stage]: !(prev[genId]?.[stage] ?? false)
+      }
+    }));
+  };
+
   // Calculate aggregated metrics from generations (V4対応)
+  // V4: 各段階トークンの合計を優先的に使用
+  const v4TotalTokens = generations.reduce((sum, g) =>
+    sum + (g.widgetSelectionTokens || 0) + (g.orsTokens || 0) + (g.uiSpecTokens || 0), 0);
+  const legacyTotalTokens = generations.reduce((sum, g) =>
+    sum + (g.totalPromptTokens || g.promptTokens || 0) + (g.totalResponseTokens || g.responseTokens || 0), 0);
+
   const aggregatedMetrics = {
-    // V4: totalPromptTokens/totalResponseTokens を優先、なければlegacy フィールドを使用
-    totalTokens: generations.reduce((sum, g) =>
-      sum + (g.totalPromptTokens || g.promptTokens || 0) + (g.totalResponseTokens || g.responseTokens || 0), 0),
-    totalPromptTokens: generations.reduce((sum, g) => sum + (g.totalPromptTokens || g.promptTokens || 0), 0),
-    totalResponseTokens: generations.reduce((sum, g) => sum + (g.totalResponseTokens || g.responseTokens || 0), 0),
+    // V4: 各段階トークンの合計を優先、なければlegacy
+    totalTokens: v4TotalTokens > 0 ? v4TotalTokens : legacyTotalTokens,
     totalGenerateDuration: generations.reduce((sum, g) => sum + (g.totalGenerateDuration || g.generateDuration || 0), 0),
     totalRenderDuration: generations.reduce((sum, g) => sum + (g.renderDuration || 0), 0),
-    // V4 各段階メトリクス
+    // V4 各段階メトリクス（duration）
     totalWidgetSelectionDuration: generations.reduce((sum, g) => sum + (g.widgetSelectionDuration || 0), 0),
     totalOrsDuration: generations.reduce((sum, g) => sum + (g.orsDuration || 0), 0),
     totalUiSpecDuration: generations.reduce((sum, g) => sum + (g.uiSpecDuration || 0), 0),
+    // V4 各段階メトリクス（tokens）
+    totalWidgetSelectionTokens: generations.reduce((sum, g) => sum + (g.widgetSelectionTokens || 0), 0),
+    totalOrsTokens: generations.reduce((sum, g) => sum + (g.orsTokens || 0), 0),
+    totalUiSpecTokens: generations.reduce((sum, g) => sum + (g.uiSpecTokens || 0), 0),
   };
 
   if (loading) {
@@ -97,12 +201,15 @@ export default function SessionDetail() {
           <p style={styles.sessionId}>{session.sessionId}</p>
         </div>
         <div style={styles.headerActions}>
-          {(session.generationSuccess || session.completedAt) && (
+          {generations.length > 0 && (
             <button
               onClick={() => navigate(`/research-experiment/data/replay/${session.sessionId}`)}
               style={styles.replayButton}
             >
               Replay Session
+              {!session.completedAt && (
+                <span style={styles.inProgressBadge}>In Progress</span>
+              )}
             </button>
           )}
           <Link to="/research-experiment/data/sessions" style={styles.backButton}>← Back</Link>
@@ -168,6 +275,12 @@ export default function SessionDetail() {
                   <span style={styles.infoLabel}>Model:</span>
                   <span style={styles.infoValue}>{session.modelId}</span>
                 </div>
+                {session.useMockWidgetSelection && (
+                  <div style={styles.infoItem}>
+                    <span style={styles.infoLabel}>Widget Selection:</span>
+                    <span style={{ ...styles.infoValue, color: '#D97706' }}>Mock Mode</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -196,6 +309,51 @@ export default function SessionDetail() {
             <h3 style={styles.cardTitle}>Concern Text</h3>
             <p style={styles.concernText}>{session.concernText}</p>
           </div>
+
+          {/* Experiment Errors Section */}
+          {session.contextFactors?.experimentErrors && session.contextFactors.experimentErrors.length > 0 && (
+            <div style={styles.card}>
+              <h3 style={{ ...styles.cardTitle, color: '#DC2626' }}>
+                Experiment Errors ({session.contextFactors.experimentErrors.length})
+              </h3>
+              <div style={{
+                backgroundColor: '#FEF2F2',
+                border: '1px solid #FECACA',
+                borderRadius: '8px',
+                padding: '12px'
+              }}>
+                <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                  {session.contextFactors.experimentErrors.map((err: {
+                    type: string;
+                    message: string;
+                    stage?: string;
+                    timestamp: number;
+                    recoverable: boolean;
+                    details?: Record<string, unknown>;
+                  }, i: number) => (
+                    <li key={i} style={{
+                      marginBottom: '12px',
+                      color: err.recoverable ? '#B45309' : '#B91C1C',
+                      padding: '8px',
+                      backgroundColor: err.recoverable ? '#FEF3C7' : '#FEE2E2',
+                      borderRadius: '4px'
+                    }}>
+                      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                        [{err.type}] {err.message}
+                        {err.recoverable && <span style={{ marginLeft: '8px', fontSize: '11px', color: '#059669' }}>(Recoverable)</span>}
+                      </div>
+                      {err.stage && <div style={{ fontSize: '12px' }}>Stage: {err.stage}</div>}
+                      {err.details && (
+                        <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '4px' }}>
+                          Details: {JSON.stringify(err.details)}
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
 
           <div style={styles.card}>
             <h3 style={styles.cardTitle}>Context Factors</h3>
@@ -239,12 +397,16 @@ export default function SessionDetail() {
               <div style={styles.metricLabel}>Total Tokens</div>
             </div>
             <div style={styles.metricCard}>
-              <div style={styles.metricValue}>{aggregatedMetrics.totalPromptTokens.toLocaleString()}</div>
-              <div style={styles.metricLabel}>Prompt Tokens</div>
+              <div style={styles.metricValue}>{aggregatedMetrics.totalWidgetSelectionTokens.toLocaleString()}</div>
+              <div style={styles.metricLabel}>WS Tokens</div>
             </div>
             <div style={styles.metricCard}>
-              <div style={styles.metricValue}>{aggregatedMetrics.totalResponseTokens.toLocaleString()}</div>
-              <div style={styles.metricLabel}>Response Tokens</div>
+              <div style={styles.metricValue}>{aggregatedMetrics.totalOrsTokens.toLocaleString()}</div>
+              <div style={styles.metricLabel}>ORS Tokens</div>
+            </div>
+            <div style={styles.metricCard}>
+              <div style={styles.metricValue}>{aggregatedMetrics.totalUiSpecTokens.toLocaleString()}</div>
+              <div style={styles.metricLabel}>UISpec Tokens</div>
             </div>
             <div style={styles.metricCard}>
               <div style={styles.metricValue}>{aggregatedMetrics.totalGenerateDuration.toLocaleString()}ms</div>
@@ -264,22 +426,38 @@ export default function SessionDetail() {
             <h3 style={styles.cardTitle}>Per-Stage Breakdown (V4)</h3>
             <div style={styles.stageBreakdown}>
               {generations.map((gen, idx) => {
-                // V4フィールドを優先、なければlegacyを使用
-                const tokens = (gen.totalPromptTokens || gen.promptTokens || 0) + (gen.totalResponseTokens || gen.responseTokens || 0);
+                // V4: 各段階トークンの合計を計算
+                const v4Tokens = (gen.widgetSelectionTokens || 0) + (gen.orsTokens || 0) + (gen.uiSpecTokens || 0);
+                // フォールバック
+                const tokens = v4Tokens > 0
+                  ? v4Tokens
+                  : (gen.totalPromptTokens || 0) + (gen.totalResponseTokens || 0) || (gen.promptTokens || 0) + (gen.responseTokens || 0);
                 const genDuration = gen.totalGenerateDuration || gen.generateDuration || 0;
                 // Widget選定フェーズかステージ実行フェーズかを判定
                 const isWidgetSelection = gen.stage === 'widget_selection';
-                const stageLabel = isWidgetSelection ? '🔍 Widget Selection' : gen.stage;
+                const isPlanUnified = gen.stage === 'plan';
+                const stageLabel = isWidgetSelection ? '🔍 Widget Selection'
+                  : isPlanUnified ? '📋 Plan (Unified)' : gen.stage;
                 return (
                   <div key={gen.id} style={{
                     ...styles.stageRow,
-                    backgroundColor: isWidgetSelection ? '#f5f3ff' : undefined,
-                    borderLeft: isWidgetSelection ? '3px solid #7c3aed' : undefined,
+                    backgroundColor: isWidgetSelection ? '#f5f3ff' : isPlanUnified ? '#e0f2fe' : undefined,
+                    borderLeft: isWidgetSelection ? '3px solid #7c3aed' : isPlanUnified ? '3px solid #0ea5e9' : undefined,
                   }}>
                     <span style={styles.stageName}>{idx + 1}. {stageLabel}</span>
                     <span style={styles.stageMetric}>{tokens} tokens</span>
                     <span style={styles.stageMetric}>{genDuration}ms total</span>
-                    {/* V4: 各段階の内訳 */}
+                    {/* V4: 各段階のトークン内訳 */}
+                    {gen.widgetSelectionTokens !== undefined && gen.widgetSelectionTokens > 0 && (
+                      <span style={styles.stageMetric}>WS:{gen.widgetSelectionTokens}tok</span>
+                    )}
+                    {gen.orsTokens !== undefined && gen.orsTokens > 0 && (
+                      <span style={styles.stageMetric}>ORS:{gen.orsTokens}tok</span>
+                    )}
+                    {gen.uiSpecTokens !== undefined && gen.uiSpecTokens > 0 && (
+                      <span style={styles.stageMetric}>UI:{gen.uiSpecTokens}tok</span>
+                    )}
+                    {/* V4: 各段階のduration内訳 */}
                     {gen.widgetSelectionDuration && !isWidgetSelection && (
                       <span style={styles.stageMetric}>WS:{gen.widgetSelectionDuration}ms</span>
                     )}
@@ -323,16 +501,37 @@ export default function SessionDetail() {
         <div style={styles.content}>
           {generations.length > 0 ? (
             generations.map((gen) => {
-              // V4フィールドを優先
-              const promptTokens = gen.totalPromptTokens || gen.promptTokens || 0;
-              const responseTokens = gen.totalResponseTokens || gen.responseTokens || 0;
+              // V4: 各段階トークンの合計を計算
+              const v4TotalTokens = (gen.widgetSelectionTokens || 0) + (gen.orsTokens || 0) + (gen.uiSpecTokens || 0);
+              // フォールバック: totalPromptTokens/totalResponseTokens、またはlegacy promptTokens/responseTokens
+              const totalTokens = v4TotalTokens > 0
+                ? v4TotalTokens
+                : (gen.totalPromptTokens || 0) + (gen.totalResponseTokens || 0) || (gen.promptTokens || 0) + (gen.responseTokens || 0);
               const genDuration = gen.totalGenerateDuration || gen.generateDuration || 0;
               // Widget選定フェーズかステージ実行フェーズかを判定
               const isWidgetSelection = gen.stage === 'widget_selection';
-              const stageLabel = isWidgetSelection ? '🔍 Widget Selection' : gen.stage;
+              const isPlanUnified = gen.stage === 'plan';
+              const stageLabel = isWidgetSelection ? '🔍 Widget Selection'
+                : isPlanUnified ? '📋 Plan (Unified)' : gen.stage;
               const stageBadgeStyle = isWidgetSelection
                 ? { ...styles.generationStage, backgroundColor: '#7c3aed', color: 'white' }
-                : styles.generationStage;
+                : isPlanUnified
+                  ? { ...styles.generationStage, backgroundColor: '#0ea5e9', color: 'white' }
+                  : styles.generationStage;
+
+              // トークン表示文字列を構築
+              // Widget Selection: widgetSelectionTokens tokens
+              // Plan: totalTokens tokens (orsTokens + uiSpecTokens)
+              // その他: totalTokens tokens
+              let tokenDisplayStr: string;
+              if (isWidgetSelection) {
+                tokenDisplayStr = `${(gen.widgetSelectionTokens || 0).toLocaleString()} tokens`;
+              } else if (isPlanUnified && gen.orsTokens && gen.uiSpecTokens) {
+                tokenDisplayStr = `${totalTokens.toLocaleString()} tokens (${gen.orsTokens.toLocaleString()} + ${gen.uiSpecTokens.toLocaleString()})`;
+              } else {
+                tokenDisplayStr = `${totalTokens.toLocaleString()} tokens`;
+              }
+
               return (
                 <div key={gen.id} style={styles.generationCard}>
                   <div
@@ -341,11 +540,16 @@ export default function SessionDetail() {
                   >
                     <div style={styles.generationHeaderLeft}>
                       <span style={stageBadgeStyle}>{stageLabel}</span>
-                      <span style={styles.generationModel}>{gen.modelId}</span>
+                      <span style={styles.generationModel}>
+                        {gen.modelId}
+                        {gen.modelId === 'mock' && (
+                          <span style={styles.mockBadge}>Mock</span>
+                        )}
+                      </span>
                     </div>
                     <div style={styles.generationHeaderRight}>
                       <span style={styles.generationMetric}>
-                        {promptTokens} + {responseTokens} tokens
+                        {tokenDisplayStr}
                       </span>
                       <span style={styles.generationMetric}>
                         {genDuration ? `${genDuration}ms` : '-'}
@@ -357,17 +561,233 @@ export default function SessionDetail() {
 
                   {expandedGeneration === gen.id && (
                     <div style={styles.generationBody}>
-                      {/* Prompt (JSON形式の場合は整形表示) */}
-                      {gen.prompt && (
-                        <div style={styles.generationSection}>
-                          <h4 style={styles.generationSectionTitle}>Prompt</h4>
-                          <pre style={styles.promptPre}>
-                            {typeof gen.prompt === 'string' && gen.prompt.startsWith('{')
-                              ? formatJson(JSON.parse(gen.prompt))
-                              : gen.prompt || 'Not saved'}
-                          </pre>
-                        </div>
-                      )}
+                      {/* 2段階プロンプト表示 (ORS/DpG + UISpec / Plan ORS + Plan UISpec) */}
+                      {(() => {
+                        const parsedPrompt = parsePromptData(gen.prompt);
+                        const promptStates = expandedPromptStages[gen.id] || { widgetSelection: false, ors: false, uiSpec: false };
+
+                        // Widget Selectionモード (widgetSelection)
+                        if (parsedPrompt && parsedPrompt.widgetSelection) {
+                          return (
+                            <div style={styles.promptStagesContainer}>
+                              <div style={styles.promptStageCard}>
+                                <div
+                                  style={styles.promptStageHeader}
+                                  onClick={() => togglePromptStage(gen.id, 'widgetSelection')}
+                                >
+                                  <div style={styles.promptStageHeaderLeft}>
+                                    <span style={styles.promptStageIcon}>
+                                      {promptStates.widgetSelection ? '▼' : '▶'}
+                                    </span>
+                                    <span style={styles.promptStageBadgeWidgetSelection}>Widget Selection</span>
+                                    <span style={styles.promptStageTitle}>Generation Prompt</span>
+                                  </div>
+                                  <div style={styles.promptStageHeaderRight}>
+                                    {gen.widgetSelectionDuration && (
+                                      <span style={styles.promptStageMetric}>{gen.widgetSelectionDuration}ms</span>
+                                    )}
+                                  </div>
+                                </div>
+                                {promptStates.widgetSelection && (
+                                  <div style={styles.promptStageBody}>
+                                    {parsedPrompt.widgetSelection.inputParams && (
+                                      <div style={styles.inputParamsBox}>
+                                        <div style={styles.inputParamsTitle}>Input Parameters</div>
+                                        <div style={styles.inputParamsGrid}>
+                                          {Object.entries(parsedPrompt.widgetSelection.inputParams).map(([key, value]) => (
+                                            <div key={key}><span style={styles.inputParamLabel}>{key}:</span> {String(value ?? '-')}</div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                    <pre style={styles.promptPreWidgetSelection}>
+                                      {parsedPrompt.widgetSelection.prompt || 'Prompt not available'}
+                                    </pre>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // DSL v5 Plan統合モード (planOrs + planUiSpec)
+                        if (parsedPrompt && (parsedPrompt.planOrs || parsedPrompt.planUiSpec)) {
+                          return (
+                            <div style={styles.promptStagesContainer}>
+                              {/* Plan ORS Generation Prompt */}
+                              {parsedPrompt.planOrs && (
+                                <div style={styles.promptStageCard}>
+                                  <div
+                                    style={styles.promptStageHeader}
+                                    onClick={() => togglePromptStage(gen.id, 'ors')}
+                                  >
+                                    <div style={styles.promptStageHeaderLeft}>
+                                      <span style={styles.promptStageIcon}>
+                                        {promptStates.ors ? '▼' : '▶'}
+                                      </span>
+                                      <span style={styles.promptStageBadgeOrs}>Plan ORS</span>
+                                      <span style={styles.promptStageTitle}>Generation Prompt</span>
+                                    </div>
+                                    <div style={styles.promptStageHeaderRight}>
+                                      {gen.orsDuration && (
+                                        <span style={styles.promptStageMetric}>{gen.orsDuration}ms</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {promptStates.ors && (
+                                    <div style={styles.promptStageBody}>
+                                      {parsedPrompt.planOrs.inputParams && (
+                                        <div style={styles.inputParamsBox}>
+                                          <div style={styles.inputParamsTitle}>Input Parameters</div>
+                                          <div style={styles.inputParamsGrid}>
+                                            <div><span style={styles.inputParamLabel}>bottleneckType:</span> {parsedPrompt.planOrs.inputParams.bottleneckType || '-'}</div>
+                                          </div>
+                                        </div>
+                                      )}
+                                      <pre style={styles.promptPreOrs}>
+                                        {parsedPrompt.planOrs.prompt || 'Prompt not available'}
+                                      </pre>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Plan UISpec Generation Prompt */}
+                              {parsedPrompt.planUiSpec && (
+                                <div style={styles.promptStageCard}>
+                                  <div
+                                    style={styles.promptStageHeader}
+                                    onClick={() => togglePromptStage(gen.id, 'uiSpec')}
+                                  >
+                                    <div style={styles.promptStageHeaderLeft}>
+                                      <span style={styles.promptStageIcon}>
+                                        {promptStates.uiSpec ? '▼' : '▶'}
+                                      </span>
+                                      <span style={styles.promptStageBadgeUiSpec}>Plan UISpec</span>
+                                      <span style={styles.promptStageTitle}>Generation Prompt</span>
+                                    </div>
+                                    <div style={styles.promptStageHeaderRight}>
+                                      {gen.uiSpecDuration && (
+                                        <span style={styles.promptStageMetric}>{gen.uiSpecDuration}ms</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {promptStates.uiSpec && (
+                                    <div style={styles.promptStageBody}>
+                                      {parsedPrompt.planUiSpec.inputParams && (
+                                        <div style={styles.inputParamsBox}>
+                                          <div style={styles.inputParamsTitle}>Input Parameters</div>
+                                          <div style={styles.inputParamsGrid}>
+                                            <div><span style={styles.inputParamLabel}>enableReactivity:</span> {String(parsedPrompt.planUiSpec.inputParams.enableReactivity ?? '-')}</div>
+                                          </div>
+                                        </div>
+                                      )}
+                                      <pre style={styles.promptPreUiSpec}>
+                                        {parsedPrompt.planUiSpec.prompt || 'Prompt not available'}
+                                      </pre>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+
+                        // 通常モード (ors + uiSpec)
+                        if (parsedPrompt && (parsedPrompt.ors || parsedPrompt.uiSpec)) {
+                          return (
+                            <div style={styles.promptStagesContainer}>
+                              {/* ORS/DpG Generation Prompt */}
+                              {parsedPrompt.ors && (
+                                <div style={styles.promptStageCard}>
+                                  <div
+                                    style={styles.promptStageHeader}
+                                    onClick={() => togglePromptStage(gen.id, 'ors')}
+                                  >
+                                    <div style={styles.promptStageHeaderLeft}>
+                                      <span style={styles.promptStageIcon}>
+                                        {promptStates.ors ? '▼' : '▶'}
+                                      </span>
+                                      <span style={styles.promptStageBadgeOrs}>ORS/DpG</span>
+                                      <span style={styles.promptStageTitle}>Generation Prompt</span>
+                                    </div>
+                                    <div style={styles.promptStageHeaderRight}>
+                                      {gen.orsDuration && (
+                                        <span style={styles.promptStageMetric}>{gen.orsDuration}ms</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {promptStates.ors && (
+                                    <div style={styles.promptStageBody}>
+                                      {parsedPrompt.ors.inputParams && (
+                                        <div style={styles.inputParamsBox}>
+                                          <div style={styles.inputParamsTitle}>Input Parameters</div>
+                                          <div style={styles.inputParamsGrid}>
+                                            <div><span style={styles.inputParamLabel}>stage:</span> {parsedPrompt.ors.inputParams.stage || '-'}</div>
+                                          </div>
+                                        </div>
+                                      )}
+                                      <pre style={styles.promptPreOrs}>
+                                        {parsedPrompt.ors.prompt || 'Prompt not available'}
+                                      </pre>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* UISpec Generation Prompt */}
+                              {parsedPrompt.uiSpec && (
+                                <div style={styles.promptStageCard}>
+                                  <div
+                                    style={styles.promptStageHeader}
+                                    onClick={() => togglePromptStage(gen.id, 'uiSpec')}
+                                  >
+                                    <div style={styles.promptStageHeaderLeft}>
+                                      <span style={styles.promptStageIcon}>
+                                        {promptStates.uiSpec ? '▼' : '▶'}
+                                      </span>
+                                      <span style={styles.promptStageBadgeUiSpec}>UISpec</span>
+                                      <span style={styles.promptStageTitle}>Generation Prompt</span>
+                                    </div>
+                                    <div style={styles.promptStageHeaderRight}>
+                                      {gen.uiSpecDuration && (
+                                        <span style={styles.promptStageMetric}>{gen.uiSpecDuration}ms</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {promptStates.uiSpec && (
+                                    <div style={styles.promptStageBody}>
+                                      {parsedPrompt.uiSpec.inputParams && (
+                                        <div style={styles.inputParamsBox}>
+                                          <div style={styles.inputParamsTitle}>Input Parameters</div>
+                                          <div style={styles.inputParamsGrid}>
+                                            <div><span style={styles.inputParamLabel}>stage:</span> {parsedPrompt.uiSpec.inputParams.stage || '-'}</div>
+                                            <div><span style={styles.inputParamLabel}>enableReactivity:</span> {String(parsedPrompt.uiSpec.inputParams.enableReactivity ?? '-')}</div>
+                                          </div>
+                                        </div>
+                                      )}
+                                      <pre style={styles.promptPreUiSpec}>
+                                        {parsedPrompt.uiSpec.prompt || 'Prompt not available'}
+                                      </pre>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+
+                        // Legacy: 旧形式のプロンプト
+                        if (gen.prompt) {
+                          return (
+                            <div style={styles.generationSection}>
+                              <h4 style={styles.generationSectionTitle}>Prompt (Legacy)</h4>
+                              <pre style={styles.promptPre}>{gen.prompt}</pre>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
 
                       {/* V4: Widget Selection Result */}
                       {gen.generatedWidgetSelection && (
@@ -410,7 +830,26 @@ export default function SessionDetail() {
                       )}
 
                       <div style={styles.generationMetrics}>
-                        {/* V4 各段階メトリクス */}
+                        {/* V4 各段階メトリクス（トークン） */}
+                        {gen.widgetSelectionTokens !== undefined && gen.widgetSelectionTokens > 0 && (
+                          <div style={styles.generationMetricItem}>
+                            <span style={styles.generationMetricLabel}>Widget Selection Tokens:</span>
+                            <span style={styles.generationMetricValue}>{gen.widgetSelectionTokens}</span>
+                          </div>
+                        )}
+                        {gen.orsTokens !== undefined && gen.orsTokens > 0 && (
+                          <div style={styles.generationMetricItem}>
+                            <span style={styles.generationMetricLabel}>ORS Tokens:</span>
+                            <span style={styles.generationMetricValue}>{gen.orsTokens}</span>
+                          </div>
+                        )}
+                        {gen.uiSpecTokens !== undefined && gen.uiSpecTokens > 0 && (
+                          <div style={styles.generationMetricItem}>
+                            <span style={styles.generationMetricLabel}>UISpec Tokens:</span>
+                            <span style={styles.generationMetricValue}>{gen.uiSpecTokens}</span>
+                          </div>
+                        )}
+                        {/* V4 各段階メトリクス（duration） */}
                         {gen.widgetSelectionDuration && (
                           <div style={styles.generationMetricItem}>
                             <span style={styles.generationMetricLabel}>Widget Selection:</span>
@@ -430,12 +869,8 @@ export default function SessionDetail() {
                           </div>
                         )}
                         <div style={styles.generationMetricItem}>
-                          <span style={styles.generationMetricLabel}>Total Prompt Tokens:</span>
-                          <span style={styles.generationMetricValue}>{promptTokens || '-'}</span>
-                        </div>
-                        <div style={styles.generationMetricItem}>
-                          <span style={styles.generationMetricLabel}>Total Response Tokens:</span>
-                          <span style={styles.generationMetricValue}>{responseTokens || '-'}</span>
+                          <span style={styles.generationMetricLabel}>Total Tokens:</span>
+                          <span style={styles.generationMetricValue}>{totalTokens.toLocaleString() || '-'}</span>
                         </div>
                         <div style={styles.generationMetricItem}>
                           <span style={styles.generationMetricLabel}>Total Generate Duration:</span>
@@ -536,7 +971,18 @@ const styles: Record<string, React.CSSProperties> = {
     border: 'none',
     borderRadius: '6px',
     fontSize: '14px',
-    cursor: 'pointer'
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  },
+  inProgressBadge: {
+    fontSize: '10px',
+    fontWeight: 600,
+    backgroundColor: '#F59E0B',
+    color: '#fff',
+    padding: '2px 6px',
+    borderRadius: '4px'
   },
   backButton: {
     color: '#6B7280',
@@ -773,6 +1219,16 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#6B7280',
     fontFamily: 'monospace'
   },
+  mockBadge: {
+    marginLeft: '8px',
+    padding: '2px 8px',
+    backgroundColor: '#FCD34D',
+    color: '#92400E',
+    borderRadius: '4px',
+    fontSize: '11px',
+    fontWeight: 600,
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  },
   generationMetric: {
     fontSize: '12px',
     color: '#6B7280'
@@ -856,5 +1312,143 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '12px',
     color: '#6B7280',
     fontFamily: 'monospace'
+  },
+  // 2段階プロンプト表示用スタイル
+  promptStagesContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    marginBottom: '16px'
+  },
+  promptStageCard: {
+    border: '1px solid #E5E7EB',
+    borderRadius: '8px',
+    overflow: 'hidden'
+  },
+  promptStageHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '10px 14px',
+    backgroundColor: '#F9FAFB',
+    cursor: 'pointer',
+    userSelect: 'none'
+  },
+  promptStageHeaderLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px'
+  },
+  promptStageHeaderRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  },
+  promptStageIcon: {
+    fontSize: '10px',
+    color: '#6B7280',
+    width: '12px'
+  },
+  promptStageBadgeWidgetSelection: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#7C3AED',
+    backgroundColor: '#EDE9FE',
+    padding: '3px 8px',
+    borderRadius: '4px'
+  },
+  promptStageBadgeOrs: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#0369A1',
+    backgroundColor: '#E0F2FE',
+    padding: '3px 8px',
+    borderRadius: '4px'
+  },
+  promptStageBadgeUiSpec: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#7C3AED',
+    backgroundColor: '#EDE9FE',
+    padding: '3px 8px',
+    borderRadius: '4px'
+  },
+  promptStageTitle: {
+    fontSize: '13px',
+    fontWeight: 500,
+    color: '#374151'
+  },
+  promptStageMetric: {
+    fontSize: '12px',
+    color: '#6B7280',
+    fontFamily: 'monospace'
+  },
+  promptStageBody: {
+    padding: '12px 14px',
+    borderTop: '1px solid #E5E7EB'
+  },
+  inputParamsBox: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: '6px',
+    padding: '10px 12px',
+    marginBottom: '12px'
+  },
+  inputParamsTitle: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#6B7280',
+    marginBottom: '6px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px'
+  },
+  inputParamsGrid: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px 16px',
+    fontSize: '12px',
+    color: '#374151'
+  },
+  inputParamLabel: {
+    fontWeight: 500,
+    color: '#6B7280'
+  },
+  promptPreWidgetSelection: {
+    backgroundColor: '#FAF5FF',
+    padding: '12px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    overflow: 'auto',
+    maxHeight: '400px',
+    margin: 0,
+    fontFamily: 'monospace',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+    border: '1px solid #DDD6FE'
+  },
+  promptPreOrs: {
+    backgroundColor: '#F0F9FF',
+    padding: '12px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    overflow: 'auto',
+    maxHeight: '400px',
+    margin: 0,
+    fontFamily: 'monospace',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+    border: '1px solid #BAE6FD'
+  },
+  promptPreUiSpec: {
+    backgroundColor: '#FAF5FF',
+    padding: '12px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    overflow: 'auto',
+    maxHeight: '400px',
+    margin: 0,
+    fontFamily: 'monospace',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+    border: '1px solid #DDD6FE'
   }
 };

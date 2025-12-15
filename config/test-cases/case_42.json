@@ -1,0 +1,62 @@
+{
+  "caseId": "case_42",
+  "title": "中文・キャリア（複数Binding）",
+  "complexity": "medium",
+  "hasReactivity": true,
+
+  "concernText": "キャリアプランを練り直したい。やりたいことを出して、分類して、最終的にトレードオフを比較するところまで一気にやりたい",
+
+  "contextFactors": {
+    "category": "キャリア",
+    "urgency": "medium",
+    "emotionalState": "determined",
+    "timeAvailable": 45
+  },
+
+  "expectedBottlenecks": [
+    "too_many_options",
+    "cannot_prioritize"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "キャリアの選択肢を書き出す"
+    },
+    "organize": {
+      "widgets": ["card_sorting"],
+      "purpose": "メリット/デメリット/リスクに分類"
+    },
+    "converge": {
+      "widgets": ["tradeoff_balance"],
+      "purpose": "選択肢間のトレードオフ比較"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "card_sorting.cards",
+        "relationship": { "type": "passthrough" },
+        "updateMode": "realtime"
+      },
+      {
+        "source": "card_sorting.categories",
+        "target": "tradeoff_balance.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "Object.entries(source).flatMap(([cat, items]) => items.map(i => ({text: i.text, side: cat === 'メリット' ? 'left' : 'right'})))"
+        },
+        "updateMode": "debounced",
+        "debounceMs": 300
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "diverge→organize→convergeの3段階連鎖",
+    "passthrough + 複合JSの組み合わせ",
+    "異なるupdateModeの混在"
+  ]
+}

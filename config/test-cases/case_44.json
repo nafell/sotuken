@@ -1,0 +1,61 @@
+{
+  "caseId": "case_44",
+  "title": "中文・生活（複数Binding）",
+  "complexity": "medium",
+  "hasReactivity": true,
+
+  "concernText": "引越し計画を立てたい。やることを洗い出して、時系列に並べて、最終的にメリデメも比較して決めたい",
+
+  "contextFactors": {
+    "category": "生活",
+    "urgency": "medium",
+    "emotionalState": "practical",
+    "timeAvailable": 40
+  },
+
+  "expectedBottlenecks": [
+    "multiple_issues",
+    "unorganized_info"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "引越し関連タスクを書き出す"
+    },
+    "organize": {
+      "widgets": ["timeline_slider", "card_sorting"],
+      "purpose": "時系列配置と分類"
+    },
+    "converge": {
+      "widgets": ["tradeoff_balance"],
+      "purpose": "候補地のメリデメ比較"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "timeline_slider.events",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.map((c, i) => ({id: c.id, label: c.text, position: i * 10}))"
+        },
+        "updateMode": "realtime"
+      },
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "card_sorting.cards",
+        "relationship": { "type": "passthrough" },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "timeline + card_sorting並列への分岐",
+    "JS単純 + passthroughの組み合わせ",
+    "生活計画への複数Binding"
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "caseId": "case_14",
+  "title": "長文・人間関係（No W2WR）",
+  "complexity": "simple",
+  "hasReactivity": false,
+
+  "concernText": "親との関係がしんどい。実家に帰るたびに「結婚は」「仕事は」って聞かれてストレス。でも親のことは嫌いじゃないし、心配してくれてるのもわかる。距離感がうまく取れなくて困ってる。どこまで親の言うこと聞くべきなのか、自分の人生なのに自分で決められてない感じがしてモヤモヤする",
+
+  "contextFactors": {
+    "category": "人間関係",
+    "urgency": "medium",
+    "emotionalState": "frustrated",
+    "timeAvailable": 40
+  },
+
+  "expectedBottlenecks": [
+    "emotional_block",
+    "fixed_perspective"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["emotion_palette"],
+      "purpose": "親に対する複雑な感情を可視化"
+    },
+    "organize": {
+      "widgets": ["card_sorting"],
+      "purpose": "親の期待と自分の希望を分類"
+    },
+    "converge": {
+      "widgets": ["tradeoff_balance"],
+      "purpose": "距離感の選択肢を比較"
+    }
+  },
+
+  "evaluationCriteria": [
+    "感情的な悩みへの適切なアプローチ",
+    "emotion_paletteの活用",
+    "W2WRなしでの独立処理"
+  ]
+}

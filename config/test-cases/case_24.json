@@ -1,0 +1,52 @@
+{
+  "caseId": "case_24",
+  "title": "長文・人生選択（Passthrough）",
+  "complexity": "simple",
+  "hasReactivity": true,
+
+  "concernText": "今後の人生設計を考えたい。仕事、家庭、趣味、健康、いろんな要素があるけど全部大事で、何を優先すべきかわからない。まずは自分にとって大切なことを全部書き出して、整理してから優先順位をつけたい",
+
+  "contextFactors": {
+    "category": "人生選択",
+    "urgency": "low",
+    "emotionalState": "reflective",
+    "timeAvailable": 60
+  },
+
+  "expectedBottlenecks": [
+    "unorganized_info",
+    "cannot_prioritize"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "人生で大切にしたいことを書き出す"
+    },
+    "organize": {
+      "widgets": ["card_sorting"],
+      "purpose": "領域別（仕事・家庭・趣味等）に分類"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "今後5年の優先度を設定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "card_sorting.cards",
+        "relationship": { "type": "passthrough" },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "人生設計へのpassthrough適用",
+    "長文からの適切なフロー構築",
+    "価値観整理のW2WR連携"
+  ]
+}

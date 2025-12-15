@@ -373,3 +373,76 @@ export function isORS(value: unknown): value is ORS {
     typeof v.metadata === 'object'
   );
 }
+
+// =============================================================================
+// DSL v5: PlanORS (Plan統合用)
+// =============================================================================
+
+/**
+ * セクション種別 (Plan統合用)
+ */
+export type PlanSectionType = 'diverge' | 'organize' | 'converge';
+
+/**
+ * PlanORS メタデータ
+ */
+export interface PlanORSMetadata {
+  /** 生成日時（Unix timestamp） */
+  generatedAt: number;
+  /** 使用したLLMモデル */
+  llmModel: string;
+  /** セッションID */
+  sessionId: string;
+  /** Plan統合メタデータ */
+  planMetadata: {
+    /** 各セクションの概要 */
+    sections: {
+      diverge: { purpose: string; entityCount: number };
+      organize: { purpose: string; entityCount: number };
+      converge: { purpose: string; entityCount: number };
+    };
+    /** 生成時間（ミリ秒） */
+    generationTimeMs?: number;
+  };
+  /** カスタムメタデータ */
+  custom?: DICT<SVAL>;
+}
+
+/**
+ * PlanORS
+ *
+ * DSL v5のPlanフェーズ統合生成で使用。
+ * diverge/organize/convergeの3セクションを1回のLLM呼び出しで生成。
+ */
+export interface PlanORS {
+  /** ORSバージョン（DSL v5） */
+  version: '5.0';
+
+  /** エンティティ定義のリスト（全セクション分） */
+  entities: Entity[];
+
+  /** 依存関係グラフ（セクション横断） */
+  dependencyGraph: DependencyGraph;
+
+  /** メタデータ */
+  metadata: PlanORSMetadata;
+}
+
+/**
+ * PlanORSの型ガード
+ */
+export function isPlanORS(value: unknown): value is PlanORS {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    v.version === '5.0' &&
+    Array.isArray(v.entities) &&
+    typeof v.dependencyGraph === 'object' &&
+    typeof v.metadata === 'object'
+  );
+}
+
+/**
+ * AnyORS型（v4 ORS または v5 PlanORS）
+ */
+export type AnyORS = ORS | PlanORS;

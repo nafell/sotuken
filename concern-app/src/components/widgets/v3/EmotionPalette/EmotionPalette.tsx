@@ -6,7 +6,7 @@
  * 8種類の感情から選択し、強度を調整するWidget
  */
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import type { BaseWidgetProps } from '../../../../types/widget.types';
 import type { WidgetResult } from '../../../../types/result.types';
 import {
@@ -15,7 +15,18 @@ import {
   type Emotion,
 } from './EmotionPaletteController';
 import { useReactivePorts } from '../../../../hooks/useReactivePorts';
+import { GeneratedBadge } from '../../../ui/GeneratedBadge';
 import styles from './EmotionPalette.module.css';
+
+/** 動的生成された感情ラベル型 */
+interface GeneratedEmotion {
+  id: string;
+  label: string;
+  color: string;
+  category?: 'positive' | 'negative' | 'neutral';
+  description?: string;
+  isGenerated?: true;
+}
 
 /**
  * EmotionPalette Component
@@ -41,6 +52,37 @@ export const EmotionPalette: React.FC<BaseWidgetProps> = ({
   const controllerRef = useRef<EmotionPaletteController>(
     new EmotionPaletteController()
   );
+
+  // 動的に生成された感情ラベル（config.emotionsから取得）またはデフォルトのEMOTIONSを使用
+  const emotionsList: Emotion[] = useMemo(() => {
+    const configEmotions = spec.config?.emotions as GeneratedEmotion[] | undefined;
+    if (configEmotions && configEmotions.length > 0) {
+      // 動的生成された感情をEmotion型に変換
+      return configEmotions.map((e) => ({
+        id: e.id,
+        label: e.label,
+        category: e.category || 'neutral',
+        color: e.color,
+        description: e.description || e.label,
+        isGenerated: e.isGenerated,
+      }));
+    }
+    // デフォルトの固定感情を使用
+    return EMOTIONS;
+  }, [spec.config?.emotions]);
+
+  // 生成された感情かどうかを追跡
+  const hasGeneratedEmotions = useMemo(() => {
+    const configEmotions = spec.config?.emotions as GeneratedEmotion[] | undefined;
+    return configEmotions && configEmotions.length > 0 && configEmotions.some((e) => e.isGenerated);
+  }, [spec.config?.emotions]);
+
+  // Controllerにカスタム感情リストを設定
+  useEffect(() => {
+    if (emotionsList !== EMOTIONS) {
+      controllerRef.current.setCustomEmotions(emotionsList);
+    }
+  }, [emotionsList]);
 
   /**
    * 感情選択ハンドラー
@@ -123,6 +165,13 @@ export const EmotionPalette: React.FC<BaseWidgetProps> = ({
         </p>
       </div>
 
+      {/* 生成された感情の場合はバッジを表示 */}
+      {hasGeneratedEmotions && (
+        <div className={styles.generatedHeader}>
+          <GeneratedBadge tooltip="この悩みに関連する感情をAIが提案しました" />
+        </div>
+      )}
+
       {/* 感情選択パレット */}
       <div
         className={styles.emotionGrid}
@@ -130,7 +179,7 @@ export const EmotionPalette: React.FC<BaseWidgetProps> = ({
         aria-label="感情選択"
         data-testid="emotion-palette-options"
       >
-        {EMOTIONS.map((emotion) => (
+        {emotionsList.map((emotion) => (
           <EmotionButton
             key={emotion.id}
             emotion={emotion}

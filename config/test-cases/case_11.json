@@ -1,0 +1,40 @@
+{
+  "caseId": "case_11",
+  "title": "中文・仕事（No W2WR）",
+  "complexity": "simple",
+  "hasReactivity": false,
+
+  "concernText": "今抱えてるタスクが多すぎて頭の中がごちゃごちゃ。一回整理したい",
+
+  "contextFactors": {
+    "category": "仕事",
+    "urgency": "high",
+    "emotionalState": "stressed",
+    "timeAvailable": 20
+  },
+
+  "expectedBottlenecks": [
+    "unorganized_info"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "抱えているタスクを全て書き出す"
+    },
+    "organize": {
+      "widgets": ["card_sorting"],
+      "purpose": "プロジェクト別・緊急度別に分類"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "優先順位を設定"
+    }
+  },
+
+  "evaluationCriteria": [
+    "タスク整理への適切なwidget選択",
+    "brainstorm_cards→card_sortingの基本フロー",
+    "W2WRなしの独立処理"
+  ]
+}

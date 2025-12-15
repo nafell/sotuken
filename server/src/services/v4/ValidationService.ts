@@ -7,9 +7,9 @@
  * @since DSL v4.0
  */
 
-import type { ORS, Entity, Attribute, StageType } from '../../types/v4/ors.types';
+import type { ORS, Entity, Attribute, StageType, PlanORS } from '../../types/v4/ors.types';
 import type { DependencyGraph, DataDependency } from '../../types/v4/dependency-graph.types';
-import type { UISpec, WidgetSpec, DataBindingSpec } from '../../types/v4/ui-spec.types';
+import type { UISpec, WidgetSpec, DataBindingSpec, PlanUISpec } from '../../types/v4/ui-spec.types';
 import type { ReactiveBindingSpec, ReactiveBinding } from '../../types/v4/reactive-binding.types';
 import type { WidgetSelectionResult, StageSelection, SelectedWidget } from '../../types/v4/widget-selection.types';
 import { parseEntityAttributePath } from '../../types/v4/ors.types';
@@ -211,9 +211,21 @@ export class ValidationService {
     const warnings: ValidationError[] = [];
     const info: ValidationError[] = [];
 
+    // null/undefinedチェック
+    if (!ors || typeof ors !== 'object') {
+      errors.push(this.createError('INVALID_ORS', 'ORS is null or not an object', 'root'));
+      return this.buildResult(errors, warnings, info);
+    }
+
     // バージョンチェック
     if (ors.version !== '4.0') {
       errors.push(this.createError('INVALID_VERSION', `Invalid version: ${ors.version}, expected 4.0`, 'version'));
+    }
+
+    // entitiesが配列であることを確認
+    if (!Array.isArray(ors.entities)) {
+      errors.push(this.createError('INVALID_ENTITIES', 'ORS entities is not an array', 'entities'));
+      return this.buildResult(errors, warnings, info);
     }
 
     // Entity検証
@@ -239,6 +251,66 @@ export class ValidationService {
     const hasConcern = ors.entities.some((e) => e.type === 'concern');
     if (!hasConcern) {
       warnings.push(this.createWarning('NO_CONCERN_ENTITY', 'ORS has no concern entity', 'entities'));
+    }
+
+    return this.buildResult(errors, warnings, info);
+  }
+
+  /**
+   * PlanORS (v5.0) を検証
+   */
+  validatePlanORS(planORS: PlanORS): ValidationResult {
+    const errors: ValidationError[] = [];
+    const warnings: ValidationError[] = [];
+    const info: ValidationError[] = [];
+
+    // null/undefinedチェック
+    if (!planORS || typeof planORS !== 'object') {
+      errors.push(this.createError('INVALID_ORS', 'PlanORS is null or not an object', 'root'));
+      return this.buildResult(errors, warnings, info);
+    }
+
+    // バージョンチェック
+    if (planORS.version !== '5.0') {
+      errors.push(this.createError('INVALID_VERSION', `Invalid version: ${planORS.version}, expected 5.0`, 'version'));
+    }
+
+    // planMetadataチェック
+    if (!planORS.planMetadata || typeof planORS.planMetadata !== 'object') {
+      errors.push(this.createError('MISSING_REQUIRED_FIELD', 'PlanORS.planMetadata is missing', 'planMetadata'));
+    }
+
+    // entitiesが配列であることを確認
+    if (!Array.isArray(planORS.entities)) {
+      errors.push(this.createError('INVALID_ENTITIES', 'PlanORS.entities is not an array', 'entities'));
+      return this.buildResult(errors, warnings, info);
+    }
+
+    // Entity検証
+    const entityIds = new Set<string>();
+    for (let i = 0; i < planORS.entities.length; i++) {
+      const entity = planORS.entities[i];
+      const path = `entities[${i}]`;
+
+      // 重複チェック
+      if (entityIds.has(entity.id)) {
+        errors.push(this.createError('DUPLICATE_ENTITY', `Duplicate entity ID: ${entity.id}`, path));
+      }
+      entityIds.add(entity.id);
+
+      // 属性検証
+      this.validateEntityAttributes(entity, path, errors, warnings, info);
+    }
+
+    // DependencyGraph検証
+    if (planORS.dependencyGraph) {
+      this.validateDependencyGraph(planORS.dependencyGraph, entityIds, planORS.entities, errors, warnings, info);
+    }
+
+    // concernエンティティの存在チェック
+    const hasConcern = planORS.entities.some((e) => e.type === 'concern');
+    if (!hasConcern) {
+      warnings.push(this.createWarning('NO_CONCERN_ENTITY', 'PlanORS has no concern entity', 'entities'));
     }
 
     return this.buildResult(errors, warnings, info);
@@ -374,6 +446,25 @@ export class ValidationService {
     const warnings: ValidationError[] = [];
     const info: ValidationError[] = [];
 
+    // null/undefinedチェック
+    if (!uiSpec || typeof uiSpec !== 'object') {
+      errors.push(this.createError('INVALID_UISPEC', 'UISpec is null or not an object', 'root'));
+      return this.buildResult(errors, warnings, info);
+    }
+
+    // v5.0 PlanUISpec判定 → 専用メソッドへルーティング
+    if ('sections' in uiSpec) {
+      return this.validatePlanUISpec(uiSpec as unknown as PlanUISpec, ors);
+    }
+
+    // widgets配列チェック
+    if (!Array.isArray(uiSpec.widgets)) {
+      errors.push(
+        this.createError('INVALID_UISPEC_STRUCTURE', 'UISpec.widgets is missing or not an array', 'widgets')
+      );
+      return this.buildResult(errors, warnings, info);
+    }
+
     // バージョンチェック
     if (uiSpec.version !== '4.0') {
       errors.push(this.createError('INVALID_VERSION', `Invalid version: ${uiSpec.version}, expected 4.0`, 'version'));
@@ -403,6 +494,82 @@ export class ValidationService {
 
     // ReactiveBinding検証
     this.validateReactiveBindings(uiSpec.reactiveBindings, widgetIds, errors, warnings, info);
+
+    return this.buildResult(errors, warnings, info);
+  }
+
+  /**
+   * PlanUISpec (v5.0) を検証
+   */
+  validatePlanUISpec(planUISpec: PlanUISpec, ors?: ORS): ValidationResult {
+    const errors: ValidationError[] = [];
+    const warnings: ValidationError[] = [];
+    const info: ValidationError[] = [];
+
+    // null/undefinedチェック
+    if (!planUISpec || typeof planUISpec !== 'object') {
+      errors.push(this.createError('INVALID_UISPEC', 'PlanUISpec is null or not an object', 'root'));
+      return this.buildResult(errors, warnings, info);
+    }
+
+    // sections構造チェック
+    if (!planUISpec.sections || typeof planUISpec.sections !== 'object') {
+      errors.push(
+        this.createError('INVALID_UISPEC_STRUCTURE', 'PlanUISpec.sections is missing or not an object', 'sections')
+      );
+      return this.buildResult(errors, warnings, info);
+    }
+
+    // バージョンチェック
+    if (planUISpec.version !== '5.0') {
+      errors.push(
+        this.createError('INVALID_VERSION', `Invalid version: ${planUISpec.version}, expected 5.0`, 'version')
+      );
+    }
+
+    // 各セクションのwidgets配列チェック
+    const widgetIds = new Set<string>();
+    for (const sectionName of ['diverge', 'organize', 'converge'] as const) {
+      const section = planUISpec.sections[sectionName];
+      if (!section || !Array.isArray(section.widgets)) {
+        errors.push(
+          this.createError(
+            'INVALID_UISPEC_STRUCTURE',
+            `PlanUISpec.sections.${sectionName}.widgets is missing or not an array`,
+            `sections.${sectionName}.widgets`
+          )
+        );
+        continue;
+      }
+
+      // セクション内の各Widgetを検証
+      for (let i = 0; i < section.widgets.length; i++) {
+        const widget = section.widgets[i];
+        const path = `sections.${sectionName}.widgets[${i}]`;
+
+        // 重複チェック
+        if (widgetIds.has(widget.id)) {
+          errors.push(this.createError('DUPLICATE_WIDGET_ID', `Duplicate widget ID: ${widget.id}`, path));
+        }
+        widgetIds.add(widget.id);
+
+        // Widget定義存在チェック
+        const def = getWidgetDefinitionV4(widget.component);
+        if (!def) {
+          errors.push(
+            this.createError('UNKNOWN_WIDGET', `Unknown widget component: ${widget.component}`, `${path}.component`)
+          );
+        }
+
+        // DataBinding検証
+        this.validateDataBindings(widget, def, ors, path, errors, warnings, info);
+      }
+    }
+
+    // ReactiveBinding検証
+    if (planUISpec.reactiveBindings) {
+      this.validateReactiveBindings(planUISpec.reactiveBindings, widgetIds, errors, warnings, info);
+    }
 
     return this.buildResult(errors, warnings, info);
   }
@@ -680,4 +847,407 @@ export class ValidationService {
  */
 export function createValidationService(config?: ValidationServiceConfig): ValidationService {
   return new ValidationService(config);
+}
+
+// =============================================================================
+// Layer1/Layer4 実験用ヘルパー関数
+// =============================================================================
+
+/**
+ * DSLエラータイプ一覧（Layer1/Layer4実験用）
+ * @see specs/system-design/experiment_spec_layer_1_layer_4.md
+ */
+export const DSL_ERROR_TYPES = [
+  'JSON_PARSE_ERROR',
+  'ZOD_SCHEMA_MISMATCH',
+  'UNKNOWN_WIDGET',
+  'UNKNOWN_ENTITY',
+  'UNKNOWN_ATTRIBUTE',
+  'INVALID_PATH',
+  'CIRCULAR_DEPENDENCY',
+  'REFERENCE_ERROR',
+  'DUPLICATE_ID',
+  'MISSING_REQUIRED_FIELD',
+  'INVALID_BINDING',
+  'TYPE_MISMATCH',
+  'COMPLEXITY_VIOLATION',
+  'INVALID_VERSION',
+  'NO_WIDGETS',
+  'DUPLICATE_WIDGET',
+  'SELF_REFERENCE',
+  'INVALID_RELATIONSHIP',
+  'INVALID_UISPEC',
+  'INVALID_UISPEC_STRUCTURE',
+] as const;
+
+export type DSLErrorType = typeof DSL_ERROR_TYPES[number];
+
+/**
+ * ValidationResultからエラータイプのstring[]を抽出
+ *
+ * Layer1/Layer4実験のdsl_errorsフィールド用
+ *
+ * @param result 検証結果
+ * @returns エラータイプの配列、エラーがなければnull
+ */
+export function getErrorsAsStringArray(result: ValidationResult): string[] | null {
+  if (result.valid && result.errors.length === 0) {
+    return null;
+  }
+
+  // errorsからtypeを抽出してユニークにする
+  const errorTypes = result.errors.map(e => e.type);
+  const uniqueTypes = [...new Set(errorTypes)];
+
+  return uniqueTypes.length > 0 ? uniqueTypes : null;
+}
+
+/**
+ * ValidationResultから型エラー数を取得
+ *
+ * @param result 検証結果
+ * @returns TYPE_MISMATCHまたはZOD_SCHEMA_MISMATCHエラーの数
+ */
+export function countTypeErrors(result: ValidationResult): number {
+  return result.errors.filter(e =>
+    e.type === 'TYPE_MISMATCH' || e.type === 'ZOD_SCHEMA_MISMATCH'
+  ).length;
+}
+
+/**
+ * ValidationResultから参照エラー数を取得
+ *
+ * @param result 検証結果
+ * @returns REFERENCE_ERROR、UNKNOWN_ENTITY、UNKNOWN_ATTRIBUTE、INVALID_PATHエラーの数
+ */
+export function countReferenceErrors(result: ValidationResult): number {
+  return result.errors.filter(e =>
+    e.type === 'REFERENCE_ERROR' ||
+    e.type === 'UNKNOWN_ENTITY' ||
+    e.type === 'UNKNOWN_ATTRIBUTE' ||
+    e.type === 'INVALID_PATH'
+  ).length;
+}
+
+/**
+ * ValidationResultから循環依存が検出されたか判定
+ *
+ * @param result 検証結果
+ * @returns 循環依存エラーが含まれるか
+ */
+export function hasCyclicDependency(result: ValidationResult): boolean {
+  return result.errors.some(e => e.type === 'CIRCULAR_DEPENDENCY');
+}
+
+/**
+ * ValidationResultからエラーサマリーを作成（Layer1/Layer4実験用）
+ *
+ * @param result 検証結果
+ * @returns Layer1メトリクス計算用のサマリー
+ */
+export function getErrorSummary(result: ValidationResult): {
+  dslErrors: string[] | null;
+  typeErrorCount: number;
+  referenceErrorCount: number;
+  cycleDetected: boolean;
+} {
+  return {
+    dslErrors: getErrorsAsStringArray(result),
+    typeErrorCount: countTypeErrors(result),
+    referenceErrorCount: countReferenceErrors(result),
+    cycleDetected: hasCyclicDependency(result),
+  };
+}
+
+// =============================================================================
+// フロントエンド互換バリデーション（HeadlessValidator移植版）
+// =============================================================================
+
+/**
+ * フロントエンド検証結果（HeadlessValidationResult互換）
+ *
+ * @see concern-app/src/components/experiment/HeadlessValidator.tsx
+ */
+export interface FrontendValidationResult {
+  /** 検証成功 */
+  success: boolean;
+  /** レンダーエラー */
+  renderErrors: string[] | null;
+  /** Reactコンポーネント変換エラー */
+  reactComponentErrors: string[] | null;
+  /** Jotai atom変換エラー */
+  jotaiAtomErrors: string[] | null;
+  /** 型エラー数 */
+  typeErrorCount: number;
+  /** 参照エラー数 */
+  referenceErrorCount: number;
+  /** 循環依存検出 */
+  cycleDetected: boolean;
+  /** Atom作成数 */
+  atomCount: number;
+  /** バインディング数 */
+  bindingCount: number;
+  /** サーバー検証タイムスタンプ */
+  serverValidatedAt: number;
+}
+
+/**
+ * UISpecをフロントエンド互換形式で検証
+ *
+ * HeadlessValidator.validateUISpecHeadless() のサーバーサイド移植版。
+ * SSE切断時もサーバー側で検証を完結させるために使用。
+ *
+ * @param uiSpec 検証対象のUISpec（Stage 3生成結果）
+ * @returns フロントエンド互換の検証結果
+ */
+export function validateUISpecForFrontend(
+  uiSpec: UISpec | PlanUISpec | null
+): FrontendValidationResult {
+  const errors: string[] = [];
+  const reactComponentErrors: string[] = [];
+  const jotaiAtomErrors: string[] = [];
+  let cycleDetected = false;
+  let atomCount = 0;
+  let bindingCount = 0;
+  let typeErrorCount = 0;
+  let referenceErrorCount = 0;
+
+  try {
+    if (!uiSpec) {
+      errors.push('MISSING_UISPEC');
+      reactComponentErrors.push('MISSING_UISPEC');
+    } else {
+      // UISpec構造検証
+      const uiSpecResult = validateUISpecStructure(uiSpec);
+      errors.push(...uiSpecResult.errors);
+
+      // Reactコンポーネントエラー収集
+      for (const err of uiSpecResult.errors) {
+        if (err === 'NO_WIDGETS' || err === 'DUPLICATE_WIDGET_ID' || err.startsWith('MISSING_')) {
+          reactComponentErrors.push(err);
+        }
+      }
+
+      // Widget数をatom数として記録
+      const widgets = getWidgetsFromUISpec(uiSpec);
+      atomCount = widgets.length;
+
+      // ReactiveBindings検証
+      const bindings = getBindingsFromUISpec(uiSpec);
+      if (bindings.length > 0) {
+        bindingCount = bindings.length;
+        const widgetIds = new Set(widgets.map(w => w.id));
+
+        // 循環依存チェック
+        cycleDetected = detectCyclicDependenciesInBindings(bindings);
+        if (cycleDetected) {
+          errors.push('CYCLIC_DEPENDENCY');
+        }
+
+        // ウィジェット参照チェック
+        const refResult = validateWidgetReferencesInBindings(bindings, widgetIds);
+        referenceErrorCount = refResult.errors.length;
+        errors.push(...refResult.errors);
+
+        // メカニズム検証
+        const mechResult = validateBindingMechanisms(bindings);
+        typeErrorCount = mechResult.errors.length;
+        errors.push(...mechResult.errors);
+      }
+
+      // Jotai Atom作成検証（構造エラーがあればatom作成も失敗と推定）
+      if (uiSpecResult.errors.some(e => e === 'NO_WIDGETS' || e === 'MISSING_WIDGET_ID')) {
+        jotaiAtomErrors.push('ATOM_CREATION_FAILED:structure_error');
+      }
+    }
+  } catch (error) {
+    const errMsg = `VALIDATION_ERROR: ${error instanceof Error ? error.message : 'Unknown'}`;
+    errors.push(errMsg);
+    reactComponentErrors.push('RENDER_EXCEPTION');
+  }
+
+  return {
+    success: errors.length === 0,
+    renderErrors: errors.length > 0 ? [...new Set(errors)] : null,
+    reactComponentErrors: reactComponentErrors.length > 0 ? [...new Set(reactComponentErrors)] : null,
+    jotaiAtomErrors: jotaiAtomErrors.length > 0 ? [...new Set(jotaiAtomErrors)] : null,
+    typeErrorCount,
+    referenceErrorCount,
+    cycleDetected,
+    atomCount,
+    bindingCount,
+    serverValidatedAt: Date.now(),
+  };
+}
+
+/**
+ * UISpec構造を検証
+ */
+function validateUISpecStructure(uiSpec: UISpec | PlanUISpec): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  const widgets = getWidgetsFromUISpec(uiSpec);
+
+  // Widgets検証
+  if (!widgets || widgets.length === 0) {
+    errors.push('NO_WIDGETS');
+  }
+
+  // ID重複チェック
+  const widgetIds = widgets.map(w => w.id);
+  const uniqueIds = new Set(widgetIds);
+  if (uniqueIds.size !== widgetIds.length) {
+    errors.push('DUPLICATE_WIDGET_ID');
+  }
+
+  // 各ウィジェットの基本検証
+  for (const widget of widgets) {
+    if (!widget.id) {
+      errors.push('MISSING_WIDGET_ID');
+    }
+    if (!widget.component) {
+      errors.push(`MISSING_COMPONENT: ${widget.id}`);
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
+/**
+ * UISpecからwidgets配列を取得（v4.0とv5.0両対応）
+ */
+function getWidgetsFromUISpec(uiSpec: UISpec | PlanUISpec): WidgetSpec[] {
+  // v5.0 PlanUISpec
+  if ('sections' in uiSpec && uiSpec.sections) {
+    const allWidgets: WidgetSpec[] = [];
+    for (const sectionName of ['diverge', 'organize', 'converge'] as const) {
+      const section = uiSpec.sections[sectionName];
+      if (section?.widgets) {
+        allWidgets.push(...section.widgets);
+      }
+    }
+    return allWidgets;
+  }
+  // v4.0 UISpec
+  return (uiSpec as UISpec).widgets ?? [];
+}
+
+/**
+ * UISpecからbindings配列を取得
+ */
+function getBindingsFromUISpec(uiSpec: UISpec | PlanUISpec): ReactiveBinding[] {
+  return uiSpec.reactiveBindings?.bindings ?? [];
+}
+
+/**
+ * 循環依存を検出（DFS）
+ */
+function detectCyclicDependenciesInBindings(bindings: ReactiveBinding[]): boolean {
+  const graph = new Map<string, string[]>();
+
+  // グラフを構築
+  for (const binding of bindings) {
+    if (binding.enabled === false) continue;
+
+    const sourceWidget = binding.source.split('.')[0];
+    const targetWidget = binding.target.split('.')[0];
+
+    if (!graph.has(sourceWidget)) {
+      graph.set(sourceWidget, []);
+    }
+    graph.get(sourceWidget)!.push(targetWidget);
+  }
+
+  // DFSで循環を検出
+  const visited = new Set<string>();
+  const recursionStack = new Set<string>();
+
+  function hasCycle(node: string): boolean {
+    if (recursionStack.has(node)) {
+      return true;
+    }
+    if (visited.has(node)) {
+      return false;
+    }
+
+    visited.add(node);
+    recursionStack.add(node);
+
+    for (const neighbor of graph.get(node) ?? []) {
+      if (hasCycle(neighbor)) {
+        return true;
+      }
+    }
+
+    recursionStack.delete(node);
+    return false;
+  }
+
+  for (const node of graph.keys()) {
+    if (hasCycle(node)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * バインディング内のウィジェット参照を検証
+ */
+function validateWidgetReferencesInBindings(
+  bindings: ReactiveBinding[],
+  widgetIds: Set<string>
+): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  for (const binding of bindings) {
+    const sourceWidget = binding.source.split('.')[0];
+    const targetWidget = binding.target.split('.')[0];
+
+    if (!widgetIds.has(sourceWidget)) {
+      errors.push(`UNKNOWN_SOURCE_WIDGET: ${sourceWidget}`);
+    }
+    if (!widgetIds.has(targetWidget)) {
+      errors.push(`UNKNOWN_TARGET_WIDGET: ${targetWidget}`);
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
+/**
+ * バインディングメカニズムを検証
+ */
+function validateBindingMechanisms(
+  bindings: ReactiveBinding[]
+): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  for (const binding of bindings) {
+    const rel = binding.relationship;
+
+    // 型ベースの検証
+    if (rel.type === 'javascript' && !rel.javascript) {
+      errors.push(`MISSING_JAVASCRIPT: ${binding.id}`);
+    }
+
+    if (rel.type === 'transform' && !rel.transform) {
+      errors.push(`MISSING_TRANSFORM: ${binding.id}`);
+    }
+
+    if (rel.type === 'llm' && !rel.llmPrompt) {
+      errors.push(`MISSING_LLM_PROMPT: ${binding.id}`);
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
 }

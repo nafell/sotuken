@@ -1,0 +1,40 @@
+{
+  "caseId": "case_15",
+  "title": "中文・生活（No W2WR）",
+  "complexity": "simple",
+  "hasReactivity": false,
+
+  "concernText": "節約したいんだけど何を削ればいいかわからない。固定費見直すべきか、日々の出費減らすべきか",
+
+  "contextFactors": {
+    "category": "生活",
+    "urgency": "medium",
+    "emotionalState": "worried",
+    "timeAvailable": 25
+  },
+
+  "expectedBottlenecks": [
+    "cannot_prioritize"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "支出項目を洗い出す"
+    },
+    "organize": {
+      "widgets": ["matrix_placement"],
+      "purpose": "削減効果×実現難易度で配置"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "取り組む優先順位を決定"
+    }
+  },
+
+  "evaluationCriteria": [
+    "優先順位付けの悩みへの適切な対応",
+    "matrix_placementでの2軸評価",
+    "W2WRなしの独立フロー"
+  ]
+}

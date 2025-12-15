@@ -68,6 +68,71 @@ Widget間のリアクティブなUI連携を定義します。
 ### 4. レイアウト設定
 画面全体のレイアウトを定義します。
 
+### 5. コンテンツ生成（generatedValue）【必須タスク】
+Widget定義に**generationHints**がある場合、ユーザーの悩みに関連するコンテンツを動的に生成してconfig内に**必ず**配置してください。
+
+**確認手順**:
+1. Widget定義情報を確認し、generationHintsフィールドを持つWidgetを特定する
+2. generationHints.labels または generationHints.samples を確認し、fieldで指定されたキーをconfigに追加する
+3. ユーザーの悩みに関連した具体的なコンテンツを生成する
+
+**Type A: ラベル生成（labels）**
+generationHints.labelsが定義されている場合:
+- fieldで指定されたキー（例: "emotions"）にラベル配列を配置
+- instructionに従い、countで指定された数のラベルを生成
+- 各ラベルには必ず**isGenerated: true**を付与
+
+**生成例: EmotionPalette**
+ユーザーの悩み: 「転職するか迷っている」
+
+\`\`\`json
+{
+  "id": "emotion_palette_0",
+  "component": "emotion_palette",
+  "config": {
+    "emotions": [
+      { "id": "emotion_1", "label": "不安", "color": "#9370DB", "category": "negative", "description": "将来への心配", "isGenerated": true },
+      { "id": "emotion_2", "label": "期待", "color": "#FFA500", "category": "positive", "description": "新しい可能性へのワクワク", "isGenerated": true },
+      { "id": "emotion_3", "label": "迷い", "color": "#87CEEB", "category": "neutral", "description": "決断できない気持ち", "isGenerated": true }
+    ]
+  }
+}
+\`\`\`
+
+**Type B: サンプルデータ（samples）**
+generationHints.samplesが定義されている場合:
+- fieldで指定されたキー（例: "sampleCards"）にGeneratedContentContainerを配置
+- instructionに従い、countで指定された範囲の数のアイテムを生成
+- 各アイテムには必ず**isGenerated: true**を付与
+- コンテナにも**isGenerated: true**を付与
+
+**生成例: BrainstormCards**
+ユーザーの悩み: 「転職するか迷っている」
+
+\`\`\`json
+{
+  "id": "brainstorm_0",
+  "component": "brainstorm_cards",
+  "config": {
+    "title": "転職について考えてみましょう",
+    "sampleCards": {
+      "items": [
+        { "id": "sample_1", "text": "現職で得られているもの・失うもの", "isGenerated": true },
+        { "id": "sample_2", "text": "転職で実現したい理想の働き方", "isGenerated": true }
+      ],
+      "isGenerated": true
+    }
+  }
+}
+\`\`\`
+
+**重要ルール**:
+1. 生成内容はユーザーの**具体的な悩みの内容に関連**させる（一般的すぎる内容はNG）
+2. サンプルは「考えるきっかけ」であり、**完成した答えではない**
+3. **日本語で生成**する
+4. **isGenerated: true**マーカーを必ず付与する
+5. generationHintsがないWidgetには生成コンテンツを含めない
+
 ## 出力形式
 以下のJSON形式で出力してください：
 
@@ -86,7 +151,14 @@ Widget間のリアクティブなUI連携を定義します。
         "title": "アイデアを出してみましょう",
         "placeholder": "思いついたことを書いてください",
         "minItems": 3,
-        "maxItems": 10
+        "maxItems": 10,
+        "sampleCards": {
+          "items": [
+            { "id": "sample_1", "text": "現状の問題点を洗い出す", "isGenerated": true },
+            { "id": "sample_2", "text": "理想の状態を具体的にイメージする", "isGenerated": true }
+          ],
+          "isGenerated": true
+        }
       },
       "dataBindings": [
         {
@@ -158,12 +230,64 @@ Widget間のリアクティブなUI連携を定義します。
   },
   "metadata": {
     "generatedAt": ${Date.now()},
-    "llmModel": "gemini-2.5-flash"
+    "llmModel": "gemini-2.5-flash-lite"
   }
 }
 \`\`\`
 
+## 出力構造の必須要件【重要】
+以下のフィールドは**絶対に省略しないでください**。省略するとシステムエラーになります。
+
+1. **widgets**: 必ず配列として定義してください。Widgetが0件でも空配列 \`"widgets": []\` を出力してください
+2. **reactiveBindings**: 必ずオブジェクトとして定義してください。バインディングが0件でも \`"reactiveBindings": { "bindings": [] }\` を出力してください
+3. **version**: 必ず "4.0" を指定してください
+
+**エラー例（NG - 絶対に避けてください）**:
+\`\`\`json
+{
+  "version": "4.0",
+  "sessionId": "...",
+  "stage": "diverge"
+  // widgets が省略されている - これは無効です！システムエラーになります
+}
+\`\`\`
+
+**正しい例（OK）**:
+\`\`\`json
+{
+  "version": "4.0",
+  "sessionId": "...",
+  "stage": "diverge",
+  "widgets": [],
+  "reactiveBindings": { "bindings": [] },
+  "layout": { "type": "single_column" },
+  "metadata": { "generatedAt": ..., "llmModel": "..." }
+}
+\`\`\`
+
 ## 重要な注意点
+
+### generatedValue（必須）
+**generationHintsを持つWidgetには必ずサンプルコンテンツを生成してください。**
+
+1. Widget定義情報の中で**generationHints**フィールドがあるWidgetを確認してください
+2. generationHints.samplesがある場合、**config内にsampleCardsフィールドを必ず追加**してください
+3. サンプル内容は**ユーザーの具体的な悩み**（ORS内のconcern.textまたは文脈から推測）に関連させてください
+4. 各アイテムと親コンテナに**isGenerated: true**を必ず付与してください
+
+**例**: brainstorm_cardsにgenerationHints.samplesがある場合:
+\`\`\`json
+"config": {
+  "title": "...",
+  "sampleCards": {
+    "items": [
+      { "id": "sample_1", "text": "【悩みに関連する具体的なアイデア】", "isGenerated": true },
+      { "id": "sample_2", "text": "【悩みに関連する具体的なアイデア】", "isGenerated": true }
+    ],
+    "isGenerated": true
+  }
+}
+\`\`\`
 
 ### DataBinding
 1. 各WidgetのポートIDはWidget定義のports.inputs/outputsを参照してください

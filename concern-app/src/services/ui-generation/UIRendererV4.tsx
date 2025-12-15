@@ -21,6 +21,7 @@ import type { BaseWidgetProps, WidgetSpecObject } from '../../types/widget.types
 import type { WidgetPortPath } from '../../types/v4/reactive-binding.types';
 import { DataBindingProcessor, createDataBindingProcessor } from '../ui/DataBindingProcessor';
 import { createReactiveBindingEngineV4, type PropagationEventV4 } from '../ui/ReactiveBindingEngineV4';
+import { getWidgetAtomCount } from '../../store/widgetAtoms';
 
 // v3 Widget Components（既存を再利用）
 import { EmotionPalette } from '../../components/widgets/v3/EmotionPalette/EmotionPalette';
@@ -38,7 +39,7 @@ import { StructuredSummary } from '../../components/widgets/v3/StructuredSummary
 
 // Widget Component Registry
 const WIDGET_COMPONENTS: Record<string, React.FC<BaseWidgetProps>> = {
-  // Core Widgets
+  // Core Widgets (v3)
   emotion_palette: EmotionPalette,
   brainstorm_cards: BrainstormCards,
   matrix_placement: MatrixPlacement,
@@ -51,16 +52,32 @@ const WIDGET_COMPONENTS: Record<string, React.FC<BaseWidgetProps>> = {
   tradeoff_balance: TradeoffBalance,
   timeline_slider: TimelineSlider,
   structured_summary: StructuredSummary,
-  // v4で追加されたWidget（既存と同等の機能を持つものにマッピング）
-  concern_map: MindMap,
-  timeline_view: TimelineSlider,
-  decision_balance: TradeoffBalance,
-  action_cards: BrainstormCards,
-  summary_view: StructuredSummary,
-  free_writing: BrainstormCards,
-  export_options: StructuredSummary,
-  stage_summary: StructuredSummary,
+  // TODO: 将来v4で追加予定のWidget
+  // - free_writing: フリーライティング専用Widget
+  // - action_cards: アクションカード専用Widget
+  // - decision_balance: 意思決定バランスWidget
+  // - stage_summary: ステージサマリーWidget
+  // - summary_view: サマリービューWidget
+  // - concern_map: マインドマップ拡張
+  // - timeline_view: タイムライン拡張
+  // - export_options: エクスポートオプションWidget
 };
+
+// =============================================================================
+// Types
+// =============================================================================
+
+/**
+ * Reactivity統計情報
+ */
+export interface ReactivityStats {
+  /** DSL定義のbinding数 */
+  dslBindingCount: number;
+  /** 初期化済みport数 */
+  activePortCount: number;
+  /** 登録済みatom数（widgetAtomMap） */
+  activeAtomCount: number;
+}
 
 // =============================================================================
 // Props
@@ -79,6 +96,10 @@ export interface UIRendererV4Props {
   onPortChange?: (widgetId: string, portId: string, value: unknown) => void;
   /** ORS更新コールバック */
   onORSUpdate?: (entityAttribute: string, value: unknown) => void;
+  /** Unknown Widgetが検出されたときのコールバック */
+  onUnknownWidget?: (widgetId: string, componentName: string) => void;
+  /** Reactivity統計コールバック */
+  onReactivityStats?: (stats: ReactivityStats) => void;
   /** クラス名 */
   className?: string;
   /** コンテキストサマリー */
@@ -167,6 +188,8 @@ export const UIRendererV4: React.FC<UIRendererV4Props> = ({
   onWidgetComplete,
   onPortChange,
   onORSUpdate,
+  onUnknownWidget,
+  onReactivityStats,
   className,
   contextSummary,
   debug = false,
@@ -230,11 +253,24 @@ export const UIRendererV4: React.FC<UIRendererV4Props> = ({
       }
     });
 
+    // Reactivity統計をコールバックで通知
+    if (onReactivityStats) {
+      const stats: ReactivityStats = {
+        dslBindingCount: uiSpec.reactiveBindings?.bindings?.length || 0,
+        activePortCount: engine.getAllPortValues().size,
+        activeAtomCount: getWidgetAtomCount(),
+      };
+      onReactivityStats(stats);
+      if (debug) {
+        console.log('[UIRendererV4] Reactivity stats:', stats);
+      }
+    }
+
     return () => {
       engine.dispose();
       dataBindingProcessor.dispose();
     };
-  }, [engine, dataBindingProcessor, uiSpec.widgets, dataBindingMap, debug, onORSUpdate]);
+  }, [engine, dataBindingProcessor, uiSpec.widgets, dataBindingMap, debug, onORSUpdate, onReactivityStats, uiSpec.reactiveBindings]);
 
   // Widgetをposition順にソート
   const sortedWidgets = useMemo(() => {
@@ -317,11 +353,30 @@ export const UIRendererV4: React.FC<UIRendererV4Props> = ({
           const WidgetComponent = WIDGET_COMPONENTS[widgetSpec.component];
 
           if (!WidgetComponent) {
+            // Unknown Widgetを親コンポーネントに通知
+            onUnknownWidget?.(widgetSpec.id, widgetSpec.component);
+
             return (
-              <div key={widgetSpec.id} style={errorWidgetStyle}>
-                <strong>Unknown Widget:</strong> {widgetSpec.component}
-                <br />
-                <small>ID: {widgetSpec.id}</small>
+              <div
+                key={widgetSpec.id}
+                className="unknown-widget-error"
+                style={{
+                  padding: '16px',
+                  margin: '8px 0',
+                  backgroundColor: '#FEF2F2',
+                  border: '2px solid #EF4444',
+                  borderRadius: '8px',
+                }}
+              >
+                <div style={{ color: '#DC2626', fontWeight: 'bold', marginBottom: '8px' }}>
+                  Unknown Widget: {widgetSpec.component}
+                </div>
+                <div style={{ fontSize: '12px', color: '#6B7280' }}>
+                  Widget ID: {widgetSpec.id}
+                </div>
+                <div style={{ fontSize: '12px', color: '#059669', marginTop: '8px' }}>
+                  * This error has been recorded. The experiment can continue.
+                </div>
               </div>
             );
           }
@@ -486,13 +541,8 @@ const dataBindingBadgeStyle: React.CSSProperties = {
   fontFamily: 'monospace',
 };
 
-const errorWidgetStyle: React.CSSProperties = {
-  padding: '16px',
-  backgroundColor: '#ffebee',
-  border: '1px solid #ef5350',
-  borderRadius: '8px',
-  color: '#c62828',
-};
+// errorWidgetStyle was removed - Unknown Widget error now uses inline styles
+// See the if (!WidgetComponent) block in the render logic
 
 const summaryStyle: React.CSSProperties = {
   marginBottom: '24px',

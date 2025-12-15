@@ -1,0 +1,65 @@
+{
+  "caseId": "case_47",
+  "title": "中文・仕事（複数Binding）",
+  "complexity": "medium",
+  "hasReactivity": true,
+
+  "concernText": "新規事業のアイデアを整理したい。ブレストして、SWOT分析して、最後に優先度決めたい。全部連動させたい",
+
+  "contextFactors": {
+    "category": "仕事",
+    "urgency": "medium",
+    "emotionalState": "creative",
+    "timeAvailable": 50
+  },
+
+  "expectedBottlenecks": [
+    "cannot_prioritize",
+    "unorganized_info"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "事業アイデアを書き出す"
+    },
+    "organize": {
+      "widgets": ["swot_analysis"],
+      "purpose": "SWOT分析で整理"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "実行優先度を設定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "swot_analysis.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.map(c => ({id: c.id, text: c.text, quadrant: 'strengths'}))"
+        },
+        "updateMode": "realtime"
+      },
+      {
+        "source": "swot_analysis.placement",
+        "target": "priority_slider_grid.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "Object.values(source).flat().map((item, i) => ({id: item.id, label: item.text, priority: 50}))"
+        },
+        "updateMode": "debounced",
+        "debounceMs": 300
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "SWOT経由の3段階連鎖",
+    "quadrant初期値設定のJS",
+    "swot.placement→priority変換"
+  ]
+}

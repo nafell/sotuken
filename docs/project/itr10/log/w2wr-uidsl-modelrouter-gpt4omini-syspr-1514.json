@@ -1,0 +1,128 @@
+{  
+  "version": "5.0",  
+  "sessionId": "99be34df-500d-45dd-850f-2699bca27b02",  
+  "stage": "plan",  
+  "sections": {  
+    "diverge": {  
+      "header": "人生の選択肢をマインドマップで整理",  
+      "widgets": [  
+        {  
+          "id": "mind_map_0",  
+          "component": "mind_map",  
+          "position": 0,  
+          "layout": "full",  
+          "config": {  
+            "centralTopic": "人生の選択肢"  
+          },  
+          "dataBindings": [  
+            {  
+              "portId": "nodes",  
+              "entityAttribute": "entities[0].attributes[0].value",  
+              "direction": "out"  
+            },  
+            {  
+              "portId": "connections",  
+              "entityAttribute": "entities[0].attributes[1].value",  
+              "direction": "out"  
+            },  
+            {  
+              "portId": "depth",  
+              "entityAttribute": "entities[0].attributes[2].value",  
+              "direction": "out"  
+            }  
+          ],  
+          "metadata": {  
+            "purpose": "人生の選択肢を放射状に展開"  
+          }  
+        }  
+      ]  
+    },  
+    "organize": {  
+      "header": "選択肢の重要度と実現可能性の評価",  
+      "widgets": [  
+        {  
+          "id": "matrix_placement_0",  
+          "component": "matrix_placement",  
+          "position": 0,  
+          "layout": "full",  
+          "config": {  
+            "items": [],  
+            "axisLabels": {  
+              "xAxis": {  
+                "low": "実現可能性低",  
+                "high": "実現可能性高"  
+              },  
+              "yAxis": {  
+                "low": "重要度低",  
+                "high": "重要度高"  
+              }  
+            }  
+          },  
+          "dataBindings": [  
+            {  
+              "portId": "placements",  
+              "entityAttribute": "entities[1].attributes[0].value",  
+              "direction": "out"  
+            },  
+            {  
+              "portId": "quadrantCounts",  
+              "entityAttribute": "entities[1].attributes[1].value",  
+              "direction": "out"  
+            }  
+          ],  
+          "metadata": {  
+            "purpose": "選択肢を重要度×実現可能性の2軸で配置"  
+          }  
+        }  
+      ]  
+    },  
+    "converge": {  
+      "header": "優先度の調整",  
+      "widgets": [  
+        {  
+          "id": "priority_slider_grid_0",  
+          "component": "priority_slider_grid",  
+          "position": 0,  
+          "layout": "full",  
+          "config": {  
+            "items": []  
+          },  
+          "dataBindings": [  
+            {  
+              "portId": "priorities",  
+              "entityAttribute": "entities[2].attributes[0].value",  
+              "direction": "out"  
+            },  
+            {  
+              "portId": "ranking",  
+              "entityAttribute": "entities[2].attributes[1].value",  
+              "direction": "out"  
+            }  
+          ],  
+          "metadata": {  
+            "purpose": "配置結果をもとに優先度を調整"  
+          }  
+        }  
+      ]  
+    }  
+  },  
+  "reactiveBindings": {  
+    "bindings": [  
+      {  
+        "source": "mind_map_0.nodes",  
+        "target": "matrix_placement_0.items",  
+        "relationship": "passthrough"  
+      },  
+      {  
+        "source": "matrix_placement_0.placements",  
+        "target": "priority_slider_grid_0.items",  
+        "relationship": "passthrough"  
+      }  
+    ]  
+  },  
+  "layout": {  
+    "type": "sectioned",  
+    "sectionGap": 24,  
+    "sectionOrder": ["diverge", "organize", "converge"]  
+  }  
+}  

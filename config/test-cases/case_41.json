@@ -1,0 +1,61 @@
+{
+  "caseId": "case_41",
+  "title": "短文・仕事（複数Binding）",
+  "complexity": "medium",
+  "hasReactivity": true,
+
+  "concernText": "タスクを整理して時系列に並べて優先度も決めたい",
+
+  "contextFactors": {
+    "category": "仕事",
+    "urgency": "high",
+    "emotionalState": "focused",
+    "timeAvailable": 25
+  },
+
+  "expectedBottlenecks": [
+    "multiple_issues",
+    "cannot_prioritize"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "タスクを洗い出す"
+    },
+    "organize": {
+      "widgets": ["card_sorting", "timeline_slider"],
+      "purpose": "分類と時系列配置"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "優先度を最終調整"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "card_sorting.cards",
+        "relationship": { "type": "passthrough" },
+        "updateMode": "realtime"
+      },
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "timeline_slider.events",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.map((c, i) => ({id: c.id, label: c.text, position: i * 10}))"
+        },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "1ソースから2ターゲットへの分岐Binding",
+    "passthrough + javascript複合",
+    "2 Binding同時生成"
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "caseId": "case_25",
+  "title": "長文・仕事（JS単純）",
+  "complexity": "simple",
+  "hasReactivity": true,
+
+  "concernText": "部署異動の話が来てて迷ってる。今の部署は慣れてるけどマンネリ化してる。新しい部署は挑戦的だけど不安もある。異動のメリットデメリットを整理してから決めたいんだけど、頭の中がごちゃごちゃしてる",
+
+  "contextFactors": {
+    "category": "仕事",
+    "urgency": "high",
+    "emotionalState": "conflicted",
+    "timeAvailable": 35
+  },
+
+  "expectedBottlenecks": [
+    "multiple_issues",
+    "fear_of_decision"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "異動に関する考えを全て書き出す"
+    },
+    "organize": {
+      "widgets": ["matrix_placement"],
+      "purpose": "リスク×リターンの2軸で配置"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "検討優先度を設定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "matrix_placement.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.map(c => ({id: c.id, text: c.text, x: 50, y: 50}))"
+        },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "cards→matrix変換のJS生成",
+    "意思決定支援への2軸評価適用",
+    "シンプルなmap変換"
+  ]
+}

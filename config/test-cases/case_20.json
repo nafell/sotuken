@@ -1,0 +1,51 @@
+{
+  "caseId": "case_20",
+  "title": "中文・生活（Passthrough）",
+  "complexity": "simple",
+  "hasReactivity": true,
+
+  "concernText": "引越し先探してるんだけど、条件がバラバラで整理できてない。駅近がいいけど家賃も抑えたいし",
+
+  "contextFactors": {
+    "category": "生活",
+    "urgency": "medium",
+    "emotionalState": "scattered",
+    "timeAvailable": 30
+  },
+
+  "expectedBottlenecks": [
+    "unorganized_info"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["brainstorm_cards"],
+      "purpose": "引越しの条件を書き出す"
+    },
+    "organize": {
+      "widgets": ["card_sorting"],
+      "purpose": "必須条件・希望条件に分類"
+    },
+    "converge": {
+      "widgets": ["priority_slider_grid"],
+      "purpose": "条件の優先度を設定"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "brainstorm_cards.cards",
+        "target": "card_sorting.cards",
+        "relationship": { "type": "passthrough" },
+        "updateMode": "realtime"
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "生活系悩みへのpassthrough適用",
+    "条件整理フローの構築",
+    "基本的なW2WR連携"
+  ]
+}

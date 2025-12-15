@@ -1,0 +1,41 @@
+{
+  "caseId": "case_12",
+  "title": "長文・キャリア（No W2WR）",
+  "complexity": "simple",
+  "hasReactivity": false,
+
+  "concernText": "今の会社に入って7年目。正直マンネリ化してきた感じはある。でも転職って言っても、自分に何ができるのかよくわからないし、年齢的にも不安。かといってこのまま定年まで今の会社にいるのもなんか違う気がする。一度自分のキャリアについて棚卸ししたいんだけど、何を考えればいいのか",
+
+  "contextFactors": {
+    "category": "キャリア",
+    "urgency": "low",
+    "emotionalState": "uncertain",
+    "timeAvailable": 45
+  },
+
+  "expectedBottlenecks": [
+    "fear_of_decision",
+    "dont_know_where_to_start"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["mind_map"],
+      "purpose": "キャリアに関する考えを放射状に展開"
+    },
+    "organize": {
+      "widgets": ["swot_analysis"],
+      "purpose": "自分の強み弱み、機会脅威を整理"
+    },
+    "converge": {
+      "widgets": ["matrix_placement"],
+      "purpose": "選択肢をリスク×リターンで評価"
+    }
+  },
+
+  "evaluationCriteria": [
+    "長文からの適切な問題抽出",
+    "キャリア棚卸しに適したwidget選択",
+    "W2WRなしの独立フロー"
+  ]
+}

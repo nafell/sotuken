@@ -19,13 +19,17 @@ import type { DICT, SVAL } from './ors.types';
  * LLMタスク種別
  *
  * DSL v4の3段階LLM呼び出し + 追加タスク
+ * DSL v5: Plan統合生成タスク追加
  */
 export type LLMTaskType =
-  | 'capture_diagnosis'    // Captureフェーズ診断（ボトルネック判定）
-  | 'widget_selection'     // 第1段階: Widget選定（4ステージ一括）
-  | 'ors_generation'       // 第2段階: ORS + DpG生成
-  | 'uispec_generation'    // 第3段階: UISpec生成
-  | 'summary_generation';  // まとめ生成（Breakdownフェーズ）
+  | 'capture_diagnosis'      // Captureフェーズ診断（ボトルネック判定）
+  | 'widget_selection'       // 第1段階: Widget選定（4ステージ一括）
+  | 'ors_generation'         // 第2段階: ORS + DpG生成
+  | 'uispec_generation'      // 第3段階: UISpec生成
+  | 'summary_generation'     // まとめ生成（Breakdownフェーズ）
+  // DSL v5: Plan統合生成
+  | 'plan_ors_generation'    // Plan統合ORS生成（3セクション分を1回で）
+  | 'plan_uispec_generation'; // Plan統合UISpec生成（3セクション分を1回で）
 
 /**
  * LLMタスク分類
@@ -44,6 +48,9 @@ export const LLM_TASK_CATEGORIES: Record<LLMTaskType, LLMTaskCategory> = {
   ors_generation: 'structured',
   uispec_generation: 'structured',
   summary_generation: 'general',
+  // DSL v5: Plan統合生成
+  plan_ors_generation: 'structured',
+  plan_uispec_generation: 'structured',
 };
 
 // =============================================================================
@@ -53,7 +60,20 @@ export const LLM_TASK_CATEGORIES: Record<LLMTaskType, LLMTaskCategory> = {
 /**
  * LLMプロバイダー
  */
-export type LLMProvider = 'gemini' | 'openai' | 'anthropic';
+export type LLMProvider = 'gemini' | 'openai' | 'anthropic' | 'azure';
+
+/**
+ * Azure OpenAI 利用可能モデル
+ */
+export const AZURE_AVAILABLE_MODELS = [
+  'gpt-4.1',
+  'gpt-4.1-mini',
+  'gpt-5-chat',
+  'gpt-5-mini',
+  'model-router'
+] as const;
+
+export type AzureModelId = typeof AZURE_AVAILABLE_MODELS[number];
 
 /**
  * モデル設定
@@ -79,13 +99,13 @@ export interface ModelConfig {
 export const DEFAULT_MODEL_CONFIGS: Record<LLMTaskCategory, ModelConfig> = {
   general: {
     provider: 'gemini',
-    modelId: 'gemini-2.5-flash',
+    modelId: 'gemini-2.5-flash-lite',
     temperature: 0.7,
     maxTokens: 4096,
   },
   structured: {
     provider: 'gemini',
-    modelId: 'gemini-2.5-flash',
+    modelId: 'gemini-2.5-flash-lite',
     temperature: 0.3,
     maxTokens: 8192,
   },
@@ -188,12 +208,12 @@ export const EXPERIMENT_PATTERNS: ExperimentPattern[] = [
     description: '全タスクで同一モデルを使用',
     generalTaskModel: {
       provider: 'gemini',
-      modelId: 'gemini-2.5-flash',
+      modelId: 'gemini-2.5-flash-lite',
       temperature: 0.7,
     },
     structuredTaskModel: {
       provider: 'gemini',
-      modelId: 'gemini-2.5-flash',
+      modelId: 'gemini-2.5-flash-lite',
       temperature: 0.3,
     },
   },
@@ -243,6 +263,19 @@ export interface LLMCallMetrics {
 }
 
 /**
+ * LLMエラータイプ定数
+ */
+export const LLM_ERROR_TYPES = {
+  TIMEOUT: 'timeout',
+  PARSE_ERROR: 'parse_error',
+  VALIDATION_ERROR: 'validation_error',
+  API_ERROR: 'api_error',
+  UNKNOWN: 'unknown',
+} as const;
+
+export type LLMErrorType = typeof LLM_ERROR_TYPES[keyof typeof LLM_ERROR_TYPES];
+
+/**
  * LLM呼び出し結果
  */
 export interface LLMCallResult<T = unknown> {
@@ -256,7 +289,7 @@ export interface LLMCallResult<T = unknown> {
   prompt?: string;
   /** エラー情報（失敗時） */
   error?: {
-    type: 'timeout' | 'parse_error' | 'validation_error' | 'api_error' | 'unknown';
+    type: LLMErrorType;
     message: string;
     details?: DICT<SVAL>;
   };
@@ -325,6 +358,23 @@ export const DEFAULT_LLM_TASK_CONFIGS: LLMTaskConfigMap = {
     timeout: 30000,
     description: 'Breakdownフェーズのまとめを生成',
   },
+  // DSL v5: Plan統合生成
+  plan_ors_generation: {
+    taskType: 'plan_ors_generation',
+    model: DEFAULT_MODEL_CONFIGS.structured,
+    promptTemplateId: 'plan-ors-generation',
+    maxRetries: 3,
+    timeout: 90000, // 3セクション分なので長めに設定
+    description: 'Plan統合ORS生成（diverge/organize/converge 3セクション分）',
+  },
+  plan_uispec_generation: {
+    taskType: 'plan_uispec_generation',
+    model: DEFAULT_MODEL_CONFIGS.structured,
+    promptTemplateId: 'plan-uispec-generation',
+    maxRetries: 3,
+    timeout: 90000, // 3セクション分なので長めに設定
+    description: 'Plan統合UISpec生成（diverge/organize/converge 3セクション分）',
+  },
 };
 
 // =============================================================================
@@ -378,6 +428,9 @@ export function isLLMTaskType(value: unknown): value is LLMTaskType {
     'ors_generation',
     'uispec_generation',
     'summary_generation',
+    // DSL v5
+    'plan_ors_generation',
+    'plan_uispec_generation',
   ];
   return typeof value === 'string' && validTypes.includes(value as LLMTaskType);
 }
@@ -386,7 +439,7 @@ export function isLLMTaskType(value: unknown): value is LLMTaskType {
  * LLMProviderの型ガード
  */
 export function isLLMProvider(value: unknown): value is LLMProvider {
-  return value === 'gemini' || value === 'openai' || value === 'anthropic';
+  return value === 'gemini' || value === 'openai' || value === 'anthropic' || value === 'azure';
 }
 
 /**

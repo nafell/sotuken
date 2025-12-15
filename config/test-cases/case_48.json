@@ -1,0 +1,66 @@
+{
+  "caseId": "case_48",
+  "title": "長文・キャリア（複数Binding）",
+  "complexity": "medium",
+  "hasReactivity": true,
+
+  "concernText": "キャリアチェンジを本格的に考えてる。今持ってるスキル、学ぶべきスキル、市場のニーズ、全部整理したい。マインドマップで全体像を描いて、2軸で評価して、最後にトレードオフ比較までやりたい。複雑だけど一気に片付けたい",
+
+  "contextFactors": {
+    "category": "キャリア",
+    "urgency": "medium",
+    "emotionalState": "ambitious",
+    "timeAvailable": 60
+  },
+
+  "expectedBottlenecks": [
+    "multiple_issues",
+    "fear_of_decision"
+  ],
+
+  "expectedFlow": {
+    "diverge": {
+      "widgets": ["mind_map"],
+      "purpose": "キャリアの全体像を放射状に展開"
+    },
+    "organize": {
+      "widgets": ["matrix_placement", "card_sorting"],
+      "purpose": "2軸評価とカテゴリ分類"
+    },
+    "converge": {
+      "widgets": ["tradeoff_balance"],
+      "purpose": "選択肢のトレードオフ比較"
+    }
+  },
+
+  "expectedW2WR": {
+    "bindings": [
+      {
+        "source": "mind_map.nodes",
+        "target": "matrix_placement.items",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.filter(n => n.depth > 0).map(n => ({id: n.id, text: n.label, x: 50, y: 50}))"
+        },
+        "updateMode": "debounced",
+        "debounceMs": 300
+      },
+      {
+        "source": "mind_map.nodes",
+        "target": "card_sorting.cards",
+        "relationship": {
+          "type": "javascript",
+          "javascript": "source.filter(n => n.depth > 0).map(n => ({id: n.id, text: n.label}))"
+        },
+        "updateMode": "debounced",
+        "debounceMs": 300
+      }
+    ]
+  },
+
+  "evaluationCriteria": [
+    "mind_mapから2つのorganize Widgetへの分岐",
+    "filterを含む複合JS",
+    "debouncedの統一適用"
+  ]
+}

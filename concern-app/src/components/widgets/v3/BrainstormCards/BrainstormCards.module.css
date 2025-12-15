@@ -37,6 +37,92 @@
   font-weight: 500;
 }
 
+/* サンプルカードセクション（AI提案） */
+.sampleCardsSection {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+  border-radius: 12px;
+  border: 1px dashed #F59E0B;
+}
+
+.sampleCardsHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: #92400E;
+  font-weight: 500;
+}
+
+.sampleCardsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.sampleCard {
+  padding: 12px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #FCD34D;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+}
+
+.sampleCard:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
+
+.sampleCardText {
+  font-size: 14px;
+  color: #374151;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.sampleCardActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.adoptButton {
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  background-color: #10B981;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.adoptButton:hover {
+  background-color: #059669;
+}
+
+.dismissButton {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  background-color: transparent;
+  color: #9CA3AF;
+  border: 1px solid #D1D5DB;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dismissButton:hover {
+  background-color: #F3F4F6;
+  color: #6B7280;
+  border-color: #9CA3AF;
+}
+
 /* カードグリッド */
 .cardsGrid {
   display: grid;

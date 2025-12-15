@@ -17,6 +17,7 @@ export interface Emotion {
   category: 'positive' | 'negative' | 'neutral';
   color: string;
   description: string;
+  isGenerated?: true; // 動的生成された感情の場合
 }
 
 /**
@@ -100,6 +101,7 @@ export const EMOTIONS: Emotion[] = [
  */
 export class EmotionPaletteController {
   private state: EmotionPaletteState;
+  private customEmotions: Emotion[] | null = null; // 動的生成された感情リスト
 
   constructor(initialState?: Partial<EmotionPaletteState>) {
     this.state = {
@@ -109,10 +111,25 @@ export class EmotionPaletteController {
   }
 
   /**
+   * カスタム感情リストを設定（動的生成用）
+   */
+  public setCustomEmotions(emotions: Emotion[]): void {
+    this.customEmotions = emotions;
+  }
+
+  /**
+   * 使用する感情リストを取得
+   */
+  private getEmotionsList(): Emotion[] {
+    return this.customEmotions || EMOTIONS;
+  }
+
+  /**
    * 感情を選択
    */
   public selectEmotion(emotionId: string): void {
-    const emotion = EMOTIONS.find((e) => e.id === emotionId);
+    const emotions = this.getEmotionsList();
+    const emotion = emotions.find((e) => e.id === emotionId);
     if (!emotion) {
       throw new Error(`Unknown emotion: ${emotionId}`);
     }
@@ -141,7 +158,7 @@ export class EmotionPaletteController {
    * 感情IDから感情情報を取得
    */
   public getEmotionById(emotionId: string): Emotion | undefined {
-    return EMOTIONS.find((e) => e.id === emotionId);
+    return this.getEmotionsList().find((e) => e.id === emotionId);
   }
 
   /**
@@ -212,8 +229,9 @@ export class EmotionPaletteController {
       },
       interactions: [],
       metadata: {
-        emotionCount: EMOTIONS.length,
+        emotionCount: this.getEmotionsList().length,
         intensityRange: [0, 1],
+        isCustomEmotions: !!this.customEmotions,
       },
     };
   }

@@ -4,17 +4,21 @@
  *
  * Phase 4 - DSL v3 - Widget実装
  * 自由にアイデアカードを追加・編集・削除できるWidget
+ *
+ * v4.1: generatedValue (sampleCards) 対応
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import type { BaseWidgetProps } from '../../../../types/widget.types';
 import type { WidgetResult } from '../../../../types/result.types';
+import type { GeneratedContentContainer, GeneratedSampleItem } from '../../../../types/ui-spec.types';
 import {
   BrainstormCardsController,
   type BrainstormCard,
 } from './BrainstormCardsController';
 import { useReactivePorts } from '../../../../hooks/useReactivePorts';
 import { EmptyState } from '../../../ui/EmptyState';
+import { GeneratedBadge } from '../../../ui/GeneratedBadge';
 import styles from './BrainstormCards.module.css';
 
 /**
@@ -40,6 +44,12 @@ export const BrainstormCards: React.FC<BaseWidgetProps> = ({
   const [newCardText, setNewCardText] = useState<string>('');
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState<string>('');
+
+  // サンプルカード（generatedValue）
+  const sampleCardsConfig = spec.config?.sampleCards as GeneratedContentContainer | undefined;
+  const [sampleCards, setSampleCards] = useState<GeneratedSampleItem[]>(
+    sampleCardsConfig?.items || []
+  );
   const controllerRef = useRef<BrainstormCardsController>(
     new BrainstormCardsController({ maxCards: spec.config?.maxCards || 20 })
   );
@@ -137,6 +147,35 @@ export const BrainstormCards: React.FC<BaseWidgetProps> = ({
   }, [emitAllPorts, onUpdate, spec.id]);
 
   /**
+   * サンプルカードを採用
+   */
+  const handleAdoptSample = useCallback((sample: GeneratedSampleItem) => {
+    try {
+      controllerRef.current.addCard(sample.text);
+      setCards(controllerRef.current.getCards());
+      setSampleCards(prev => prev.filter(s => s.id !== sample.id));
+
+      // Reactive Port出力
+      emitAllPorts();
+
+      // 親コンポーネントに通知
+      if (onUpdate) {
+        const result = controllerRef.current.getResult(spec.id);
+        onUpdate(spec.id, result.data);
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'エラーが発生しました');
+    }
+  }, [emitAllPorts, onUpdate, spec.id]);
+
+  /**
+   * サンプルカードを却下
+   */
+  const handleDismissSample = useCallback((sampleId: string) => {
+    setSampleCards(prev => prev.filter(s => s.id !== sampleId));
+  }, []);
+
+  /**
    * Enterキーでカード追加
    */
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -205,6 +244,41 @@ export const BrainstormCards: React.FC<BaseWidgetProps> = ({
           {cards.length} / {spec.config?.maxCards || 20} カード
         </div>
       </div>
+
+      {/* サンプルカード（AI提案） */}
+      {sampleCards.length > 0 && (
+        <div className={styles.sampleCardsSection} data-testid="brainstorm-sample-cards">
+          <div className={styles.sampleCardsHeader}>
+            <GeneratedBadge />
+            <span>こんなアイデアはいかがですか？</span>
+          </div>
+          <div className={styles.sampleCardsGrid}>
+            {sampleCards.map((sample) => (
+              <div key={sample.id} className={styles.sampleCard}>
+                <div className={styles.sampleCardText}>{sample.text}</div>
+                <div className={styles.sampleCardActions}>
+                  <button
+                    onClick={() => handleAdoptSample(sample)}
+                    className={styles.adoptButton}
+                    aria-label={`「${sample.text}」を採用`}
+                    data-testid={`brainstorm-adopt-sample-${sample.id}`}
+                  >
+                    + 使う
+                  </button>
+                  <button
+                    onClick={() => handleDismissSample(sample.id)}
+                    className={styles.dismissButton}
+                    aria-label={`「${sample.text}」を却下`}
+                    data-testid={`brainstorm-dismiss-sample-${sample.id}`}
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* カード一覧 */}
       <div className={styles.cardsGrid} role="list" aria-label="アイデアカード一覧" data-testid="brainstorm-cards-list">

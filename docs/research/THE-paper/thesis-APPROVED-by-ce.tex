@@ -29,13 +29,16 @@
 \esupervisor{Michiharu Takemoto}
 \jsupervisor{武本 充治}
 \supervisortitle{Professor} % Professor, etc.
-\date{December 14, 2025}
+\date{December 15, 2025}
 
 % ipsjunsrt.bst を使おうとするときのバグ回避
 \def\：{：}
 \usepackage{doi}
 \usepackage{url}
 %\usepackage{subcaption}
+
+
+\hypersetup{hidelinks} %ref/目次のリンクの囲いを非表示
 
 % % === コードブロックの設定
 
@@ -76,7 +79,7 @@ The proliferation of interactive computing has made improving UI/UX quality a pe
 
 To address this challenge, this paper proposes Prism Lattice UI, a domain-specific framework that enables reliable LLM-based dynamic UI generation. The proposed system adopts a declarative JSON DSL that constrains LLM outputs to widget selection and inter-widget reactive bindings. We implemented a three-stage generation pipeline and evaluated five model configurations across 50 test cases.
 
-Evaluation experiments revealed that, in terms of formal soundness, the proposed architecture achieved 100\% success rates for type consistency, reference integrity, and acyclicity through systematic validation. In terms of operational performance, model configuration significantly affected latency (7.5–31 seconds) and estimated cost (¥359–687 per generation), revealing clear trade-offs between model allocation strategies and practical constraints. Although challenges remain regarding DSL validation rates and execution system integration, the proposed system demonstrated effectiveness as an architecture capable of generating verifiably sound dynamic UIs.
+Evaluation experiments revealed that, in terms of formal soundness, the proposed architecture achieved 100\% success rates for type consistency, reference integrity, and acyclicity through systematic validation. In terms of operational performance, model configuration significantly affected latency (7.5–31 seconds) and estimated cost (¥1.8-7.3 per generation), revealing clear trade-offs between model allocation strategies and practical constraints. Although challenges remain regarding DSL validation rates and execution system integration, the proposed system demonstrated effectiveness as an architecture capable of generating verifiably sound dynamic UIs.
 
 These findings lay the groundwork for systems capable of meeting the evolving UI/UX expectations of users.
 \end{eabstract}
@@ -1103,7 +1106,7 @@ Renderer は，DSL 内の Widget ID を事前に実装された React コンポ�
 
 \begin{figure}
     \centering
-    \includegraphics[width=0.75\linewidth]{pipeline.png}
+    \includegraphics[width=1\linewidth]{pipeline.png}
     \caption{3段階LLM生成パイプラインの処理フロー}
     \label{fig:pipeline}
 \end{figure}
@@ -1126,7 +1129,7 @@ Renderer は，DSL 内の Widget ID を事前に実装された React コンポ�
 総試行数 & 250（=50$\times$5）\\
 1試行の LLM 呼出し & 3 回（Stage1--3，直列）\\
 温度 & $T=0.0$（再現性優先）\\
-評価レイヤ & Layer1 / Layer1+ / Layer4 \\ \bottomrule
+評価レイヤ & Layer1 / Layer1+ / Layer2 \\ \bottomrule
 \end{tabular}
 \end{table}
 
@@ -1143,7 +1146,7 @@ Renderer は，DSL 内の Widget ID を事前に実装された React コンポ�
 ID & 構成名 & Stage1 & Stage2 & Stage3 \\ \midrule
 A & All-5-Chat & GPT-5-Chat & GPT-5-Chat & GPT-5-Chat \\
 B & All-5-mini & GPT-5-mini & GPT-5-mini & GPT-5-mini \\
-C & Hybrid-1 & GPT-5-Chat & GPT-4.1-mini & GPT-4.1-mini \\
+C & Hybrid-1 & GPT-5-Chat & GPT-4.1 & GPT-4.1 \\
 D & Hybrid-2 & GPT-5-Chat & GPT-5-mini & GPT-5-mini \\
 E & Router Based & model-router & model-router & model-router \\
 \bottomrule
@@ -1157,8 +1160,8 @@ E & Router Based & model-router & model-router & model-router \\
 本研究では，\textbf{欠損が生じた試行は当該指標の計算から除外}し，指標ごとに有効サンプル数 $n$ を明記する．
 
 \section{評価指標}
-本研究は「自動検証可能」な範囲で，(i) 形式健全性（Layer1），(ii) 仕様適合・静的健全性（Layer1+），(iii) 運用指標（Layer4）を評価する．
-各指標の一覧をTable \ref{tab:metrics_layer1}--Table \ref{tab:metrics_layer4}に示す．
+本研究は自動検証可能な範囲で，(i) 形式健全性（Layer1），(ii) 仕様適合・静的健全性（Layer1+），(iii) 運用指標（Layer2）を評価する．
+各指標の一覧をTable \ref{tab:metrics_layer1}--Table \ref{tab:metrics_layer2}に示す．
 
 \subsection{Layer1：DSL 構造健全性（形式健全性）}
 Layer1 は，LLM 出力 DSL が，実行系および型・参照制約に対して破綻しないことを検証する．
@@ -1203,14 +1206,14 @@ REQ\_STAGE\_FORWARD\_RATE & 前方向 Binding 率（段階に沿う接続）\\
 \end{tabular}
 \end{table}
 
-\subsection{Layer4：運用指標（レイテンシ・推定コスト）}
-Layer4 は，実運用上の重要指標として，\textbf{平均レイテンシ（LAT）}および \textbf{推定 API コスト（COST）}を評価する．
+\subsection{Layer2：運用指標（レイテンシ・推定コスト）}
+Layer2 は，実運用上の重要指標として，\textbf{平均レイテンシ（LAT）}および \textbf{推定 API コスト（COST）}を評価する．
 本研究では，Stage1--3 の合計として 1 試行の運用負荷を定義する．
 
 \begin{table}[tb]
 \centering
-\caption{Layer4 指標（運用指標）}
-\label{tab:metrics_layer4}
+\caption{Layer2 指標（運用指標）}
+\label{tab:metrics_layer2}
 \small
 \begin{tabular}{ll} \toprule
 記号 & 概要 \\ \midrule
@@ -1233,8 +1236,8 @@ COST & 推定 API コスト（Stage1--3 合計）\\
 多重検定は Bonferroni 補正を用い，指標ごとに $\alpha' = 0.05/10 = 0.005$ とする．
 
 \section{結果}
-本節では，Layer1 / Layer1+ / Layer4 の結果を示す．
-詳細な数値表（構成別集計およびペアワイズ比較）は，Table \ref{tab:results_layer1}--Table \ref{tab:results_layer4_pairwise}に示す．
+本節では，Layer1 / Layer1+ / Layer2 の結果を示す．
+詳細な数値表（構成別集計およびペアワイズ比較）は，Table \ref{tab:results_layer1}--Table \ref{tab:results_layer2_pairwise}に示す．
 
 \subsection{Layer1：DSL 構造健全性}
 Layer1 の主要指標（VR, TCR, RRR など）は高い成功率を示し，複数構成間で差がつきにくい傾向が確認された．
@@ -1276,14 +1279,14 @@ E & 80.00 & 60.00 & 80.00 \\
 \end{tabular}
 \end{table}
 
-\subsection{Layer4：運用指標（レイテンシ・推定コスト）}
-Layer4 では，構成間でレイテンシおよび推定コストに差が観測された．
+\subsection{Layer2：運用指標（レイテンシ・推定コスト）}
+Layer2 では，構成間でレイテンシおよび推定コストに差が観測された．
 特に「単価直感」だけでは説明しづらい差分（分布差）が確認され，運用設計として Stage ごとの割当が有効である可能性が示唆された．
 
 \begin{table}[tb]
 \centering
-\caption{Layer4 結果（構成別集計）}
-\label{tab:results_layer4}
+\caption{Layer2 結果（構成別集計）}
+\label{tab:results_layer2}
 \small
 \begin{tabular}{lcc} \toprule
 構成 & LAT（中央値, ms） & COST（中央値, 日本円） \\ \midrule
@@ -1298,8 +1301,8 @@ E & 18,382.05 & 1.83 \\
 
 \begin{table}[h]
 \centering
-\caption{Layer4 ペアワイズ比較（有意差サマリ）}
-\label{tab:results_layer4_pairwise}
+\caption{Layer2 ペアワイズ比較（有意差サマリ）}
+\label{tab:results_layer2_pairwise}
 \small
 \begin{tabular}{lcc} \toprule
 指標 & 有意（$p<0.05$） & 補正後も有意（$p<0.005$） \\ \midrule
@@ -1326,7 +1329,7 @@ COST & 7/10 & 6/10 \\
 \begin{itemize}
 \item \textbf{Layer1（構造健全性）}：型整合・参照整合・循環不在など、DSLと依存関係が「壊れていない」ことの検証
 \item \textbf{Layer1+（仕様適合・静的健全性）}：テストケースが期待するW2WRの要否や複雑度カテゴリに、生成結果が「沿っている」かの検証
-\item \textbf{Layer4（実用性）}：待ち時間（LAT）と推定コスト（COST）
+\item \textbf{Layer2（実用性）}：待ち時間（LAT）と推定コスト（COST）
 \end{itemize}
 
 本章の結論（背骨）を先に置くと、次の3点である。
@@ -1448,10 +1451,10 @@ Bは入口と変換の両方で成功率を押し上げる一方、A/C/D/Eはほ
 \subsection{「運用側」の差：LAT/COSTは統計的にも効果量的にも大きい}
 \label{subsec:disc_rq2_operational}
 
-実用性（Layer4）は多くの比較で有意差が観測される。代表的には次の構図になる。
+実用性（Layer2）は多くの比較で有意差が観測される。代表的には次の構図になる。
 \begin{itemize}
 \item \textbf{LAT}：Bが最も遅い（中央値27098ms）、Cが最短（中央値7539ms）。多くの比較で補正後も有意、効果量も大。
-\item \textbf{COST}：Chatモデル主体のA・Cが高く（約7円）、Miniモデル主体のB・Eは安価（約2〜3円）であった。ただし構成Bに関してはログ欠損によりコストが過少に見積もられている可能性がある。Router構成（E）は欠損なく同水準の安価さを示した。
+\item \textbf{COST}：Chatモデル/通常モデル主体のA・Cが高く（約7円）、Miniモデル主体のB・Dは安価（約2〜3円）であった。ただし構成Bに関してはログ欠損によりコストが過少に見積もられている可能性がある。Router構成（E）は欠損なく同水準の安価さを示した。
 \end{itemize}
 
 この結果は、モデル構成差が「正しさ」だけでなく、待ち時間と費用という運用上の制約を強く動かすことを示す。
@@ -1505,7 +1508,7 @@ Widget-to-Widget Reactivityを、参照・依存としてDSLに明示化した�
 \subsection{多重比較と効果量：統計的有意と実用的有意を分けて示せる}
 \label{subsec:disc_threats_stats}
 
-本研究はペア比較10組に対して補正を行い、補正後でもLayer1で8件、Layer4で14件が有意である。
+本研究はペア比較10組に対して補正を行い、補正後でもLayer1で8件、Layer2で14件が有意である。
 またLAT/COSTは効果量も大きく、統計的有意性と実用的含意を分けて議論できる。
 
 \subsection{Bのログ欠損（n=9）：欠損メカニズムと扱い}
@@ -1554,7 +1557,7 @@ Widget-to-Widget Reactivityを、参照・依存としてDSLに明示化した�
 \section{本研究の取り組み}
 \label{sec:conc_work}
 
-この目的のために、本研究では、思考整理支援に必要なWidget集合を定義して生成自由度を制限し、3ステップのLLMパイプラインと宣言型JSON DSLを設計した。特に、Widget-to-Widget Reactivity (W2WR) をDSL上で明示し、依存関係をグラフとして扱うことで静的検査を可能にした。評価においては、50ケースに対して5つのモデル構成を適用し、健全性（Layer1/1+）と運用指標（Layer4）の双方から多角的な検証を行った。
+この目的のために、本研究では、思考整理支援に必要なWidget集合を定義して生成自由度を制限し、3ステップのLLMパイプラインと宣言型JSON DSLを設計した。特に、Widget-to-Widget Reactivity (W2WR) をDSL上で明示し、依存関係をグラフとして扱うことで静的検査を可能にした。評価においては、50ケースに対して5つのモデル構成を適用し、健全性（Layer1/1+）と運用指標（Layer2）の双方から多角的な検証を行った。
 
 \section{得られた知見}
 \label{sec:conc_findings}

@@ -913,7 +913,10 @@ swot\_analysis & SWOT分析 & 0.6 & 強み/弱み/機会/脅威で状況を構�
           "id": "w_brainstorm", "component": "brainstorm_cards",
           "config": {
             "title": "不安の書き出し",
-            "generatedValue": { "items": ["給与への不満", "将来のキャリアパス"] } 
+            "items": { 
+              "value": ["給与への不満", "将来のキャリアパス"],
+              "isGenerated": true
+            }
           }
         }
       ]
@@ -951,11 +954,13 @@ const UIRenderer: React.FC<{ uispec: PlanUISpec }> = ({ uispec }) => {
           {section.widgets.map((wSpec) => {
             // 文字列IDからReactコンポーネントを動的解決
             const WidgetComp = WIDGET_REGISTRY[wSpec.component];
-            // Atom生成とProps注入を行うContainerでラップ
+            // Engineと接続されたコンポーネントを描画
             return (
-              <WidgetContainer key={wSpec.id} spec={wSpec}>
-                 <WidgetComp config={wSpec.config} />
-              </WidgetContainer>
+              <WidgetComp 
+                key={wSpec.id} 
+                config={wSpec.config}
+                onPortChange={(port, val) => engine.updatePort(wSpec.id, port, val)}
+              />
             );
           })}
         </section>
@@ -968,15 +973,14 @@ const UIRenderer: React.FC<{ uispec: PlanUISpec }> = ({ uispec }) => {
 \section{Widget-to-Widget Reactivity の実装}
 
 
-\subsection{ポートと依存グラフに基づく状態管理}
+\subsection{ReactiveBindingEngine による依存解決}
 
 Widget 間の連動を実現するため，各 Widget は \texttt{ports} フィールドに入出力ポートを定義する．
-ポートは，型定義と方向（input/output），および論理名を持つ．
 DSL の \texttt{dependencyGraph} セクションでは，これらのポート間の接続関係を定義する．
 
-実行時には，この依存グラフにもとづいて Jotai の Atom を動的に生成し，リアクティブなデータフローを構築する．
-重要な点は，この連動が \textbf{LLM を介さずにクライアントサイドで完結する} 点である．
-これにより，ネットワーク遅延のない即応的なインタラクションが可能となる．
+実行時には，これらの依存定義を読み込み，\textbf{ReactiveBindingEngine} と呼ばれる独自の実行エンジンがグラフを構築する．
+一般的な状態管理ライブラリ（Jotai/Recoil）が「状態の保持」に主眼を置くのに対し，この Engine は「Widget 間のメッセージパッシング」に特化している．
+これにより，循環参照の検知や，複雑な更新モード（Realtime/Debounce/OnConfirm）の制御を，UI コンポーネントから分離して管理できる．
 
 \subsection{Reactivityの分類（Flow / Meta / Sync）}
 本システムでは，Widget 間連動をデータの性質と更新タイミングに応じて以下の 3 種類に分類し，それぞれ最適な更新戦略（Update Mode）を適用している．
@@ -985,49 +989,50 @@ DSL の \texttt{dependencyGraph} セクションでは，これらのポート�
   \item \textbf{Data Input（Flow）}：
         ある Widget の出力データ（例：発散フェーズで出したカード一覧）を，
         次の Widget の入力データ（例：整理フェーズの未分類カード）として受け渡す連動．
-        更新モードは \texttt{realtime} が主である．
+        主に \texttt{realtime} で更新される．
   \item \textbf{Config Input（Meta）}：
         ある Widget の出力値を，別 Widget の設定（props）として動的に反映する連動．
         例として，分析結果のキーワードを次ステージの Widget タイトルに埋め込むケースなどがある．
   \item \textbf{Reactive Binding（Sync）}：
         同一画面内でユーザー操作に応じて即時に値が同期する双方向的な連動．
-        例として，スライダー操作によるパラメータ変更が，隣接するグラフ Widget に即座に反映される挙動などである．
         計算コストの高い処理を含む場合，更新モードとして \texttt{debounced}（一定時間操作がない場合に更新）を適用する．
 \end{enumerate}
 
-\subsection{Widget ID/PortごとのAtom動的生成}
-DSL で定義される Widget 構成はユーザーごとに異なるため，状態管理の Atom も動的に生成する必要がある．
-本実装では，Widget ID と Port 名をキーとして Atom をキャッシュする仕組み（Atom Family パターン）を採用した．
+\subsection{Engineの実装概要}
+Engine は Observer パターンに基づいて実装されており，
+ある Port の更新が発生すると，依存グラフを辿って影響を受ける Port を特定し，再計算を行う．
+リスト\ref{lst:reactive-engine} にその実装概要を示す．
 
-リスト\ref{lst:jotai-port-atom} にその実装概要を示す．
-\texttt{getOrCreatePortAtom} 関数は，指定されたキーに対応する Atom が存在すればそれを返し，なければ新規作成して登録する．
-これにより，Widget コンポーネント側は「自分自身の ID と Port 名」を知っているだけで，依存先の Atom にアクセスできるようになる．
+\begin{lstlisting}[caption = ReactiveBindingEngineの実装概要（TypeScript）, label = lst:reactive-engine]
+class ReactiveBindingEngine {
+  private portValues = new Map<string, any>();
+  private bindings = new Map<string, ReactiveBinding[]>();
 
-\begin{lstlisting}[caption = PortごとのJotai Atom動的生成（実装概要）, label = lst:jotai-port-atom]
-// グローバルなAtomキャッシュ
-const portAtomMap = new Map<string, Atom<any>>(); 
+  /**
+   * Portの値更新と依存伝播の実行
+   */
+  updatePort(widgetId: string, portId: string, value: any) {
+    const portPath = `${widgetId}.${portId}`;
+    this.portValues.set(portPath, value);
 
-/**
- * WidgetIDとPort名を結合したキーからAtomを取得または生成する
- */
-export function getOrCreatePortAtom<T>(widgetId: string, portName: string, initVal: T): Atom<T> {
-  const key = `${widgetId}.${portName}`;
-  const existing = portAtomMap.get(key);
-  if (existing) return existing as Atom<T>;
+    // 依存するBindingを特定して処理
+    const relevantBindings = this.bindings.get(portPath) || [];
+    for (const binding of relevantBindings) {
+      this.processBinding(binding, value);
+    }
+  }
 
-  // 新規Atomの生成
-  const newAtom = atom<T>(initVal);
-  portAtomMap.set(key, newAtom);
-  return newAtom;
+  /**
+   * Bindingの定義に従い，更新モード（Realtime/Debounce）などを制御して適用
+   */
+  private processBinding(binding: ReactiveBinding, sourceValue: any) {
+    if (binding.updateMode === 'debounced') {
+      this.scheduleDebouncedUpdate(binding, sourceValue);
+    } else {
+      this.executeBinding(binding, sourceValue);
+    }
+  }
 }
-
-// Reactコンポーネント内での利用例
-const usePortValue = (widgetId, portName) => {
-   const atomConfig = useMemo(() => 
-     getOrCreatePortAtom(widgetId, portName, null), 
-   [widgetId, portName]);
-   return useAtom(atomConfig);
-};
 \end{lstlisting}
 
 \section{generatedValue の実装}

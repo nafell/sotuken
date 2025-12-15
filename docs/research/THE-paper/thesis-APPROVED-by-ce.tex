@@ -380,6 +380,8 @@ Level 4 以降，とくに Widget 間のリアクティブな連動を伴う UI 
 
 \section{設計方針の全体像}
 
+本章では，思考整理支援のための動的 UI 生成フレームワーク \textbf{Prism Lattice UI} を提案する。
+
 % =========================
 % [REPLACE] Chapter3冒頭の導入（結論先出し）
 % REPLACE FIRST PARAGRAPH OF: \section{設計方針の全体像}
@@ -724,7 +726,7 @@ generatedValue によるコンテンツ初期化は，
 % REPLACE FIRST PARAGRAPH OF: \section{思考整理支援アプリケーションの概要}
 % =========================
 本章では，第\ref{chap:system_design}章で述べた設計方針にもとづき，
-思考整理支援ドメインに特化した LLM-Hardened DSL システムの実装を述べる。
+思考整理支援ドメインに特化した LLM-Hardened DSL システム \textbf{Prism Lattice UI} の実装を述べる。
 本アプリケーションは全体を3 Phaseから構成し，
 \textbf{Capture Phase（2 Stage）}と\textbf{Plan Phase（4 Stage）}を想定する。
 本研究の評価対象は，Plan Phase内で特に効果が大きい
@@ -837,7 +839,7 @@ swot\_analysis & SWOT分析 & 0.6 & 強み/弱み/機会/脅威で状況を構�
 
 \section{3段階 LLM パイプラインの実装}
 
-本システムでは，ユーザーの曖昧な入力を決定論的な UI 仕様へと変換するため，以下の 3 段階のパイプラインを採用している．各段階では，Pydantic を用いて厳格な型検証を行い，不正な JSON が生成された場合は自動リトライを行う実装となっている．
+\textbf{Prism Lattice UI} においては，ユーザーの曖昧な入力を決定論的な UI 仕様へと変換するため，以下の 3 段階のパイプラインを採用している．各段階では，Pydantic を用いて厳格な型検証を行い，不正な JSON が生成された場合は自動リトライを行う実装となっている．
 
 \begin{description}
   \item[Stage1: Widget Selection（構成の決定）]

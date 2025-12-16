@@ -568,7 +568,7 @@ DSL の変更と実装の変更を比較的独立に行える。
 先行研究であるJelly~UI\cite{cao2025jelly}がデータモデルとUI表現の双方に高い可塑性（Malleability）を持たせているのに対し，
 本研究では「思考整理」というドメインにおける\textbf{UX品質の保証}と\textbf{実行時の応答性（Latency）}を優先し，以下の戦略的切り分けを行う。
 
-\begin{table}[tb]
+\begin{table}[!t]
 \caption{設計判断の要点（固定/動的の切り分けと意図）}
 \label{tab:design_decision_beta21}
 \centering
@@ -822,7 +822,7 @@ Table \ref{tab:widget_list}に主要なWidgetを抜粋して示す
 %（全量は付録またはリポジトリ定義に準拠）
 。
 
-\begin{table}[tb]
+\begin{table}[!t]
 \caption{実装された思考整理支援Widget（抜粋）}
 \label{tab:widget_list}
 \centering
@@ -1117,7 +1117,7 @@ Renderer は，DSL 内の Widget ID を事前に実装された React コンポ�
 モデル構成（A--E）を各テストケースに適用し，合計試行数は $50 \times 5 = 250$ 試行である．
 なお，Stage ごとに計測する運用指標（レイテンシ・推定コスト）は，1試行あたり 3 呼出し分（Stage1--3）を含む．
 
-\begin{table}[tb]
+\begin{table}[!t]
 \centering
 \caption{実験の基本設定（概要）}
 \label{tab:exp_overview}
@@ -1137,7 +1137,7 @@ Renderer は，DSL 内の Widget ID を事前に実装された React コンポ�
 比較対象のモデル構成をTable \ref{tab:model_configs}に示す．
 本研究は「単一モデル固定」だけでなく，「Stage ごとに適材適所で割り当てる」運用設計も評価対象とする．
 
-\begin{table}[tb]
+\begin{table}[!t]
 \centering
 \caption{比較対象のモデル構成（Stage1--3 への割当）}
 \label{tab:model_configs}
@@ -1166,7 +1166,7 @@ E & Router Based & model-router & model-router & model-router \\
 \subsection{Layer1：DSL 構造健全性（形式健全性）}
 Layer1 は，LLM 出力 DSL が，実行系および型・参照制約に対して破綻しないことを検証する．
 
-\begin{table}[tb]
+\begin{table}[!t]
 \centering
 \caption{Layer1 指標（形式健全性）}
 \label{tab:metrics_layer1}
@@ -1189,7 +1189,7 @@ JA\_SR & Jotai Atom 成功率（状態モデルへの変換が成立）\\
 Layer1+ は，テストケースが期待する「W2WR の有無・複雑度カテゴリ」等に対して，生成結果が整合するかを検証する．
 Layer1 が「壊れていない」ことの確認であるのに対し，Layer1+ は「\textbf{設計意図に沿う}」ことを確認する位置づけである．
 
-\begin{table}[tb]
+\begin{table}[!t]
 \centering
 \caption{Layer1+ 指標（仕様適合・静的健全性）}
 \label{tab:metrics_layer1plus}
@@ -1210,7 +1210,7 @@ REQ\_STAGE\_FORWARD\_RATE & 前方向 Binding 率（段階に沿う接続）\\
 Layer2 は，実運用上の重要指標として，\textbf{平均レイテンシ（LAT）}および \textbf{推定 API コスト（COST）}を評価する．
 本研究では，Stage1--3 の合計として 1 試行の運用負荷を定義する．
 
-\begin{table}[tb]
+\begin{table}[!t]
 \centering
 \caption{Layer2 指標（運用指標）}
 \label{tab:metrics_layer2}
@@ -1242,7 +1242,7 @@ COST & 推定 API コスト（Stage1--3 合計）\\
 \subsection{Layer1：DSL 構造健全性}
 Layer1 の主要指標（VR, TCR, RRR など）は高い成功率を示し，複数構成間で差がつきにくい傾向が確認された．
 
-\begin{table}[tb]
+\begin{table}[!t]
 \centering
 \caption{Layer1 結果（構成別集計）}
 \label{tab:results_layer1}
@@ -1263,7 +1263,7 @@ Layer1+ は，Layer1 の天井効果を補う目的で導入した．
 一部指標（例：Binding 数適合やパターン一致）では，100\% に達しない値が観測され，設計意図との差分が可視化された．
 ただし，構成間の差は限定的であった（考察はChapter \ref{chap:discussion}章）．
 
-\begin{table}[tb]
+\begin{table}[!t]
 \caption{Layer1+ 結果（構成別集計）}
 \label{tab:results_layer1plus}
 \centering
@@ -1283,7 +1283,7 @@ E & 80.00 & 60.00 & 80.00 \\
 Layer2 では，構成間でレイテンシおよび推定コストに差が観測された．
 特に「単価直感」だけでは説明しづらい差分（分布差）が確認され，運用設計として Stage ごとの割当が有効である可能性が示唆された．
 
-\begin{table}[tb]
+\begin{table}[!t]
 \centering
 \caption{Layer2 結果（構成別集計）}
 \label{tab:results_layer2}
@@ -1299,7 +1299,7 @@ E & 18,382.05 & 1.83 \\
 \end{tabular}
 \end{table}
 
-\begin{table}[h]
+\begin{table}[!t]
 \centering
 \caption{Layer2 ペアワイズ比較（有意差サマリ）}
 \label{tab:results_layer2_pairwise}

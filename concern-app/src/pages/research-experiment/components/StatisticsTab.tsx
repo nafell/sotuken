@@ -20,6 +20,14 @@ interface StatisticsTabProps {
 }
 
 const LAYER1_METRICS = ['VR', 'TCR', 'RRR', 'CDR', 'RGR', 'W2WR_SR', 'RC_SR', 'JA_SR'];
+const LAYER1_PLUS_METRICS = [
+  'REQ_W2WR_PRES',
+  'REQ_BINDING_COUNT_OK',
+  'REQ_PATTERN_MATCH',
+  'REQ_STAGE_FORWARD_RATE',
+  'JS_PARSE_OK',
+  'JS_POLICY_OK',
+];
 const LAYER4_METRICS = ['LAT', 'COST'];
 
 const METRIC_DESCRIPTIONS: Record<string, string> = {
@@ -31,6 +39,15 @@ const METRIC_DESCRIPTIONS: Record<string, string> = {
   W2WR_SR: 'W2WR成功率',
   RC_SR: 'React変換成功率',
   JA_SR: 'Jotai Atom成功率',
+  // Layer1+ Spec-Compliance
+  REQ_W2WR_PRES: 'W2WR存在整合率',
+  REQ_BINDING_COUNT_OK: 'Binding数適合率',
+  REQ_PATTERN_MATCH: 'パターン一致率',
+  REQ_STAGE_FORWARD_RATE: '前方向Binding率',
+  // Layer1+ Static-Sanity
+  JS_PARSE_OK: 'JS構文妥当率',
+  JS_POLICY_OK: 'JSポリシー準拠率',
+  // Layer4
   LAT: '平均レイテンシ (ms)',
   COST: '推定APIコスト (JPY)',
 };
@@ -44,6 +61,7 @@ export default function StatisticsTab({ batchId, refreshKey }: StatisticsTabProp
 
   // フィルター
   const [selectedLayer1Metric, setSelectedLayer1Metric] = useState<string>('VR');
+  const [selectedLayer1PlusMetric, setSelectedLayer1PlusMetric] = useState<string>('REQ_W2WR_PRES');
   const [selectedLayer4Metric, setSelectedLayer4Metric] = useState<string>('LAT');
 
   useEffect(() => {
@@ -90,9 +108,14 @@ export default function StatisticsTab({ batchId, refreshKey }: StatisticsTabProp
   const layer1Comparisons = statistics.layer1Comparisons.filter(
     (c) => c.metric === selectedLayer1Metric
   );
+  const layer1PlusComparisons = (statistics.layer1PlusComparisons ?? []).filter(
+    (c) => c.metric === selectedLayer1PlusMetric
+  );
   const layer4Comparisons = statistics.layer4Comparisons.filter(
     (c) => c.metric === selectedLayer4Metric
   );
+
+  const hasLayer1PlusData = statistics.layer1PlusComparisons && statistics.layer1PlusComparisons.length > 0;
 
   return (
     <div>
@@ -159,6 +182,20 @@ export default function StatisticsTab({ batchId, refreshKey }: StatisticsTabProp
                 {statistics.summary.layer1.significantCorrectedCount}
               </td>
             </tr>
+            {statistics.summary.layer1Plus && (
+              <tr style={{ backgroundColor: '#e8f5e9' }}>
+                <td style={{ padding: '8px' }}>Layer1+ (仕様適合・静的健全性)</td>
+                <td style={{ padding: '8px', textAlign: 'right' }}>
+                  {statistics.summary.layer1Plus.totalTests}
+                </td>
+                <td style={{ padding: '8px', textAlign: 'right' }}>
+                  {statistics.summary.layer1Plus.significantCount}
+                </td>
+                <td style={{ padding: '8px', textAlign: 'right' }}>
+                  {statistics.summary.layer1Plus.significantCorrectedCount}
+                </td>
+              </tr>
+            )}
             <tr style={{ backgroundColor: '#fafafa' }}>
               <td style={{ padding: '8px' }}>Layer4 (実用性)</td>
               <td style={{ padding: '8px', textAlign: 'right' }}>
@@ -204,6 +241,38 @@ export default function StatisticsTab({ batchId, refreshKey }: StatisticsTabProp
         </div>
         <ComparisonTable comparisons={layer1Comparisons} testType="z-test" />
       </section>
+
+      {/* Layer1+検定結果 */}
+      {hasLayer1PlusData && (
+        <section style={{ marginBottom: '24px' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              marginBottom: '12px',
+            }}
+          >
+            <h3 style={{ fontSize: '16px', margin: 0 }}>Layer1+: 仕様適合・静的健全性</h3>
+            <select
+              value={selectedLayer1PlusMetric}
+              onChange={(e) => setSelectedLayer1PlusMetric(e.target.value)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '4px',
+                border: '1px solid #ccc',
+              }}
+            >
+              {LAYER1_PLUS_METRICS.map((metric) => (
+                <option key={metric} value={metric}>
+                  {metric} ({METRIC_DESCRIPTIONS[metric]})
+                </option>
+              ))}
+            </select>
+          </div>
+          <ComparisonTable comparisons={layer1PlusComparisons} testType="z-test" />
+        </section>
+      )}
 
       {/* Layer4検定結果 */}
       <section style={{ marginBottom: '24px' }}>
@@ -372,7 +441,7 @@ function ComparisonTable({ comparisons, testType }: ComparisonTableProps) {
           </tr>
         </thead>
         <tbody>
-          {comparisons.map((c, idx) => {
+          {comparisons.map((c) => {
             const comparison = `${c.model1} vs ${c.model2}`;
             const sig = c.significantCorrected ? '**' : c.significant ? '*' : '-';
 

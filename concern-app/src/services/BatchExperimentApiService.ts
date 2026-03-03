@@ -56,6 +56,27 @@ export interface Layer1Metrics {
   JA_SR: number;
 }
 
+/**
+ * Layer1+ 評価指標（仕様適合・静的健全性）
+ */
+export interface Layer1PlusMetrics {
+  // Spec-Compliance
+  /** W2WR存在整合率（hasReactivityとbinding存在の一致） */
+  REQ_W2WR_PRES: number;
+  /** Binding数適合率（期待カテゴリに応じたbinding数充足） */
+  REQ_BINDING_COUNT_OK: number;
+  /** パターン一致率（期待パターンとの一致） */
+  REQ_PATTERN_MATCH: number;
+  /** 前方向Binding率（diverge→organize→converge方向のbinding比率） */
+  REQ_STAGE_FORWARD_RATE: number;
+
+  // Static-Sanity
+  /** JavaScript構文妥当率 */
+  JS_PARSE_OK: number;
+  /** JSポリシー準拠率（禁止API等を含まない） */
+  JS_POLICY_OK: number;
+}
+
 export interface Layer4Metrics {
   LAT: number;
   COST: number;
@@ -66,6 +87,7 @@ export interface ModelStatistics {
   modelConfig: string;
   trialCount: number;
   layer1: Layer1Metrics;
+  layer1Plus?: Layer1PlusMetrics;
   layer4: Layer4Metrics;
 }
 
@@ -78,6 +100,7 @@ export interface BatchResultsSummary {
   byModel: ModelStatistics[];
   overall: {
     layer1: Layer1Metrics;
+    layer1Plus?: Layer1PlusMetrics;
     layer4: Layer4Metrics;
   };
   // 設定情報
@@ -196,9 +219,11 @@ export interface BatchStatisticsResult {
   correctionMethod: 'bonferroni';
   totalComparisons: number;
   layer1Comparisons: StatisticalTestResult[];
+  layer1PlusComparisons?: StatisticalTestResult[];
   layer4Comparisons: StatisticalTestResult[];
   summary: {
     layer1: TestSummary;
+    layer1Plus?: TestSummary;
     layer4: TestSummary;
   };
 }

@@ -22,6 +22,7 @@ import {
   TOKEN_PRICES_JPY_PER_MILLION,
   type ModelConfigId,
   type Layer1Metrics,
+  type Layer1PlusMetrics,
   type Layer4Metrics,
   type ModelStatistics,
   type ExperimentInput,
@@ -283,10 +284,11 @@ batchExperimentRoutes.get('/:batchId/progress', async (c) => {
 });
 
 /**
- * Layer1/Layer4統計を計算するヘルパー関数
+ * Layer1/Layer1+/Layer4統計を計算するヘルパー関数
  */
 function calculateStatistics(logs: typeof experimentTrialLogs.$inferSelect[]): {
   layer1: Layer1Metrics;
+  layer1Plus?: Layer1PlusMetrics;
   layer4: Layer4Metrics;
 } {
   if (logs.length === 0) {
@@ -313,6 +315,40 @@ function calculateStatistics(logs: typeof experimentTrialLogs.$inferSelect[]): {
   const rcSuccessCount = logs.filter(log => log.reactComponentErrors === null).length;
   const jaSuccessCount = logs.filter(log => log.jotaiAtomErrors === null).length;
 
+  // Layer1+ 計算（L1+評価済みのログのみ対象）
+  const l1plusEvaluatedLogs = logs.filter(log => log.l1plusValidatedAt !== null);
+  let layer1Plus: Layer1PlusMetrics | undefined;
+
+  if (l1plusEvaluatedLogs.length > 0) {
+    const l1plusTotal = l1plusEvaluatedLogs.length;
+
+    // Spec-Compliance指標
+    const reqW2wrPresOkCount = l1plusEvaluatedLogs.filter(log => log.reqW2wrPres === true).length;
+    const reqBindingCountOkCount = l1plusEvaluatedLogs.filter(log => log.reqBindingCountOk === true).length;
+    const reqPatternMatchCount = l1plusEvaluatedLogs.filter(log => log.reqPatternMatch === true).length;
+
+    // 前方向Binding率は平均値を取る
+    const stageForwardRates = l1plusEvaluatedLogs
+      .filter(log => log.reqStageForwardRate !== null)
+      .map(log => log.reqStageForwardRate!);
+    const avgStageForwardRate = stageForwardRates.length > 0
+      ? stageForwardRates.reduce((sum, r) => sum + r, 0) / stageForwardRates.length
+      : 0;
+
+    // Static-Sanity指標
+    const jsParseOkCount = l1plusEvaluatedLogs.filter(log => log.jsParseOk === true).length;
+    const jsPolicyOkCount = l1plusEvaluatedLogs.filter(log => log.jsPolicyOk === true).length;
+
+    layer1Plus = {
+      REQ_W2WR_PRES: reqW2wrPresOkCount / l1plusTotal,
+      REQ_BINDING_COUNT_OK: reqBindingCountOkCount / l1plusTotal,
+      REQ_PATTERN_MATCH: reqPatternMatchCount / l1plusTotal,
+      REQ_STAGE_FORWARD_RATE: avgStageForwardRate,
+      JS_PARSE_OK: jsParseOkCount / l1plusTotal,
+      JS_POLICY_OK: jsPolicyOkCount / l1plusTotal,
+    };
+  }
+
   // Layer4計算
   const totalLatency = logs.reduce((sum, log) => sum + log.latencyMs, 0);
   const runtimeErrorCount = logs.filter(log => log.runtimeError).length;
@@ -338,6 +374,7 @@ function calculateStatistics(logs: typeof experimentTrialLogs.$inferSelect[]): {
       RC_SR: rcSuccessCount / total,
       JA_SR: jaSuccessCount / total,
     },
+    layer1Plus,
     layer4: {
       LAT: totalLatency / total,
       COST: totalCostJPY,
@@ -389,6 +426,7 @@ batchExperimentRoutes.get('/:batchId/results', async (c) => {
         modelConfig,
         trialCount: logs.length,
         layer1: stats.layer1,
+        layer1Plus: stats.layer1Plus,
         layer4: stats.layer4,
       });
     }

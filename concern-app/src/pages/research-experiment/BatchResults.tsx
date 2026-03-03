@@ -472,6 +472,72 @@ export default function BatchResults() {
     </section>
   );
 
+  // L1+の評価データがあるか確認
+  const hasL1PlusData = summary?.byModel?.some(model => model.layer1Plus);
+
+  // Layer1+セクション
+  const Layer1PlusSection = () => {
+    if (!hasL1PlusData) {
+      return (
+        <section>
+          <h2 style={{ fontSize: '18px', marginBottom: '12px' }}>Layer1+: 仕様適合・静的健全性</h2>
+          <div style={{ padding: '24px', textAlign: 'center', color: '#666', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
+            L1+評価データがありません。「L1+評価を実行」ボタンで評価を実行してください。
+          </div>
+        </section>
+      );
+    }
+
+    return (
+      <section>
+        <h2 style={{ fontSize: '18px', marginBottom: '12px' }}>Layer1+: 仕様適合・静的健全性</h2>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#e8f5e9' }}>
+                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #388e3c' }}>Model</th>
+                <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #388e3c' }}>W2WR存在</th>
+                <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #388e3c' }}>Binding数</th>
+                <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #388e3c' }}>パターン</th>
+                <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #388e3c' }}>前方向</th>
+                <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #388e3c' }}>JS構文</th>
+                <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #388e3c' }}>JSポリシー</th>
+              </tr>
+            </thead>
+            <tbody>
+              {summary?.byModel?.map((model, idx) => (
+                <tr key={model.modelConfig} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#fafafa' }}>
+                  <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}>{model.modelConfig}</td>
+                  <td style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #eee' }}>
+                    {model.layer1Plus ? formatPercent(model.layer1Plus.REQ_W2WR_PRES) : '-'}
+                  </td>
+                  <td style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #eee' }}>
+                    {model.layer1Plus ? formatPercent(model.layer1Plus.REQ_BINDING_COUNT_OK) : '-'}
+                  </td>
+                  <td style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #eee' }}>
+                    {model.layer1Plus ? formatPercent(model.layer1Plus.REQ_PATTERN_MATCH) : '-'}
+                  </td>
+                  <td style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #eee' }}>
+                    {model.layer1Plus ? formatPercent(model.layer1Plus.REQ_STAGE_FORWARD_RATE) : '-'}
+                  </td>
+                  <td style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #eee' }}>
+                    {model.layer1Plus ? formatPercent(model.layer1Plus.JS_PARSE_OK) : '-'}
+                  </td>
+                  <td style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #eee' }}>
+                    {model.layer1Plus ? formatPercent(model.layer1Plus.JS_POLICY_OK) : '-'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
+          W2WR存在: hasReactivityとbinding存在の一致率 / Binding数: 期待レンジとの一致率 / パターン: 期待カテゴリとの一致率 / 前方向: diverge→organize→converge方向のbinding率 / JS構文: JavaScript構文妥当率 / JSポリシー: 禁止API等を含まない率
+        </div>
+      </section>
+    );
+  };
+
   // Layer4セクション
   const Layer4Section = () => (
     <section>
@@ -600,6 +666,7 @@ export default function BatchResults() {
             <OverviewSection />
             <ApiErrorSection />
             <Layer1Section />
+            <Layer1PlusSection />
             <Layer4Section />
             <TrialsSection />
           </div>

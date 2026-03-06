@@ -1,0 +1,21 @@
+ServiceName	PublisherType	ServiceTier	Meter	PartNumber	ChargeType	Cost	CostUSD	Currency
+Foundry Models	Azure	Azure OpenAI GPT5	GPT 5 Chat outpt Glbl 1M Tokens	AAT-76890	Usage	1712.186312	10.96465891	JPY
+Foundry Models	Azure	Azure OpenAI GPT5	GPT 5 Mini outpt Glbl 1M Tokens	AAT-75856	Usage	871.2395926	5.579325623	JPY
+Foundry Models	Azure	OpenAI	gpt 4.1 Outp glbl Tokens	AAT-09006	Usage	525.609664	3.365948346	JPY
+Foundry Models	Azure	Azure OpenAI GPT5	GPT 5 Chat Inpt Glbl 1M Tokens	AAT-74764	Usage	478.9487343	3.067136718	JPY
+Foundry Models	Azure	OpenAI	gpt 4.1 Inp glbl Tokens	AAT-07375	Usage	229.101004	1.467138446	JPY
+Foundry Models	Azure	Azure OpenAI GPT5	GPT 5 Mini Inpt Glbl 1M Tokens	AAT-75298	Usage	125.3808852	0.802925844	JPY
+Foundry Models	Azure	OpenAI	gpt-4o-mini-0718-Outp-glbl Tokens	AAR-77779	Usage	53.57733543	0.343103554	JPY
+Foundry Models	Azure	OpenAI	gpt-4o-mini-0718-Inp-glbl Tokens	AAR-77863	Usage	30.62540047	0.196121805	JPY
+Foundry Models	Azure	Azure OpenAI OSS Models	gpt-oss-120B Outp glbl Tokens	AAT-74879	Usage	14.19663043	0.09091371	JPY
+Foundry Models	Azure	Azure OpenAI GPT5	GPT 5 Chat cchd Inpt Glbl 1M Tokens	AAT-76150	Usage	10.63369057	0.068097023	JPY
+Foundry Models	Azure	OpenAI	gpt 4.1 mini Outp glbl Tokens	AAT-07827	Usage	8.512425687	0.054512668	JPY
+Foundry Models	Azure	OpenAI	gpt 4.1 mini Inp glbl Tokens	AAT-08837	Usage	3.838321942	0.024580205	JPY
+Foundry Models	Azure	Azure OpenAI OSS Models	gpt-oss-120B Inp glbl Tokens	AAT-75251	Usage	2.861234824	0.018323043	JPY
+Foundry Models	Azure	Azure OpenAI GPT5	GPT 5 Nano outpt Glbl 1M Tokens	AAT-75296	Usage	1.78130057	0.011407259	JPY
+Foundry Models	Azure	Azure OpenAI GPT5	GPT 5 Mini cchd Inpt Glbl 1M Tokens	AAT-76336	Usage	0.805786242	0.005160169	JPY
+Foundry Models	Azure	OpenAI	gpt 4.1 cached Inp glbl Tokens	AAT-10832	Usage	0.358376091	0.002295002	JPY
+Foundry Models	Azure	Azure OpenAI GPT5	GPT 5 Nano Inpt Glbl 1M Tokens	AAT-76356	Usage	0.108440265	0.00069444	JPY
+Foundry Models	Azure	OpenAI	gpt 4o mini 0718 cached Inp glbl Tokens	AAS-22262	Usage	0.104153051	0.000666985	JPY
+Foundry Models	Azure	OpenAI	gpt 4.1 mini cached Inp glbl Tokens	AAT-06529	Usage	0.053749242	0.000344204	JPY
+Foundry Tools	Azure	Model Tools	Model Routers GL 1M Tokens	AAT-72317	Usage	31.77347733	0.203473967	JPY

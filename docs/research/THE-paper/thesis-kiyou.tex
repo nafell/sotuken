@@ -1546,6 +1546,356 @@ LAT/COSTについては効果量も大きく、統計的有意性と実用的含
 本研究では評価の再現性を重視してWebプラットフォームを採用したが、動的UI（Prism Lattice UI）が最も価値を発揮するのは、画面サイズが限られ、かつユーザーのコンテキスト（場所、時間、移動中など）が頻繁に変化するモバイル環境であると考えられる。外出先や移動中などのハイコンテキストな状況下では、じっくりと画面操作を行う余裕がないため、「今の状況に必要なWidgetだけが、適切な設定値で提示される」という動的UIの恩恵は、デスクトップ環境以上に大きなものとなるはずである。Webでのアーキテクチャ検証を経た次のステップとして、モバイルネイティブアプリへの展開と、センサー情報等を含めたマルチモーダルなコンテキスト認識への拡張は、有望な研究の方向性である。
 
 
+% =========================================
+% 付録
+% =========================================
+
+\appendix
+
+\chapter{実験コスト詳細}
+\label{chap:appendix_cost}
+
+本付録では、本論文で報告した実験（実験2）にかかったAPIコストの詳細を示す。
+コストは実験ログに記録されたトークン数に、Azure OpenAIの公表単価（2025年12月時点、Table~\ref{tab:token_prices}）を乗じて算出した推定値である。
+
+なお、Azureの実際の請求額は2回の実験の合計で約4,102円であり、実験1（予備実験）終了時点の累計が約2,301円であったことから、実験2のAzure請求額は約1,801円と推定される。
+本付録のトークンベース推定値（約1,169円）との差は、model-routerが実際に選択したモデルの単価差、ルーティング手数料（約32円）、Azure側のキャッシュ入力割引等に起因する。
+
+\section{トークン単価}
+
+\begin{table}[htbp]
+\centering
+\caption{使用モデルのトークン単価（2025年12月時点、JPY/1Mトークン）}
+\label{tab:token_prices}
+\begin{tabular}{lrr}
+\toprule
+モデル & 入力単価 & 出力単価 \\
+\midrule
+GPT-5-Chat & 195.20 & 1,561.55 \\
+GPT-5-mini & 39.04 & 312.31 \\
+GPT-4.1 & 312.31 & 1,249.24 \\
+GPT-4.1-mini & 62.47 & 249.85 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{モデル構成別の推定APIコスト}
+
+\begin{table}[htbp]
+\centering
+\caption{モデル構成別の推定APIコスト（実験2）}
+\label{tab:cost_per_config}
+\begin{tabular}{llrrrrr}
+\toprule
+ID & 構成名 & 試行数 & 入力トークン & 出力トークン & 合計（円） & 平均/試行（円） \\
+\midrule
+A & All-5-Chat & 50 & 420,857 & 181,369 & 365.37 & 7.31 \\
+B & All-5-mini & 50 & 557,244 & 410,521 & 149.96 & 3.00 \\
+C & Hybrid-1 & 50 & 422,536 & 181,911 & 353.31 & 7.07 \\
+D & Hybrid-2 & 50 & 421,007 & 270,217 & 205.08 & 4.10 \\
+E$^{*}$ & Router Based & 50 & 493,930 & 256,868 & 95.03 & 1.90 \\
+\midrule
+\multicolumn{2}{l}{合計} & 250 & 2,315,574 & 1,300,886 & 1,168.76 & --- \\
+\bottomrule
+\multicolumn{7}{l}{\small $^{*}$ 構成Eはmodel-routerのため，gpt-4.1-miniの単価で近似。} \\
+\end{tabular}
+\end{table}
+
+\section{ステージ別コスト内訳}
+
+Table~\ref{tab:cost_per_stage}にモデル構成別・ステージ別のコスト内訳を示す。
+Stage1（Widget選択）、Stage2（ORS生成）、Stage3（UISpec生成）の各段階で使用されるモデルとトークン消費量、推定コストが確認できる。
+
+\begin{table}[htbp]
+\centering
+\caption{モデル構成別・ステージ別のコスト内訳}
+\label{tab:cost_per_stage}
+\small
+\begin{tabular}{lllrrr}
+\toprule
+構成 & Stage & モデル & 入力トークン & 出力トークン & コスト（円） \\
+\midrule
+A & S1 & GPT-5-Chat & 204,437 & 57,746 & 130.08 \\
+  & S2 & GPT-5-Chat & 82,272 & 46,150 & 88.13 \\
+  & S3 & GPT-5-Chat & 134,148 & 77,473 & 147.16 \\
+\multicolumn{3}{l}{\textbf{A 小計}} & 420,857 & 181,369 & \textbf{365.37} \\
+\midrule
+B & S1 & GPT-5-mini & 204,387 & 115,905 & 44.18 \\
+  & S2 & GPT-5-mini & 126,604 & 92,992 & 33.98 \\
+  & S3 & GPT-5-mini & 226,253 & 201,624 & 71.80 \\
+\multicolumn{3}{l}{\textbf{B 小計}} & 557,244 & 410,521 & \textbf{149.96} \\
+\midrule
+C & S1 & GPT-5-Chat & 204,437 & 57,768 & 130.11 \\
+  & S2 & GPT-4.1 & 82,657 & 48,324 & 86.18 \\
+  & S3 & GPT-4.1 & 135,442 & 75,819 & 137.02 \\
+\multicolumn{3}{l}{\textbf{C 小計}} & 422,536 & 181,911 & \textbf{353.31} \\
+\midrule
+D & S1 & GPT-5-Chat & 204,437 & 57,901 & 130.32 \\
+  & S2 & GPT-5-mini & 82,225 & 78,317 & 27.67 \\
+  & S3 & GPT-5-mini & 134,345 & 133,999 & 47.09 \\
+\multicolumn{3}{l}{\textbf{D 小計}} & 421,007 & 270,217 & \textbf{205.08} \\
+\midrule
+E & S1 & model-router & 204,435 & 70,221 & 30.32 \\
+  & S2 & model-router & 100,609 & 29,178 & 13.58 \\
+  & S3 & model-router & 188,886 & 157,469 & 51.14 \\
+\multicolumn{3}{l}{\textbf{E 小計}} & 493,930 & 256,868 & \textbf{95.03} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\chapter{評価指標の可視化}
+\label{chap:appendix_figures}
+
+本付録では、第\ref{chap:evaluation}章および第\ref{chap:discussion}章で議論した評価指標の分布を図示する。
+なお、レイテンシおよびコストの図は1試行あたりの3ステージ合計値を用いている。
+
+\section{Layer1+：仕様適合指標}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{../figures/layer1plus_grouped.png}
+\caption{Layer1+仕様適合指標の構成間比較。REQ\_W2WR\_PRES（W2WR存在整合率）、REQ\_BINDING\_COUNT\_OK（Binding数適合率）、REQ\_PATTERN\_MATCH（パターン一致率）を構成A〜Eで比較した。天井効果は認められず、特にBinding数適合率は約60\%にとどまる。}
+\label{fig:layer1plus_grouped}
+\end{figure}
+
+\section{Layer2：レイテンシとコストのトレードオフ}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.75\textwidth]{../figures/layer2_scatter.png}
+\caption{レイテンシとコストの中央値による構成間トレードオフ。構成A・Cは低レイテンシ・高コスト、構成Bは高レイテンシ・低コスト、構成Eは中レイテンシ・最低コストに位置する。}
+\label{fig:layer2_scatter}
+\end{figure}
+
+\section{Layer2：レイテンシ分布}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.8\textwidth]{../figures/layer2_dist_lat.png}
+\caption{モデル構成別のレイテンシ分布（箱ひげ図）。構成Bの中央値が最も高く分散も大きい。構成A・Cは低い中央値と小さな分散を示す。}
+\label{fig:layer2_dist_lat}
+\end{figure}
+
+\section{Layer2：コスト分布}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.8\textwidth]{../figures/layer2_dist_cost.png}
+\caption{モデル構成別の推定コスト分布（箱ひげ図）。構成A・Cは約7円/試行で高コスト、構成Eは約1.9円/試行で最も安価である。}
+\label{fig:layer2_dist_cost}
+\end{figure}
+
+
+\chapter{統計検定結果の詳細}
+\label{chap:appendix_stats}
+
+本付録では、第\ref{chap:evaluation}章で実施した統計検定の全ペアワイズ比較結果を示す。
+検定条件は以下のとおりである。
+
+\begin{itemize}
+\item 有意水準：$\alpha = 0.05$
+\item 多重比較補正：Bonferroni補正（10比較）、補正後有意水準 $\alpha' = 0.005$
+\item Layer1（二値指標）：効果量はCohen's $h$
+\item Layer1+（二値/連続指標）：Mann-Whitney $U$検定を含む
+\item Layer2（連続指標）：Mann-Whitney $U$検定、効果量は$r$
+\item 効果量の解釈：N = negligible, S = small, M = medium, L = large
+\end{itemize}
+
+\section{Layer1：構造健全性}
+
+Layer1指標のうち、TCR（型整合率）、RRR（参照整合率）、CDR（循環依存なし率）、RGR（再生成なし率）、W2WR\_SR（W2WR成功率）、JA\_SR（Jotai Atom成功率）は全構成で100\%であり、全比較で有意差なし（$p = 1.000$、Cohen's $h = 0.00$）であった。以下ではこれらを省略し、構成間で差が生じたVRおよびRC\_SRの結果を示す。
+
+\subsection{VR（DSL妥当率）}
+
+\begin{table}[htbp]
+\centering
+\caption{VR（DSL妥当率）のペアワイズ比較（各構成$n=150$）}
+\label{tab:stats_vr}
+\small
+\begin{tabular}{lrrrrll}
+\toprule
+比較 & M1 (\%) & M2 (\%) & $z$ & $p$値 & 有意 & Cohen's $h$ \\
+\midrule
+A vs B & 66.7 & 93.3 & $-5.77$ & $<0.001$ & ** & $-0.71$ (M) \\
+A vs C & 66.7 & 66.7 & $0.00$ & $1.000$ & -- & $0.00$ (N) \\
+A vs D & 66.7 & 68.7 & $-0.37$ & $0.643$ & -- & $-0.04$ (N) \\
+A vs E & 66.7 & 66.7 & $0.00$ & $1.000$ & -- & $0.00$ (N) \\
+B vs C & 93.3 & 66.7 & $5.77$ & $<0.001$ & ** & $0.71$ (M) \\
+B vs D & 93.3 & 68.7 & $5.45$ & $<0.001$ & ** & $0.67$ (M) \\
+B vs E & 93.3 & 66.7 & $5.77$ & $<0.001$ & ** & $0.71$ (M) \\
+C vs D & 66.7 & 68.7 & $-0.37$ & $0.643$ & -- & $-0.04$ (N) \\
+C vs E & 66.7 & 66.7 & $0.00$ & $1.000$ & -- & $0.00$ (N) \\
+D vs E & 68.7 & 66.7 & $0.37$ & $0.643$ & -- & $0.04$ (N) \\
+\bottomrule
+\multicolumn{7}{l}{\small **は$p < 0.005$（Bonferroni補正後有意）。} \\
+\end{tabular}
+\end{table}
+
+\subsection{RC\_SR（React変換成功率）}
+
+\begin{table}[htbp]
+\centering
+\caption{RC\_SR（React変換成功率）のペアワイズ比較（各構成$n=150$）}
+\label{tab:stats_rcsr}
+\small
+\begin{tabular}{lrrrrll}
+\toprule
+比較 & M1 (\%) & M2 (\%) & $z$ & $p$値 & 有意 & Cohen's $h$ \\
+\midrule
+A vs B & 66.7 & 94.0 & $-5.96$ & $<0.001$ & ** & $-0.74$ (M) \\
+A vs C & 66.7 & 66.7 & $0.00$ & $1.000$ & -- & $0.00$ (N) \\
+A vs D & 66.7 & 68.7 & $-0.37$ & $0.643$ & -- & $-0.04$ (N) \\
+A vs E & 66.7 & 66.7 & $0.00$ & $1.000$ & -- & $0.00$ (N) \\
+B vs C & 94.0 & 66.7 & $5.96$ & $<0.001$ & ** & $0.74$ (M) \\
+B vs D & 94.0 & 68.7 & $5.63$ & $<0.001$ & ** & $0.69$ (M) \\
+B vs E & 94.0 & 66.7 & $5.96$ & $<0.001$ & ** & $0.74$ (M) \\
+C vs D & 66.7 & 68.7 & $-0.37$ & $0.643$ & -- & $-0.04$ (N) \\
+C vs E & 66.7 & 66.7 & $0.00$ & $1.000$ & -- & $0.00$ (N) \\
+D vs E & 68.7 & 66.7 & $0.37$ & $0.643$ & -- & $0.04$ (N) \\
+\bottomrule
+\multicolumn{7}{l}{\small **は$p < 0.005$（Bonferroni補正後有意）。} \\
+\end{tabular}
+\end{table}
+
+
+\section{Layer1+：仕様適合・静的健全性}
+
+Layer1+指標のうち、JS\_PARSE\_OK（JS構文妥当率）およびJS\_POLICY\_OK（JSポリシー準拠率）は全構成で100\%、REQ\_STAGE\_FORWARD\_RATE（前方向Binding率）は全構成で中央値1であり、いずれも有意差なしであった。以下ではこれらを省略し、変動のあった指標の結果を示す。
+
+なお、Layer1+指標はVRが妥当と判定された試行のみを対象とするため、サンプル数は構成によって異なる（構成B: $n=9$、構成D: $n=49$、他: $n=50$）。
+
+\subsection{REQ\_W2WR\_PRES（W2WR存在整合率）}
+
+\begin{table}[htbp]
+\centering
+\caption{REQ\_W2WR\_PRES（W2WR存在整合率）のペアワイズ比較}
+\label{tab:stats_w2wr_pres}
+\small
+\begin{tabular}{lrrrrll}
+\toprule
+比較 & M1 (\%) & M2 (\%) & $z$ & $p$値 & 有意 & Cohen's $h$ \\
+\midrule
+A vs B & 80.0 & 77.8 & $0.15$ & $0.839$ & -- & $0.05$ (N) \\
+A vs C & 80.0 & 80.0 & $0.00$ & $1.000$ & -- & $0.00$ (N) \\
+A vs D & 80.0 & 79.6 & $0.05$ & $0.944$ & -- & $0.01$ (N) \\
+A vs E & 80.0 & 80.0 & $0.00$ & $1.000$ & -- & $0.00$ (N) \\
+B vs C & 77.8 & 80.0 & $-0.15$ & $0.839$ & -- & $-0.05$ (N) \\
+B vs D & 77.8 & 79.6 & $-0.12$ & $0.868$ & -- & $-0.04$ (N) \\
+B vs E & 77.8 & 80.0 & $-0.15$ & $0.839$ & -- & $-0.05$ (N) \\
+C vs D & 80.0 & 79.6 & $0.05$ & $0.944$ & -- & $0.01$ (N) \\
+C vs E & 80.0 & 80.0 & $0.00$ & $1.000$ & -- & $0.00$ (N) \\
+D vs E & 79.6 & 80.0 & $-0.05$ & $0.944$ & -- & $-0.01$ (N) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{REQ\_BINDING\_COUNT\_OK（Binding数適合率）}
+
+\begin{table}[htbp]
+\centering
+\caption{REQ\_BINDING\_COUNT\_OK（Binding数適合率）のペアワイズ比較}
+\label{tab:stats_binding}
+\small
+\begin{tabular}{lrrrrll}
+\toprule
+比較 & M1 (\%) & M2 (\%) & $z$ & $p$値 & 有意 & Cohen's $h$ \\
+\midrule
+A vs B & 60.0 & 66.7 & $-0.38$ & $0.637$ & -- & $-0.14$ (N) \\
+A vs C & 60.0 & 60.0 & $0.00$ & $1.000$ & -- & $0.00$ (N) \\
+A vs D & 60.0 & 59.2 & $0.08$ & $0.910$ & -- & $0.02$ (N) \\
+A vs E & 60.0 & 60.0 & $0.00$ & $1.000$ & -- & $0.00$ (N) \\
+B vs C & 66.7 & 60.0 & $0.38$ & $0.637$ & -- & $0.14$ (N) \\
+B vs D & 66.7 & 59.2 & $0.42$ & $0.602$ & -- & $0.16$ (N) \\
+B vs E & 66.7 & 60.0 & $0.38$ & $0.637$ & -- & $0.14$ (N) \\
+C vs D & 60.0 & 59.2 & $0.08$ & $0.910$ & -- & $0.02$ (N) \\
+C vs E & 60.0 & 60.0 & $0.00$ & $1.000$ & -- & $0.00$ (N) \\
+D vs E & 59.2 & 60.0 & $-0.08$ & $0.910$ & -- & $-0.02$ (N) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{REQ\_PATTERN\_MATCH（パターン一致率）}
+
+\begin{table}[htbp]
+\centering
+\caption{REQ\_PATTERN\_MATCH（パターン一致率）のペアワイズ比較}
+\label{tab:stats_pattern}
+\small
+\begin{tabular}{lrrrrll}
+\toprule
+比較 & M1 (\%) & M2 (\%) & $z$ & $p$値 & 有意 & Cohen's $h$ \\
+\midrule
+A vs B & 80.0 & 77.8 & $0.15$ & $0.839$ & -- & $0.05$ (N) \\
+A vs C & 80.0 & 80.0 & $0.00$ & $1.000$ & -- & $0.00$ (N) \\
+A vs D & 80.0 & 79.6 & $0.05$ & $0.944$ & -- & $0.01$ (N) \\
+A vs E & 80.0 & 80.0 & $0.00$ & $1.000$ & -- & $0.00$ (N) \\
+B vs C & 77.8 & 80.0 & $-0.15$ & $0.839$ & -- & $-0.05$ (N) \\
+B vs D & 77.8 & 79.6 & $-0.12$ & $0.868$ & -- & $-0.04$ (N) \\
+B vs E & 77.8 & 80.0 & $-0.15$ & $0.839$ & -- & $-0.05$ (N) \\
+C vs D & 80.0 & 79.6 & $0.05$ & $0.944$ & -- & $0.01$ (N) \\
+C vs E & 80.0 & 80.0 & $0.00$ & $1.000$ & -- & $0.00$ (N) \\
+D vs E & 79.6 & 80.0 & $-0.05$ & $0.944$ & -- & $-0.01$ (N) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\section{Layer2：実用性}
+
+\subsection{LAT（レイテンシ）}
+
+\begin{table}[htbp]
+\centering
+\caption{LAT（レイテンシ）のペアワイズ比較（各構成$n=150$）}
+\label{tab:stats_lat}
+\small
+\begin{tabular}{lrrrrll}
+\toprule
+比較 & M1中央値 (ms) & M2中央値 (ms) & $U$ & $p$値 & 有意 & $r$ \\
+\midrule
+A vs B & 8,508 & 27,098 & 122 & $<0.001$ & ** & 0.99 (L) \\
+A vs C & 8,508 & 7,539 & 9,309 & $0.007$ & * & 0.17 (S) \\
+A vs D & 8,508 & 15,458 & 2,525 & $<0.001$ & ** & 0.78 (L) \\
+A vs E & 8,508 & 14,370 & 4,955 & $<0.001$ & ** & 0.56 (L) \\
+B vs C & 27,098 & 7,539 & 116 & $<0.001$ & ** & 0.99 (L) \\
+B vs D & 27,098 & 15,458 & 3,986 & $<0.001$ & ** & 0.65 (L) \\
+B vs E & 27,098 & 14,370 & 4,414 & $<0.001$ & ** & 0.61 (L) \\
+C vs D & 7,539 & 15,458 & 2,028 & $<0.001$ & ** & 0.82 (L) \\
+C vs E & 7,539 & 14,370 & 4,186 & $<0.001$ & ** & 0.63 (L) \\
+D vs E & 15,458 & 14,370 & 10,166 & $0.117$ & -- & 0.10 (N) \\
+\bottomrule
+\multicolumn{7}{l}{\small *は$p < 0.05$、**は$p < 0.005$（Bonferroni補正後有意）。} \\
+\end{tabular}
+\end{table}
+
+\subsection{COST（推定APIコスト）}
+
+\begin{table}[htbp]
+\centering
+\caption{COST（推定APIコスト）のペアワイズ比較（各構成$n=150$）}
+\label{tab:stats_cost}
+\small
+\begin{tabular}{lrrrrll}
+\toprule
+比較 & M1中央値（円） & M2中央値（円） & $U$ & $p$値 & 有意 & $r$ \\
+\midrule
+A vs B & 3 & 4 & 1,711 & $<0.001$ & ** & 0.85 (L) \\
+A vs C & 3 & 3 & 11,145 & $0.852$ & -- & 0.01 (N) \\
+A vs D & 3 & 3 & 6,364 & $<0.001$ & ** & 0.43 (M) \\
+A vs E & 3 & 3 & 9,877 & $0.052$ & -- & 0.12 (S) \\
+B vs C & 4 & 3 & 1,656 & $<0.001$ & ** & 0.85 (L) \\
+B vs D & 4 & 3 & 4,719 & $<0.001$ & ** & 0.58 (L) \\
+B vs E & 4 & 3 & 5,578 & $<0.001$ & ** & 0.50 (L) \\
+C vs D & 3 & 3 & 6,363 & $<0.001$ & ** & 0.43 (M) \\
+C vs E & 3 & 3 & 9,861 & $0.049$ & * & 0.12 (S) \\
+D vs E & 3 & 3 & 9,946 & $0.064$ & -- & 0.12 (S) \\
+\bottomrule
+\multicolumn{7}{l}{\small *は$p < 0.05$、**は$p < 0.005$（Bonferroni補正後有意）。} \\
+\end{tabular}
+\end{table}
+
+
 % =========================
 % [ADD] 用語マクロ（表記ゆれ防止）
 % INSERT IN PREAMBLE OR AFTER \begin{document}

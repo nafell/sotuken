@@ -163,7 +163,7 @@ These findings lay the groundwork for systems capable of meeting the evolving UI
 % =========================================
 
 \section{はじめに}
-\label{chap:introduction}
+\label{sec:introduction}
 
 \subsection{社会的背景}
 
@@ -244,15 +244,15 @@ GitHub Copilot のような開発支援ツール\cite{uiuc2025copilot}や，対�
 \subsection{論文構成}
 
 本論文の構成は次のとおりである．
-第\ref{chap:related_work}章では，LLM によるソフトウェア開発支援や UI 生成，
+第\ref{sec:related_work}章では，LLM によるソフトウェア開発支援や UI 生成，
 適応型 UI・Model-Based UI，および Jelly UI に代表される LLM-Hardened DSL などの関連研究を整理し，
 本研究の位置づけと目的を明確化する．
-第\ref{chap:system_design}章では，提案するドメイン特化型 LLM 動的 UI 生成システムの
+第\ref{sec:system_design}章では，提案するドメイン特化型 LLM 動的 UI 生成システムの
 アーキテクチャと DSL 設計について述べる．
-第\ref{chap:evaluation}章では，提案システムを用いた実験設定と評価指標を示し，
+第\ref{sec:evaluation}章では，提案システムを用いた実験設定と評価指標を示し，
 RQ1 および RQ2 に対する検証結果を報告する．
-第\ref{chap:discussion}章では，評価結果の考察と限界，今後の展望について議論し，
-第\ref{chap:conclusion}章で本研究をまとめる．
+第\ref{sec:discussion}章では，評価結果の考察と限界，今後の展望について議論し，
+第\ref{sec:conclusion}章で本研究をまとめる．
 
 
 % =========================================
@@ -260,7 +260,7 @@ RQ1 および RQ2 に対する検証結果を報告する．
 % =========================================
 
 \section{関連研究}
-\label{chap:related_work}
+\label{sec:related_work}
 
 \subsection{LLMによるソフトウェア開発支援}
 
@@ -435,7 +435,7 @@ Level 4 以降，とくに Widget 間のリアクティブな連動を伴う UI 
 % =========================================
 
 \section{提案手法}
-\label{chap:system_design}
+\label{sec:system_design}
 
 \subsection{設計方針の全体像}
 
@@ -445,7 +445,7 @@ Level 4 以降，とくに Widget 間のリアクティブな連動を伴う UI 
 % [REPLACE] Chapter3冒頭の導入（結論先出し）
 % REPLACE FIRST PARAGRAPH OF: subsection{設計方針の全体像}
 % =========================
-第\ref{chap:introduction}章および第\ref{chap:related_work}章で述べた課題は，
+第\ref{sec:introduction}章および第\ref{sec:related_work}章で述べた課題は，
 LLMによる動的UI生成において「構造の安定性」と「文脈適応」を同時に満たすことが難しい点にある．
 そこで本研究は，思考整理ドメインの \textbf{Plan Phase} に着目し，
 その中でも \textbf{Stage4（意思決定・収束に相当）}で有効な
@@ -490,14 +490,14 @@ LLM呼び出し段階は \textbf{Step} と表記することで混同を避け�
 \end{description}
 
 % 用語整理を追加したので，以下はいらない
-% ここでのフェーズ（ドメイン側の段階）は，第\ref{chap:implementation}章で述べる
+% ここでのフェーズ（ドメイン側の段階）は，第\ref{sec:implementation}章で述べる
 % Stage1--Stage3（LLMパイプラインの段階）とは異なる概念である点に注意する．
 提案システムは，UI全体をこのフェーズ構造に沿わせつつ，
 各フェーズ内部のWidget構成およびLevel4（Widget間連動）を文脈に応じて生成することで，
 「迷わせない型」と「状況適応」を両立させる．
 
 
-第\ref{chap:introduction}章および第\ref{chap:related_work}章で述べたように，
+第\ref{sec:introduction}章および第\ref{sec:related_work}章で述べたように，
 本研究は，思考整理支援ドメインに対して LLM-Hardened DSL に基づく動的 UI 生成システムを適用し，
 Level4 の動的 UI を実現するための設計パラダイムを明らかにすることを目的とする．
 ここでいう Level4 とは，動的 UI 度の枠組みにおいて，
@@ -563,7 +563,7 @@ Jelly UI は汎用的な情報・タスク支援を対象に，LLM-Hardened DSL 
 DSL の変更と実装の変更を比較的独立に行える．
 
 \subsection{UI構成単位としてのWidgetの採用}
-\label{sec:why_widget}
+\label{subsec:why_widget}
 
 \subsubsection{データ駆動によるプリミティブ生成とWidget方式の比較}
 動的UI生成において，システムがどのような粒度と抽象度でUIを構築するかは重要な設計判断である．
@@ -576,9 +576,9 @@ DSL の変更と実装の変更を比較的独立に行える．
 
 
 \subsubsection{固定/動的の切り分け（設計判断の要点）}
-\label{sec:design_decision_summary}
+\label{subsec:design_decision_summary}
 
-設計空間の詳細な検討は\ref{sec:design_space}節で行うが，
+設計空間の詳細な検討は\ref{subsec:design_space}節で行うが，
 本研究のアーキテクチャにおける核となる「固定（Hardened）」と「動的（Generative）」の切り分けを表\ref{tab:design_decision_beta21}に示す．
 先行研究であるJelly~UI\cite{cao2025jelly}がデータモデルとUI表現の双方に高い可塑性（Malleability）を持たせているのに対し，
 本研究では「思考整理」というドメインにおける\textbf{UX品質の保証}と\textbf{実行時の応答性（Latency）}を優先し，以下の戦略的切り分けを行う．
@@ -663,7 +663,7 @@ DSL は，どの Widget のどのポートが，どの Widget のどのポート
   \item Widget 間の依存関係（DSL によるポート接続の記述）
 \end{itemize}
 を分離できる．
-ポート抽象の詳細な実装方法は第\ref{chap:implementation}章で述べる．
+ポート抽象の詳細な実装方法は第\ref{sec:implementation}章で述べる．
 
 % --- 末尾追記：Widget方式節の末尾 ---
 以上の設計判断により，LLMの自由度は「Widgetの選択と接続」に集約され， Level4（Widget間連動）の実現が本研究の焦点となる． 次節では，実運用上の障壁となるCold Start Problemと，generatedValueによる対処を示す．
@@ -706,13 +706,13 @@ Widget が必要とするデータ構造に応じて柔軟に定義できる．
 フレーム問題を引き起こす可能性もある．
 本研究では，generatedValue をあくまで「書き換え前提のたたき台」と位置づけ，
 ユーザーが自由に削除・編集できる UI を採用するに留めた．
-より精密にバイアスを制御することは，今後の課題である（第\ref{sec:conc_future}節参照）．
+より精密にバイアスを制御することは，今後の課題である（第\ref{subsec:conc_future}節参照）．
 
 % --- 末尾追記：generatedValue節の末尾 ---
 以上より，generatedValueは「空欄を埋める」ためではなく，「思考開始点を与える」ための設計要素として位置づけられる． 最後に，本研究が扱う設計空間を整理し，本論文の貢献範囲を明確化する．
 
 \subsection{設計空間の整理と本研究のフォーカス}
-\label{sec:design_space}
+\label{subsec:design_space}
 
 以上の議論を踏まえると，本研究が対象とする設計空間は，
 \begin{itemize}
@@ -735,7 +735,7 @@ generatedValue によるコンテンツ初期化は，
 % =========================================
 
 \section{実装}
-\label{chap:implementation}
+\label{sec:implementation}
 
 \subsection{思考整理支援アプリケーションの概要}
 
@@ -743,7 +743,7 @@ generatedValue によるコンテンツ初期化は，
 % [REPLACE] Chapter4冒頭：対象範囲を断定（Phase/Stage/Levelの整列）
 % REPLACE FIRST PARAGRAPH OF: subsection{思考整理支援アプリケーションの概要}
 % =========================
-本章では，第\ref{chap:system_design}章で述べた設計方針にもとづき，
+本章では，第\ref{sec:system_design}章で述べた設計方針にもとづき，
 思考整理支援ドメインに特化した LLM-Hardened DSL システム \textbf{Prism Lattice UI} の実装を述べる．
 本アプリケーションは全体を3 Phaseから構成し，
 \textbf{Capture Phase（2 Stage）}と\textbf{Plan Phase（4 Stage）}を想定する．
@@ -783,7 +783,7 @@ LLM の出力は本質的に非決定的であり，生成される JSON が常�
 \subsubsection{サーバフレームワーク：ヘッドレス検証を可能にするIsomorphic構成}
 
 API サーバの実装には Hono を採用し，フロントエンドとバックエンドを同一言語・同一モジュールで扱う Isomorphic な構成とした．
-この選定の必然性は，第\ref{chap:evaluation}章で述べる「ヘッドレス検証」の実現にある．
+この選定の必然性は，第\ref{sec:evaluation}章で述べる「ヘッドレス検証」の実現にある．
 
 動的 UI 生成システムの評価において，ブラウザのレンダリングエンジンやネットワーク遅延は，
 純粋な生成ロジックや状態遷移の正当性を検証する上でのノイズとなる．
@@ -1084,11 +1084,11 @@ Step1--Step3の段階的生成と，実行時の決定論的伝播として実�
 % 第5章 実験と評価（全面改稿案）
 % =========================================
 \section{実験と評価}
-\label{chap:evaluation}
+\label{sec:evaluation}
 
 \subsection{評価の目的と研究課題}
 本章では，Prism Lattice UI の技術的実現性と，モデル構成（Stage1--Stage3 の割当）に応じた品質・コスト特性を検証する．
-第\ref{chap:introduction}章で述べた研究目的に対し，本章の評価は次の 2 点に整理される．
+第\ref{sec:introduction}章で述べた研究目的に対し，本章の評価は次の 2 点に整理される．
 
 \begin{itemize}
   \item \textbf{RQ1（実現性）}：3ステップ LLM パイプラインにより，DSL と実行系が要求する\textbf{形式的健全性}を安定して満たす動的 UI を生成できるか．
@@ -1276,7 +1276,7 @@ E & 66.7 & 100 & 66.7 \\
 \subsubsection{Layer1+：仕様適合・静的健全性}
 Layer1+ は，Layer1 の天井効果を補う目的で導入した．
 一部指標（例：Binding 数適合やパターン一致）では，100\% に達しない値が観測され，設計意図との差分が可視化された．
-ただし，構成間の差は限定的であった（考察はChapter \ref{chap:discussion}章）．
+ただし，構成間の差は限定的であった（考察はChapter \ref{sec:discussion}章）．
 
 \begin{table}[!t]
 \caption{Layer1+ 結果（構成別集計）}
@@ -1332,12 +1332,12 @@ COST & 7/10 & 6/10 \\
 % 第6章 考察（全面改稿案）
 % =========================================
 \section{考察}
-\label{chap:discussion}
+\label{sec:discussion}
 
 \subsection{本章の目的}
-\label{sec:disc_intro}
+\label{subsec:disc_intro}
 
-本章では，第\ref{chap:evaluation}章の実験結果を用いて，Prism Lattice UIが本研究で定めた条件（50ケース，3ステップ生成，DSL/実行系，評価指標，統計手法）のもとで何を支持し，どこに課題が残るかを整理する．
+本章では，第\ref{sec:evaluation}章の実験結果を用いて，Prism Lattice UIが本研究で定めた条件（50ケース，3ステップ生成，DSL/実行系，評価指標，統計手法）のもとで何を支持し，どこに課題が残るかを整理する．
 議論はRQ1（生成の妥当性・形式健全性）とRQ2（モデル構成差とトレードオフ）に沿って進める．
 
 本研究の評価指標は大きく次の3群に分かれる．
@@ -1355,10 +1355,10 @@ COST & 7/10 & 6/10 \\
 \end{enumerate}
 
 \subsection{RQ1：形式健全性の達成範囲と残存課題}
-\label{sec:disc_rq1}
+\label{subsec:disc_rq1}
 
 \subsubsection{形式健全性の下限（検査可能な不変条件）は安定して満たされた}
-\label{subsec:disc_rq1_baseline}
+\label{subsubsec:disc_rq1_baseline}
 
 Layer1のうち，TCR（型整合），RRR（参照整合），CDR（循環依存なし），RGR（再生成なし），W2WR\_SR（W2WR成功），JA\_SR（Jotai Atom成功）などは\textbf{全比較で100\%}となった．
 
@@ -1368,7 +1368,7 @@ Layer1のうち，TCR（型整合），RRR（参照整合），CDR（循環依�
 特にW2WRを「依存グラフ+参照」として明示化したことで，循環検知・参照解決などの静的検査が可能になり，形式健全性を測定できる対象へ変換できた．
 
 \subsubsection{VRおよびRC\_SRにおけるボトルネック}
-\label{subsec:disc_rq1_bottleneck}
+\label{subsubsec:disc_rq1_bottleneck}
 
 天井に到達した指標が多い一方で，VR（DSL妥当率）とRC\_SR（React変換成功率）では構成差が残った．
 具体的にVRはBが93.3\%で，他構成（66.7〜68.7\%）より有意に高い（効果量も中）．同様にRC\_SRもBが94.0\%で，他構成（66.7〜68.7\%）より有意に高い．
@@ -1384,7 +1384,7 @@ Layer1のうち，TCR（型整合），RRR（参照整合），CDR（循環依�
 したがって，RQ1に対する回答は形式健全性の概ねの達成にとどまらず，健全性境界を実行系前提まで含めて再定義する必要性を示唆している．
 
 \subsubsection{失敗要因の仮説的整理：仕様境界の問題として}
-\label{subsec:disc_rq1_hypothesis}
+\label{subsubsec:disc_rq1_hypothesis}
 
 VR/RC\_SRがボトルネックとして残るメカニズムについて，以下の仮説を提示する．
 \subsubsubsection{H1：VR低下は「入口条件の逸脱」が主要因}
@@ -1404,16 +1404,16 @@ RC\_SR低下は，DSLとしては合法でも，レンダラが暗黙に仮定�
 以上の仮説が妥当であれば，本研究における失敗はモデルの能力不足ではなく，検査対象（DSL）と実行対象（変換器/レンダラ）の間の仕様境界設計の問題として捉えることができる．
 
 \subsection{Layer1+指標の導入とその知見}
-\label{sec:disc_layer1plus}
+\label{subsec:disc_layer1plus}
 
 \subsubsection{Layer1+の導入目的}
-\label{subsec:disc_layer1plus_goal}
+\label{subsubsec:disc_layer1plus_goal}
 
 Layer1の多くが100\%に到達した場合，モデル構成間の差異を議論するための指標としては機能しにくい．
 そこでLayer1+は，テストケース設計（W2WRカテゴリA〜E，期待バインディング数・パターンなど）を参照基準として用い，構造的な健全性を超えて設計意図への適合を測定する目的で導入した．
 
 \subsubsection{観測結果：構成間差異よりも設計意図との乖離の可視化}
-\label{subsec:disc_layer1plus_obs}
+\label{subsubsec:disc_layer1plus_obs}
 
 Layer1+の統計検定結果は，総検定数60に対して有意差が0であり，構成間の差は統計的に支持されなかった．
 一方で，絶対値としては次が観測されている．
@@ -1434,7 +1434,7 @@ binding数適合が約60\%ということは，形式的には成立しても，
 ここで得られる知見は「モデル差」ではなく，設計意図と生成結果のズレの所在を定量化できた点にある．
 
 \subsubsection{解釈：仕様適合に対するパイプライン設計の支配的影響}
-\label{subsec:disc_layer1plus_interp}
+\label{subsubsec:disc_layer1plus_interp}
 
 Layer1+で構成間差異が検出されなかった結果は，指標の感度の問題にとどまらず，以下の含意を持つ．
 \subsubsubsection{I1：仕様適合の達成はモデルよりパイプライン設計に依存}
@@ -1452,10 +1452,10 @@ REQ\_BINDING\_COUNT\_OKが低い場合，以下の要因が混ざりうる．
 本節の結論として，Layer1+の意義は構成間の優劣判定ではなく，Layer1が天井に達した状況において設計意図との乖離（約40\%）を定量的に計測可能にした点にある．
 
 \subsection{RQ2：モデル構成差の影響と運用設計への示唆}
-\label{sec:disc_rq2}
+\label{subsec:disc_rq2}
 
 \subsubsection{健全性指標における構成差：構成Bの優位性}
-\label{subsec:disc_rq2_correctness}
+\label{subsubsec:disc_rq2_correctness}
 
 RQ2の正しさ側の主要差分はVR/RC\_SRに現れている．
 Bは入口と変換の両方で成功率を押し上げる一方，A/C/D/Eはほぼ同水準（66〜69\%）で横並びである．
@@ -1464,7 +1464,7 @@ Bは入口と変換の両方で成功率を押し上げる一方，A/C/D/Eはほ
 すなわち，モデル選択は検査可能な不変条件の達成よりも，\textbf{検査に入る前（VR）と実行系へ渡す直前（RC\_SR）}の歩留まりに影響する．
 
 \subsubsection{運用指標における構成差：LATおよびCOSTの有意差}
-\label{subsec:disc_rq2_operational}
+\label{subsubsec:disc_rq2_operational}
 
 実用性（Layer2）は多くの比較で有意差が観測される．代表的には次の構図になる．
 \begin{itemize}
@@ -1475,7 +1475,7 @@ Bは入口と変換の両方で成功率を押し上げる一方，A/C/D/Eはほ
 この結果は，モデル構成差が「正しさ」だけでなく，待ち時間と費用という運用上の制約を強く動かすことを示す．
 
 \subsubsection{運用設計への含意}
-\label{subsec:disc_rq2_tradeoff}
+\label{subsubsec:disc_rq2_tradeoff}
 
 RQ2の結論を設計指針として整理すると，以下のようになる．
 \subsubsubsection{R1（歩留まり優先）：Bが有力候補}
@@ -1494,10 +1494,10 @@ RQ2の結論を設計指針として整理すると，以下のようになる�
 3ステップパイプラインである以上，各Stageへのモデル割当は設計自由度であり，目的関数に応じて最適解が変わる．したがって，特定のハイブリッド構成が常に優位なのではなく，目的関数の定義が先行し，構成はそれに従うという結論が導かれる．
 
 \subsection{フロントエンド・状態管理・形式検査への含意}
-\label{sec:disc_frontend}
+\label{subsec:disc_frontend}
 
 \subsubsection{W2WRをDSL化した意義：依存を「明示化」したから検査できる}
-\label{subsec:disc_frontend_w2wr}
+\label{subsubsec:disc_frontend_w2wr}
 
 Widget-to-Widget Reactivityを，参照・依存としてDSLに明示化したことで，
 \begin{itemize}
@@ -1510,7 +1510,7 @@ Widget-to-Widget Reactivityを，参照・依存としてDSLに明示化した�
 これは「見た目のUI生成」ではなく，状態遷移・データフローの生成としてUIを扱う設計であり，フロントエンド（React/Jotai）と形式検査の接点を作った点が重要である．
 
 \subsubsection{天井効果の解釈：設計有効性の証左}
-\label{subsec:disc_frontend_ceiling}
+\label{subsubsec:disc_frontend_ceiling}
 
 天井に達した指標は無意味なのではなく，定義した不変条件が安定して維持されたことの証拠である．
 ただし，天井効果によりモデル構成間の差異を議論する指標としては機能しない．
@@ -1518,28 +1518,28 @@ Widget-to-Widget Reactivityを，参照・依存としてDSLに明示化した�
 今後の方向性としては，より困難なタスクの設計よりも，評価器側の精密化（VR/RC\_SRの失敗分類，Layer1+のエッジ単位比較など）による差異の検出が有効と考えられる．
 
 \subsection{妥当性への脅威}
-\label{sec:disc_threats}
+\label{subsec:disc_threats}
 
 \subsubsection{多重比較と効果量}
-\label{subsec:disc_threats_stats}
+\label{subsubsec:disc_threats_stats}
 
 本研究ではペア比較10組に対して多重比較補正を行った．補正後もLayer1で8件，Layer2で14件の有意差が確認された．
 LAT/COSTについては効果量も大きく，統計的有意性と実用的含意を区別して議論することが可能である．
 
 \subsubsection{Bのログ欠損（n=9）：欠損メカニズムと扱い}
-\label{subsec:disc_threats_missing}
+\label{subsubsec:disc_threats_missing}
 
 構成Bはログ欠損により有効サンプルが$n=9$となった．詳細ログの確認では，出力トークン量が他構成と大きく乖離しないにもかかわらず生成結果が空であったケースが見られ，検証後のDB保存過程における障害が原因として考えられる．
 
 本研究では欠損試行を除外し，各指標のサンプル数を明記することで透明性を確保した．ただし，構成Bに関する推論の射程は限定的であり，特にLayer1+では検出力の低下が懸念される．
 
 \subsubsection{独立性・階層性：入力由来の相関の可能性}
-\label{subsec:disc_threats_independence}
+\label{subsubsec:disc_threats_independence}
 
 同一コーパス上で複数構成を比較しているため，入力由来の相関（ケース難度）が残る可能性がある．将来的にはmixed-effectsなどで「入力をランダム効果」として扱う設計が候補になる．
 
 \subsection{形式評価の限界と残された課題}
-\label{sec:disc_future}
+\label{subsec:disc_future}
 
 本研究の評価は，自動検証可能な範囲（形式健全性・仕様適合・運用指標）に基づく．
 一方で，本研究の位置づけ（思考整理支援というドメイン特化）をより強く主張するには，\textbf{形式的に正しいだけでなく意味的に有用か（Semantic Validity）}の評価が残る．
@@ -1564,34 +1564,34 @@ LAT/COSTについては効果量も大きく，統計的有意性と実用的含
 % =========================================
 
 \section{結論}
-\label{chap:conclusion}
+\label{sec:conclusion}
 
 \subsection{得られた知見}
-\label{sec:conc_future}
+\label{subsec:conc_future}
 
 %\subsection{本研究の取り組み}
-%\label{sec:conc_work}
+%\label{subsec:conc_work}
 
 本研究では，思考整理支援に必要なWidget集合を定義して生成自由度を制限し，3ステップのLLMパイプラインと宣言型JSON DSLを設計した．特に，Widget-to-Widget Reactivity (W2WR) をDSL上で明示し，依存関係をグラフとして扱うことで静的検査を可能にした．評価においては，50ケースに対して5つのモデル構成を適用し，健全性（Layer1/1+）と運用指標（Layer2）の双方から多角的な検証を行った．
 
 %\subsection{得られた知見}
-%\label{sec:conc_findings}
+%\label{subsec:conc_findings}
 
 本研究の条件下で，以下の知見が得られた．第一に，型整合や参照整合といった形式的な健全性は，適切な設計により安定して達成可能であることが示された．第二に，形式検査だけでなく，実行系への変換を含めた健全性境界の設計が重要であり，ボトルネックはDSL妥当性（VR）とReact変換（RC\_SR）にあることが明らかになった．第三に，仕様適合性（Layer1+）の評価により，設計意図との定量的な乖離を可視化できた．最後に，モデル構成の違いは運用指標（レイテンシ・コスト）に顕著に現れ，モデル選択は正しさとコストのトレードオフ問題であることが確認された．
 
 %\subsection{本研究の貢献}
-%\label{sec:conc_contribution}
+%\label{subsec:conc_contribution}
 
 以上の結果より，本研究は動的UI生成を単なる実験的な試みではなく，宣言型DSLと検証可能な不変条件に基づき，実行系まで含めて工学的に制御可能なシステムとして提示した．また，モデル構成による品質と運用負荷のトレードオフを可視化したことで，実際の導入制約に応じた設計判断を可能にする枠組みを提供した点に貢献がある．
 
 %\subsection{提案方式の限界}
-%\label{sec:conc_limitations}
+%\label{subsec:conc_limitations}
 
 一方で，本研究にはいくつかの限界が残る．generatedValueの内容妥当性やW2WRの意味的な正しさ（Semantic Validity）は未評価であり，自動検証の範囲外である．また，Layer1+指標は乖離の可視化には有効だが，改善に向けた詳細なフィードバックを与えるには測定精度に課題がある．一部の実験ではログ欠損が生じており，評価基盤の信頼性向上も求められる．
 
 
 \subsection{今後の展望}
-\label{sec:conc_future}
+\label{subsec:conc_future}
 
 % \subsubsection{意味評価の導入と適応的運用}
 
@@ -1619,7 +1619,7 @@ LAT/COSTについては効果量も大きく，統計的有意性と実用的含
 \section{付録}
 
 \subsection{実験コスト詳細}
-\label{chap:appendix_cost}
+\label{sec:appendix_cost}
 
 本付録では，本論文で報告した実験（実験2）にかかったAPIコストの詳細を示す．
 コストは実験ログに記録されたトークン数に，Azure OpenAIの公表単価（2025年12月時点，表\ref{tab:token_prices}）を乗じて算出したトークンベースの推定値である．
@@ -1715,9 +1715,9 @@ E & S1 & model-router & 204,435 & 70,221 & 30.32 \\
 
 
 \subsection{評価指標の可視化}
-\label{chap:appendix_figures}
+\label{sec:appendix_figures}
 
-本付録では，第\ref{chap:evaluation}章および第\ref{chap:discussion}章で議論した評価指標の分布を図示する．
+本付録では，第\ref{sec:evaluation}章および第\ref{sec:discussion}章で議論した評価指標の分布を図示する．
 なお，レイテンシおよびコストの図は1試行あたりの3ステージ合計値を用いている．
 
 \subsubsection{Layer1+：仕様適合指標}
@@ -1766,9 +1766,9 @@ E & S1 & model-router & 204,435 & 70,221 & 30.32 \\
 
 
 \subsection{統計検定結果の詳細}
-\label{chap:appendix_stats}
+\label{sec:appendix_stats}
 
-本付録では，第\ref{chap:evaluation}章で実施した統計検定の全ペアワイズ比較結果を示す．
+本付録では，第\ref{sec:evaluation}章で実施した統計検定の全ペアワイズ比較結果を示す．
 検定条件は以下のとおりである．
 
 \begin{itemize}

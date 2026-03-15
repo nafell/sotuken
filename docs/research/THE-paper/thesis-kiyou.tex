@@ -1603,13 +1603,25 @@ LAT/COSTについては効果量も大きく，統計的有意性と実用的含
 本稿では評価の再現性を重視してWebプラットフォームを採用したが，動的UI（Prism Lattice UI）が最も価値を発揮するのは，画面サイズが限られ，かつユーザーのコンテキスト（場所，時間，移動中など）が頻繁に変化するモバイル環境であると考えられる．外出先や移動中などのハイコンテキストな状況下では，じっくりと画面操作を行う余裕がないため，「今の状況に必要なWidgetだけが，適切な設定値で提示される」という動的UIの恩恵は，デスクトップ環境以上に大きなものとなるはずである．Webでのアーキテクチャ検証を経た次のステップとして，モバイルネイティブアプリへの展開と，センサー情報等を含めたマルチモーダルなコンテキスト認識への拡張は，有望な研究の方向性である．
 
 
-\section*{参考文献}
-% %-------------------
-% \bibliographystyle{plain} % 参考文献
-\bibliographystyle{ieeetr} % 参考文献
-% \bibliographystyle{ipsjunsrt} % 参考文献
-\bibliography{myref} %
-% %-------------------
+% =========================================
+% 謝辞
+% =========================================
+
+\section*{\small{謝辞}}
+\small{
+謝辞を入力
+}
+
+% =========================================
+% 参考文献
+% =========================================
+
+\typeout{} 
+\small{
+\section*{\small{参考文献} \vspace{-10mm}}
+\bibliographystyle{ieeetr}
+\bibliography{myref}
+}
 
 % =========================================
 % 付録
@@ -1620,7 +1632,7 @@ LAT/COSTについては効果量も大きく，統計的有意性と実用的含
 \section{付録}
 
 \subsection{実験コスト詳細}
-\label{sec:appendix_cost}
+\label{subsec:appendix_cost}
 
 本付録では，本稿で報告した実験（実験2）にかかったAPIコストの詳細を示す．
 コストは実験ログに記録されたトークン数に，Azure OpenAIの公表単価（2025年12月時点，表\ref{tab:token_prices}）を乗じて算出したトークンベースの推定値である．
@@ -1716,7 +1728,7 @@ E & S1 & model-router & 204,435 & 70,221 & 30.32 \\
 
 
 \subsection{評価指標の可視化}
-\label{sec:appendix_figures}
+\label{subsec:appendix_figures}
 
 本付録では，第\ref{sec:evaluation}章および第\ref{sec:discussion}章で議論した評価指標の分布を図示する．
 なお，レイテンシおよびコストの図は1試行あたりの3ステージ合計値を用いている．
@@ -1767,7 +1779,7 @@ E & S1 & model-router & 204,435 & 70,221 & 30.32 \\
 
 
 \subsection{統計検定結果の詳細}
-\label{sec:appendix_stats}
+\label{subsec:appendix_stats}
 
 本付録では，第\ref{sec:evaluation}章で実施した統計検定の全ペアワイズ比較結果を示す．
 検定条件は以下のとおりである．

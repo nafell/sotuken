@@ -1,0 +1,110 @@
+{
+    "stage": "plan",
+    "layout": {
+        "type": "sectioned",
+        "sectionGap": 24,
+        "sectionOrder": [
+            "diverge",
+            "organize",
+            "converge"
+        ]
+    },
+    "version": "5.0",
+    "metadata": {
+        "llmModel": "fallback",
+        "generatedAt": 1765620566243
+    },
+    "sections": {
+        "diverge": {
+            "header": {
+                "title": "発散",
+                "description": "アイデアを広げましょう"
+            },
+            "widgets": [
+                {
+                    "id": "mind_map_diverge_0",
+                    "config": {
+                        "centralTopic": "引越し候補地比較"
+                    },
+                    "metadata": {
+                        "purpose": "引越し候補地に関して中心トピックから関連要素を放射状に展開し、各候補の特徴を洗い出すため"
+                    },
+                    "position": 0,
+                    "component": "mind_map",
+                    "dataBindings": []
+                }
+            ]
+        },
+        "converge": {
+            "header": {
+                "title": "収束",
+                "description": "優先順位をつけましょう"
+            },
+            "widgets": [
+                {
+                    "id": "tradeoff_balance_converge_0",
+                    "config": {},
+                    "metadata": {
+                        "purpose": "分類された情報を元に各候補地を比較し、どちらを選ぶかの意思決定を支援するため"
+                    },
+                    "position": 0,
+                    "component": "tradeoff_balance",
+                    "dataBindings": []
+                }
+            ]
+        },
+        "organize": {
+            "header": {
+                "title": "整理",
+                "description": "情報を整理しましょう"
+            },
+            "widgets": [
+                {
+                    "id": "swot_analysis_organize_0",
+                    "config": {},
+                    "metadata": {
+                        "purpose": "各候補地の長所と短所、機会と脅威を整理し比較分析しやすくするため"
+                    },
+                    "position": 0,
+                    "component": "swot_analysis",
+                    "dataBindings": []
+                }
+            ]
+        }
+    },
+    "sessionId": "batch-772ca8db-4545-405b-a707-4bc221153420-5",
+    "reactiveBindings": {
+        "bindings": [
+            {
+                "id": "rb_diverge_to_organize",
+                "source": "mind_map_diverge_0.nodes",
+                "target": "swot_analysis_organize_0.items",
+                "enabled": true,
+                "mechanism": "update",
+                "updateMode": "realtime",
+                "description": "発散→整理のデータ連携",
+                "relationship": {
+                    "type": "passthrough"
+                }
+            },
+            {
+                "id": "rb_organize_to_converge",
+                "source": "swot_analysis_organize_0.placement",
+                "target": "tradeoff_balance_converge_0.items",
+                "enabled": true,
+                "mechanism": "update",
+                "debounceMs": 300,
+                "updateMode": "debounced",
+                "description": "整理→収束のデータ連携",
+                "relationship": {
+                    "type": "javascript",
+                    "javascript": "Object.values(source).flat()"
+                }
+            }
+        ],
+        "metadata": {
+            "version": "4.0",
+            "generatedAt": 1765620566243
+        }
+    }
+}

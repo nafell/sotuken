@@ -2000,9 +2000,54 @@ D vs E & 3 & 3 & 9,946 & $0.064$ & -- & 0.12 (S) \\
 \end{tabular}
 \end{table}
 
-\subsubsection{ソースコード}
+\subsection{ソースコード}
 ソースコードは以下の公開リポジトリで閲覧可能である．\\
 \url{https://github.com/nafell/prism-lattice-ui} \\
+
+\subsection{プロンプト・生成結果の例示}
+\label{subsec:appendix_prompt_example}
+
+本付録では，Stage3（UISpec生成）のプロンプトおよびLLM生成結果の具体例を示す．
+対象試行はcase\_05（入力：「引越し先を検討中。候補地の長所短所を分類してから、最終的にトレードオフを比較したい」），
+モデル構成A（All-5-Chat）のStage3である．
+
+\subsubsection{実行条件}
+
+\begin{table}[htbp]
+\centering
+\caption{Stage3実行例の諸元（case\_05，構成A）}
+\label{tab:prompt_example_metrics}
+\begin{tabular}{ll}
+\toprule
+項目 & 値 \\
+\midrule
+使用モデル & GPT-5-Chat \\
+入力トークン数 & 2,978 \\
+出力トークン数 & 1,818 \\
+レイテンシ & 11,161\,ms \\
+\midrule
+推定コスト（入力） & 0.58\,円 \quad ($2{,}978 \times 195.20 / 10^6$) \\
+推定コスト（出力） & 2.84\,円 \quad ($1{,}818 \times 1{,}561.55 / 10^6$) \\
+推定コスト（合計） & \textbf{約3.42\,円} \\
+\bottomrule
+\multicolumn{2}{l}{\small 単価は表\ref{tab:token_prices}（2025年12月時点）による推定値．} \\
+\end{tabular}
+\end{table}
+
+\subsubsection{プロンプト全文・生成結果}
+
+プロンプト全文および生成されたUISpec（JSON）は，以下のURLで参照できる．
+
+\begin{itemize}
+  \item プロンプト全文：\\
+    \resizebox{\textwidth}{!}{
+        \url{https://github.com/nafell/prism-lattice-ui/blob/dev/docs/research/kiyou-public/case_05_a_stage3_prompt.md}
+    }
+  \item 生成結果（UISpec JSON）：\\
+    \resizebox{\textwidth}{!}{
+        \url{https://github.com/nafell/prism-lattice-ui/blob/dev/docs/research/kiyou-public/case_05_a_stage3_generatedData.json}
+    }
+\end{itemize}
 
 
 % =========================

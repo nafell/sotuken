@@ -1,0 +1,45 @@
+{
+    "version": "5.0",
+    "entities": [
+        {
+            "id": "concern",
+            "type": "concern",
+            "attributes": [
+                {
+                    "name": "text",
+                    "valueType": "string",
+                    "description": "ユーザーの元の悩みテキスト",
+                    "structuralType": "SVAL"
+                }
+            ]
+        }
+    ],
+    "metadata": {
+        "llmModel": "fallback",
+        "sections": [
+            "diverge",
+            "organize",
+            "converge"
+        ],
+        "sessionId": "batch-772ca8db-4545-405b-a707-4bc221153420-5",
+        "concernText": "引越し先を検討中。候補地の長所短所を分類してから、最終的にトレードオフを比較したい",
+        "generatedAt": 1765620555076,
+        "bottleneckType": "thought"
+    },
+    "planMetadata": {
+        "sections": [
+            "diverge",
+            "organize",
+            "converge"
+        ],
+        "concernText": "引越し先を検討中。候補地の長所短所を分類してから、最終的にトレードオフを比較したい",
+        "bottleneckType": "thought"
+    },
+    "dependencyGraph": {
+        "metadata": {
+            "version": "5.0",
+            "generatedAt": 1765620555076
+        },
+        "dependencies": []
+    }
+}

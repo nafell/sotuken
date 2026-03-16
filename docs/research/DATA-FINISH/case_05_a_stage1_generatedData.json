@@ -1,0 +1,88 @@
+{
+    "stages": {
+        "diverge": {
+            "target": "候補地の長所・短所や関連要因を網羅的に抽出する",
+            "purpose": "候補地に関する情報や特徴を幅広く発散させる",
+            "widgets": [
+                {
+                    "order": 0,
+                    "purpose": "引越し候補地に関して中心トピックから関連要素を放射状に展開し、各候補の特徴を洗い出すため",
+                    "widgetId": "mind_map",
+                    "suggestedConfig": {
+                        "centralTopic": "引越し候補地比較"
+                    },
+                    "suggestedBindings": []
+                }
+            ],
+            "description": "マインドマップを用いて各候補地の情報を中心トピックから連想的に広げることで、思考を広く展開する。",
+            "estimatedDuration": 300
+        },
+        "summary": {
+            "target": "決定内容と主要ポイントの整理",
+            "purpose": "最終結果のレビューと一歩目の意思決定確認",
+            "widgets": [
+                {
+                    "order": 0,
+                    "purpose": "全フェーズで整理した情報と意思決定を要約し、次の行動に移すための明確なアウトプットを提供する",
+                    "widgetId": "structured_summary",
+                    "suggestedConfig": {},
+                    "suggestedBindings": [
+                        {
+                            "inputPort": "data",
+                            "outputPort": "recommendation",
+                            "sourceWidgetType": "tradeoff_balance"
+                        }
+                    ]
+                }
+            ],
+            "description": "構造化サマリーを用いて比較結果や推奨の理由を整理し、行動計画を明確にする。",
+            "estimatedDuration": 300
+        },
+        "converge": {
+            "target": "候補地間の重み付けとバランス比較",
+            "purpose": "候補地間のトレードオフを評価し最終的な判断を行う",
+            "widgets": [
+                {
+                    "order": 0,
+                    "purpose": "分類された情報を元に各候補地を比較し、どちらを選ぶかの意思決定を支援するため",
+                    "widgetId": "tradeoff_balance",
+                    "suggestedConfig": {},
+                    "suggestedBindings": [
+                        {
+                            "inputPort": "items",
+                            "outputPort": "placement",
+                            "sourceWidgetType": "swot_analysis"
+                        }
+                    ]
+                }
+            ],
+            "description": "トレードオフ天秤を利用して比較項目の重要度を設定し、バランスを視覚的に判断する。",
+            "estimatedDuration": 300
+        },
+        "organize": {
+            "target": "候補地ごとに長所・短所・機会・脅威を明確化する",
+            "purpose": "発散した情報を構造化して整理する",
+            "widgets": [
+                {
+                    "order": 0,
+                    "purpose": "各候補地の長所と短所、機会と脅威を整理し比較分析しやすくするため",
+                    "widgetId": "swot_analysis",
+                    "suggestedConfig": {},
+                    "suggestedBindings": [
+                        {
+                            "inputPort": "items",
+                            "outputPort": "nodes",
+                            "sourceWidgetType": "mind_map"
+                        }
+                    ]
+                }
+            ],
+            "description": "SWOT分析で各候補地の側面を4象限に分類し、比較の基盤を作る。",
+            "estimatedDuration": 300
+        }
+    },
+    "version": "4.0",
+    "rationale": "ユーザーのボトルネックがthoughtであるため、情報の発散・分類・比較・要約という思考整理の流れに沿ったWidgetを選定。発散には関連要因を広げやすいmind_mapを、整理には比較分析に適したswot_analysisを、収束には意思決定をサポートするtradeoff_balanceを、まとめには結果を簡潔に提示するstructured_summaryを選んだ。",
+    "flowDescription": "まず候補地に関する特徴をマインドマップで幅広く発散し、その後SWOT分析を使って長所・短所などを構造的に整理。次にトレードオフ天秤で優劣を比較し、最終判断を行い、構造化サマリーで結論と理由を簡潔にまとめて次の行動へ繋げる。",
+    "totalEstimatedDuration": 1200
+}

@@ -1,0 +1,362 @@
+{
+  "extractedAt": "2026-03-16T05:58:11.501Z",
+  "sourceFile": "result-full-json-2057.json",
+  "filter": {
+    "inputId": "case_05",
+    "modelConfigs": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ]
+  },
+  "count": 12,
+  "trialLogs": [
+    {
+      "id": "9331cd5a-645d-42b2-8eb7-ee7a42689585",
+      "experimentId": "exp_1765620460044",
+      "batchId": "772ca8db-4545-405b-a707-4bc221153420",
+      "trialNumber": 5,
+      "inputId": "case_05",
+      "modelConfig": "A",
+      "modelRouterSelection": null,
+      "stage": 1,
+      "inputTokens": 4078,
+      "outputTokens": 1105,
+      "latencyMs": 8609,
+      "dslErrors": null,
+      "renderErrors": null,
+      "w2wrErrors": null,
+      "reactComponentErrors": null,
+      "jotaiAtomErrors": null,
+      "typeErrorCount": 0,
+      "referenceErrorCount": 0,
+      "cycleDetected": false,
+      "regenerated": false,
+      "runtimeError": false,
+      "generatedData": {
+        "stages": {
+          "diverge": {
+            "target": "候補地の長所・短所や関連要因を網羅的に抽出する",
+            "purpose": "候補地に関する情報や特徴を幅広く発散させる",
+            "widgets": [
+              {
+                "order": 0,
+                "purpose": "引越し候補地に関して中心トピックから関連要素を放射状に展開し、各候補の特徴を洗い出すため",
+                "widgetId": "mind_map",
+                "suggestedConfig": {
+                  "centralTopic": "引越し候補地比較"
+                },
+                "suggestedBindings": []
+              }
+            ],
+            "description": "マインドマップを用いて各候補地の情報を中心トピックから連想的に広げることで、思考を広く展開する。",
+            "estimatedDuration": 300
+          },
+          "summary": {
+            "target": "決定内容と主要ポイントの整理",
+            "purpose": "最終結果のレビューと一歩目の意思決定確認",
+            "widgets": [
+              {
+                "order": 0,
+                "purpose": "全フェーズで整理した情報と意思決定を要約し、次の行動に移すための明確なアウトプットを提供する",
+                "widgetId": "structured_summary",
+                "suggestedConfig": {},
+                "suggestedBindings": [
+                  {
+                    "inputPort": "data",
+                    "outputPort": "recommendation",
+                    "sourceWidgetType": "tradeoff_balance"
+                  }
+                ]
+              }
+            ],
+            "description": "構造化サマリーを用いて比較結果や推奨の理由を整理し、行動計画を明確にする。",
+            "estimatedDuration": 300
+          },
+          "converge": {
+            "target": "候補地間の重み付けとバランス比較",
+            "purpose": "候補地間のトレードオフを評価し最終的な判断を行う",
+            "widgets": [
+              {
+                "order": 0,
+                "purpose": "分類された情報を元に各候補地を比較し、どちらを選ぶかの意思決定を支援するため",
+                "widgetId": "tradeoff_balance",
+                "suggestedConfig": {},
+                "suggestedBindings": [
+                  {
+                    "inputPort": "items",
+                    "outputPort": "placement",
+                    "sourceWidgetType": "swot_analysis"
+                  }
+                ]
+              }
+            ],
+            "description": "トレードオフ天秤を利用して比較項目の重要度を設定し、バランスを視覚的に判断する。",
+            "estimatedDuration": 300
+          },
+          "organize": {
+            "target": "候補地ごとに長所・短所・機会・脅威を明確化する",
+            "purpose": "発散した情報を構造化して整理する",
+            "widgets": [
+              {
+                "order": 0,
+                "purpose": "各候補地の長所と短所、機会と脅威を整理し比較分析しやすくするため",
+                "widgetId": "swot_analysis",
+                "suggestedConfig": {},
+                "suggestedBindings": [
+                  {
+                    "inputPort": "items",
+                    "outputPort": "nodes",
+                    "sourceWidgetType": "mind_map"
+                  }
+                ]
+              }
+            ],
+            "description": "SWOT分析で各候補地の側面を4象限に分類し、比較の基盤を作る。",
+            "estimatedDuration": 300
+          }
+        },
+        "version": "4.0",
+        "metadata": {
+          "llmModel": "gemini-2.5-flash-lite",
+          "sessionId": "batch-772ca8db-4545-405b-a707-4bc221153420-5",
+          "generatedAt": 1765618938119,
+          "bottleneckType": "thought"
+        },
+        "rationale": "ユーザーのボトルネックがthoughtであるため、情報の発散・分類・比較・要約という思考整理の流れに沿ったWidgetを選定。発散には関連要因を広げやすいmind_mapを、整理には比較分析に適したswot_analysisを、収束には意思決定をサポートするtradeoff_balanceを、まとめには結果を簡潔に提示するstructured_summaryを選んだ。",
+        "flowDescription": "まず候補地に関する特徴をマインドマップで幅広く発散し、その後SWOT分析を使って長所・短所などを構造的に整理。次にトレードオフ天秤で優劣を比較し、最終判断を行い、構造化サマリーで結論と理由を簡潔にまとめて次の行動へ繋げる。",
+        "totalEstimatedDuration": 1200
+      },
+      "promptData": "\nあなたはCBTベースの思考整理アプリのWidget選定AIです。\nユーザーの悩みとボトルネック種別に基づいて、4ステージ分のWidgetを選定してください。\n\n## ユーザーの悩み\n引越し先を検討中。候補地の長所短所を分類してから、最終的にトレードオフを比較したい\n\n## 診断されたボトルネック種別\nthought\n\n## 利用可能なWidget\n[\n  {\n    \"id\": \"emotion_palette\",\n    \"name\": \"感情パレット\",\n    \"description\": \"感情をカラーパレットから選択し、強度を調整する。\",\n    \"stage\": \"diverge\",\n    \"metadata\": {\n      \"timing\": 0.15,\n      \"versatility\": 0.6,\n      \"complexity\": 0.3,\n      \"bottleneck\": [\n        \"emotion\",\n        \"feeling\",\n        \"mood\"\n      ]\n    },\n    \"ports\": {\n      \"inputs\": [],\n      \"outputs\": [\n        {\n          \"id\": \"selectedEmotions\",\n          \"dataType\": \"object[]\",\n          \"description\": \"選択された感情リスト {emotion: string, intensity: number}\"\n        },\n        {\n          \"id\": \"dominantEmotion\",\n          \"dataType\": \"string\",\n          \"description\": \"最も強い感情\"\n        }\n      ]\n    }\n  },\n  {\n    \"id\": \"brainstorm_cards\",\n    \"name\": \"ブレインストームカード\",\n    \"description\": \"自由にアイデアをカードとして追加し、視覚的に整理する。\",\n    \"stage\": \"diverge\",\n    \"metadata\": {\n      \"timing\": 0.1,\n      \"versatility\": 0.95,\n      \"complexity\": 0.2,\n      \"bottleneck\": [\n        \"ideation\",\n        \"brainstorm\",\n        \"collection\"\n      ]\n    },\n    \"ports\": {\n      \"inputs\": [],\n      \"outputs\": [\n        {\n          \"id\": \"cards\",\n          \"dataType\": \"object[]\",\n          \"description\": \"カードリスト {id: string, text: string, color?: string}\"\n        },\n        {\n          \"id\": \"cardCount\",\n          \"dataType\": \"number\",\n          \"description\": \"カードの総数\"\n        }\n      ]\n    }\n  },\n  {\n    \"id\": \"mind_map\",\n    \"name\": \"マインドマップ\",\n    \"description\": \"中心トピックから放射状にアイデアを展開。\",\n    \"stage\": \"diverge\",\n    \"metadata\": {\n      \"timing\": 0.2,\n      \"versatility\": 0.9,\n      \"complexity\": 0.5,\n      \"bottleneck\": [\n        \"ideation\",\n        \"association\",\n        \"exploration\"\n      ]\n    },\n    \"ports\": {\n      \"inputs\": [\n        {\n          \"id\": \"centralTopic\",\n          \"dataType\": \"string\",\n          \"description\": \"中心トピック\",\n          \"required\": false\n        }\n      ],\n      \"outputs\": [\n        {\n          \"id\": \"nodes\",\n          \"dataType\": \"object[]\",\n          \"description\": \"マインドマップのノード\"\n        },\n        {\n          \"id\": \"connections\",\n          \"dataType\": \"object[]\",\n          \"description\": \"ノード間の接続\"\n        },\n        {\n          \"id\": \"depth\",\n          \"dataType\": \"number\",\n          \"description\": \"最大の深さ\"\n        }\n      ]\n    }\n  },\n  {\n    \"id\": \"question_card_chain\",\n    \"name\": \"質問カードチェーン\",\n    \"description\": \"質問に対する回答を連鎖的に記録し、思考の流れを可視化。\",\n    \"stage\": \"diverge\",\n    \"metadata\": {\n      \"timing\": 0.2,\n      \"versatility\": 0.8,\n      \"complexity\": 0.3,\n      \"bottleneck\": [\n        \"exploration\",\n        \"questioning\",\n        \"deep-dive\"\n      ]\n    },\n    \"ports\": {\n      \"inputs\": [\n        {\n          \"id\": \"questions\",\n          \"dataType\": \"string[]\",\n          \"description\": \"提示する質問リスト\",\n          \"required\": false\n        }\n      ],\n      \"outputs\": [\n        {\n          \"id\": \"answers\",\n          \"dataType\": \"object[]\",\n          \"description\": \"回答リスト {questionId: string, answer: string}\"\n        },\n        {\n          \"id\": \"completedCount\",\n          \"dataType\": \"number\",\n          \"description\": \"回答済みの質問数\"\n        }\n      ]\n    }\n  },\n  {\n    \"id\": \"card_sorting\",\n    \"name\": \"カードソート\",\n    \"description\": \"カードをカテゴリにドラッグ&ドロップで分類。\",\n    \"stage\": \"organize\",\n    \"metadata\": {\n      \"timing\": 0.35,\n      \"versatility\": 0.85,\n      \"complexity\": 0.4,\n      \"bottleneck\": [\n        \"categorization\",\n        \"grouping\",\n        \"classification\"\n      ]\n    },\n    \"ports\": {\n      \"inputs\": [\n        {\n          \"id\": \"cards\",\n          \"dataType\": \"object[]\",\n          \"description\": \"ソートするカードリスト\",\n          \"required\": false\n        }\n      ],\n      \"outputs\": [\n        {\n          \"id\": \"categories\",\n          \"dataType\": \"object\",\n          \"description\": \"カテゴリごとのカード配置\"\n        },\n        {\n          \"id\": \"uncategorized\",\n          \"dataType\": \"object[]\",\n          \"description\": \"未分類のカード\"\n        }\n      ]\n    }\n  },\n  {\n    \"id\": \"matrix_placement\",\n    \"name\": \"マトリクス配置\",\n    \"description\": \"2軸のマトリクス上にアイテムを配置し、位置関係を可視化。\",\n    \"stage\": \"organize\",\n    \"metadata\": {\n      \"timing\": 0.5,\n      \"versatility\": 0.85,\n      \"complexity\": 0.5,\n      \"bottleneck\": [\n        \"prioritization\",\n        \"comparison\",\n        \"positioning\"\n      ]\n    },\n    \"ports\": {\n      \"inputs\": [\n        {\n          \"id\": \"items\",\n          \"dataType\": \"object[]\",\n          \"description\": \"配置するアイテムリスト\",\n          \"required\": false\n        },\n        {\n          \"id\": \"axisLabels\",\n          \"dataType\": \"object\",\n          \"description\": \"軸のラベル {xAxis: {low: string, high: string}, yAxis: {low: string, high: string}}\",\n          \"required\": false\n        }\n      ],\n      \"outputs\": [\n        {\n          \"id\": \"placements\",\n          \"dataType\": \"object[]\",\n          \"description\": \"アイテムの配置情報 {id: string, x: number, y: number}\"\n        },\n        {\n          \"id\": \"quadrantCounts\",\n          \"dataType\": \"object\",\n          \"description\": \"各象限のアイテム数\"\n        }\n      ]\n    }\n  },\n  {\n    \"id\": \"dependency_mapping\",\n    \"name\": \"依存関係マップ\",\n    \"description\": \"タスクや要素間の依存関係をノードとエッジで可視化。クリティカルパスや循環依存を自動検出。\",\n    \"stage\": \"organize\",\n    \"metadata\": {\n      \"timing\": 0.4,\n      \"versatility\": 0.8,\n      \"complexity\": 0.7,\n      \"bottleneck\": [\n        \"dependency\",\n        \"sequence\",\n        \"blocking\",\n        \"ordering\"\n      ]\n    },\n    \"ports\": {\n      \"inputs\": [\n        {\n          \"id\": \"nodes\",\n          \"dataType\": \"object[]\",\n          \"description\": \"ノードリスト。各ノードは {id: string, label: string, x?: number, y?: number} の形式。\",\n          \"required\": false\n        }\n      ],\n      \"outputs\": [\n        {\n          \"id\": \"edges\",\n          \"dataType\": \"object[]\",\n          \"description\": \"接続エッジリスト。各エッジは {sourceId: string, targetId: string, type: string} の形式。\"\n        },\n        {\n          \"id\": \"criticalPath\",\n          \"dataType\": \"string[]\",\n          \"description\": \"クリティカルパス（最長依存チェーン）のノードID配列\"\n        },\n        {\n          \"id\": \"hasLoop\",\n          \"dataType\": \"boolean\",\n          \"description\": \"循環依存が存在するかどうか\"\n        }\n      ]\n    }\n  },\n  {\n    \"id\": \"swot_analysis\",\n    \"name\": \"SWOT分析\",\n    \"description\": \"強み(Strengths)・弱み(Weaknesses)・機会(Opportunities)・脅威(Threats)の4象限で状況を整理。\",\n    \"stage\": \"organize\",\n    \"metadata\": {\n      \"timing\": 0.3,\n      \"versatility\": 0.9,\n      \"complexity\": 0.6,\n      \"bottleneck\": [\n        \"analysis\",\n        \"categorization\",\n        \"evaluation\",\n        \"strategy\"\n      ]\n    },\n    \"ports\": {\n      \"inputs\": [\n        {\n          \"id\": \"items\",\n          \"dataType\": \"object[]\",\n          \"description\": \"SWOTアイテムリスト。各アイテムは {text: string, quadrant: string} の形式。\",\n          \"required\": false\n        }\n      ],\n      \"outputs\": [\n        {\n          \"id\": \"placement\",\n          \"dataType\": \"object\",\n          \"description\": \"象限ごとのアイテム配置 {strengths: Item[], weaknesses: Item[], opportunities: Item[], threats: Item[]}\"\n        },\n        {\n          \"id\": \"counts\",\n          \"dataType\": \"object\",\n          \"description\": \"各象限のアイテム数\"\n        },\n        {\n          \"id\": \"isComplete\",\n          \"dataType\": \"boolean\",\n          \"description\": \"全象限に最低1つ以上のアイテムがあるかどうか\"\n        }\n      ]\n    }\n  },\n  {\n    \"id\": \"timeline_slider\",\n    \"name\": \"タイムラインスライダー\",\n    \"description\": \"時間軸に沿ってイベントや計画を配置。\",\n    \"stage\": \"organize\",\n    \"metadata\": {\n      \"timing\": 0.5,\n      \"versatility\": 0.7,\n      \"complexity\": 0.4,\n      \"bottleneck\": [\n        \"planning\",\n        \"scheduling\",\n        \"timeline\"\n      ]\n    },\n    \"ports\": {\n      \"inputs\": [\n        {\n          \"id\": \"events\",\n          \"dataType\": \"object[]\",\n          \"description\": \"イベントリスト\",\n          \"required\": false\n        }\n      ],\n      \"outputs\": [\n        {\n          \"id\": \"timeline\",\n          \"dataType\": \"object[]\",\n          \"description\": \"時系列に並んだイベント\"\n        },\n        {\n          \"id\": \"currentPosition\",\n          \"dataType\": \"number\",\n          \"description\": \"現在のスライダー位置\"\n        }\n      ]\n    }\n  },\n  {\n    \"id\": \"priority_slider_grid\",\n    \"name\": \"優先度スライダー\",\n    \"description\": \"複数の項目に対してスライダーで優先度を設定。\",\n    \"stage\": \"converge\",\n    \"metadata\": {\n      \"timing\": 0.7,\n      \"versatility\": 0.75,\n      \"complexity\": 0.3,\n      \"bottleneck\": [\n        \"prioritization\",\n        \"ranking\",\n        \"scoring\"\n      ]\n    },\n    \"ports\": {\n      \"inputs\": [\n        {\n          \"id\": \"items\",\n          \"dataType\": \"object[]\",\n          \"description\": \"優先度を設定する項目リスト\",\n          \"required\": false\n        }\n      ],\n      \"outputs\": [\n        {\n          \"id\": \"priorities\",\n          \"dataType\": \"object[]\",\n          \"description\": \"優先度情報 {id: string, label: string, priority: number}\"\n        },\n        {\n          \"id\": \"ranking\",\n          \"dataType\": \"string[]\",\n          \"description\": \"優先度順のID配列\"\n        }\n      ]\n    }\n  },\n  {\n    \"id\": \"tradeoff_balance\",\n    \"name\": \"トレードオフ天秤\",\n    \"description\": \"複数の選択肢を重み付けし、バランスを視覚的に表示。天秤のメタファーで直感的に比較可能。\",\n    \"stage\": \"converge\",\n    \"metadata\": {\n      \"timing\": 0.6,\n      \"versatility\": 0.7,\n      \"complexity\": 0.5,\n      \"bottleneck\": [\n        \"comparison\",\n        \"decision\",\n        \"tradeoff\"\n      ]\n    },\n    \"ports\": {\n      \"inputs\": [\n        {\n          \"id\": \"items\",\n          \"dataType\": \"object[]\",\n          \"description\": \"比較対象の項目リスト {text: string, side: \\\"left\\\"|\\\"right\\\", weight?: number}\",\n          \"required\": false\n        }\n      ],\n      \"outputs\": [\n        {\n          \"id\": \"balance\",\n          \"dataType\": \"number\",\n          \"description\": \"バランススコア（-100〜100）\"\n        },\n        {\n          \"id\": \"direction\",\n          \"dataType\": \"string\",\n          \"description\": \"天秤の傾き方向\"\n        },\n        {\n          \"id\": \"recommendation\",\n          \"dataType\": \"string\",\n          \"description\": \"判断の推奨テキスト\"\n        }\n      ]\n    }\n  },\n  {\n    \"id\": \"structured_summary\",\n    \"name\": \"構造化サマリー\",\n    \"description\": \"入力された情報を構造化して要約表示。\",\n    \"stage\": \"summary\",\n    \"metadata\": {\n      \"timing\": 0.9,\n      \"versatility\": 0.6,\n      \"complexity\": 0.2,\n      \"bottleneck\": [\n        \"summary\",\n        \"conclusion\",\n        \"synthesis\"\n      ]\n    },\n    \"ports\": {\n      \"inputs\": [\n        {\n          \"id\": \"data\",\n          \"dataType\": \"object\",\n          \"description\": \"要約対象のデータ\",\n          \"required\": false\n        }\n      ],\n      \"outputs\": [\n        {\n          \"id\": \"summary\",\n          \"dataType\": \"string\",\n          \"description\": \"生成されたサマリーテキスト\"\n        },\n        {\n          \"id\": \"keyPoints\",\n          \"dataType\": \"string[]\",\n          \"description\": \"主要ポイントのリスト\"\n        }\n      ]\n    }\n  }\n]\n\n## タスク\n4つのステージ（diverge, organize, converge, summary）それぞれに最適なWidgetを選定してください。\n\n### 各ステージの役割\n- **diverge**: 発散フェーズ。アイデア・感情・考えを広げる。ブレインストーミング、感情の洗い出しなど。\n- **organize**: 整理フェーズ。発散した要素を分類・構造化する。カード分類、マトリクス配置など。\n- **converge**: 収束フェーズ。優先順位付け、決断、アクション化。スライダー、決断バランスなど。\n- **summary**: まとめフェーズ。整理結果のレビューと次のステップ確認。\n\n### 選定時の考慮事項\n1. **ボトルネック種別との適合性**: Widget定義のmetadata.bottleneck値を参照\n2. **ステージとの適合性**: Widget定義のstage値を参照\n3. **complexity値**: 1ステージあたりの総complexityが0.8以下が望ましい\n4. **timing値**: ステージ順序との整合性（early→middle→late）\n5. **versatility値**: 汎用性の高いWidgetは多くの場面で有効\n\n### 制約\n- 各ステージに最低1つ、最大3つのWidgetを選定\n- 同一Widget種別は1ステージにつき1回まで\n- summary ステージには summary_view または stage_summary を含める\n\n## 出力形式\n以下のJSON形式で出力してください：\n\n```json\n{\n  \"version\": \"4.0\",\n  \"stages\": {\n    \"diverge\": {\n      \"widgets\": [\n        {\n          \"widgetId\": \"Widget種別ID\",\n          \"purpose\": \"このWidgetを選んだ目的\",\n          \"order\": 0,\n          \"suggestedConfig\": {\n            \"任意の設定キー\": \"値\"\n          },\n          \"suggestedBindings\": [\n            {\n              \"sourceWidgetType\": \"前Widgetの種別\",\n              \"outputPort\": \"出力ポートID\",\n              \"inputPort\": \"入力ポートID\"\n            }\n          ]\n        }\n      ],\n      \"purpose\": \"このステージの目的\",\n      \"target\": \"ユーザーの悩みに対してこのステージで取り組む対象\",\n      \"description\": \"このステージでの具体的なアプローチ\",\n      \"estimatedDuration\": 300\n    },\n    \"organize\": { ... },\n    \"converge\": { ... },\n    \"summary\": { ... }\n  },\n  \"rationale\": \"全体的な選定理由\",\n  \"flowDescription\": \"4ステージを通じた思考整理フローの説明\",\n  \"totalEstimatedDuration\": 1200,\n  \"metadata\": {\n    \"generatedAt\": 1765618938119,\n    \"llmModel\": \"gemini-2.5-flash-lite\",\n    \"bottleneckType\": \"thought\"\n  }\n}\n```\n",
+      "inputVariables": {
+        "concernText": "引越し先を検討中。候補地の長所短所を分類してから、最終的にトレードオフを比較したい",
+        "bottleneckType": "thought"
+      },
+      "serverValidatedAt": null,
+      "timestamp": "2025-12-13T10:09:08.233Z"
+    },
+    {
+      "id": "87d7be4c-3631-4bbc-88e7-9cb9d4000f33",
+      "experimentId": "exp_1765620460044",
+      "batchId": "772ca8db-4545-405b-a707-4bc221153420",
+      "trialNumber": 5,
+      "inputId": "case_05",
+      "modelConfig": "A",
+      "modelRouterSelection": null,
+      "stage": 2,
+      "inputTokens": 1687,
+      "outputTokens": 868,
+      "latencyMs": 6840,
+      "dslErrors": null,
+      "renderErrors": null,
+      "w2wrErrors": null,
+      "reactComponentErrors": null,
+      "jotaiAtomErrors": null,
+      "typeErrorCount": 0,
+      "referenceErrorCount": 0,
+      "cycleDetected": false,
+      "regenerated": false,
+      "runtimeError": false,
+      "generatedData": {
+        "version": "5.0",
+        "entities": [
+          {
+            "id": "concern",
+            "type": "concern",
+            "attributes": [
+              {
+                "name": "text",
+                "valueType": "string",
+                "description": "ユーザーの元の悩みテキスト",
+                "structuralType": "SVAL"
+              }
+            ]
+          }
+        ],
+        "metadata": {
+          "llmModel": "fallback",
+          "sections": [
+            "diverge",
+            "organize",
+            "converge"
+          ],
+          "sessionId": "batch-772ca8db-4545-405b-a707-4bc221153420-5",
+          "concernText": "引越し先を検討中。候補地の長所短所を分類してから、最終的にトレードオフを比較したい",
+          "generatedAt": 1765620555076,
+          "bottleneckType": "thought"
+        },
+        "planMetadata": {
+          "sections": [
+            "diverge",
+            "organize",
+            "converge"
+          ],
+          "concernText": "引越し先を検討中。候補地の長所短所を分類してから、最終的にトレードオフを比較したい",
+          "bottleneckType": "thought"
+        },
+        "dependencyGraph": {
+          "metadata": {
+            "version": "5.0",
+            "generatedAt": 1765620555076
+          },
+          "dependencies": []
+        }
+      },
+      "promptData": "\n# Role\nYou are a data structure generator for a thought-organization app.\nGenerate an ORS (Object-Relational Schema) defining data flow across 3 sections.\n\n# CRITICAL: DependencyGraph is MANDATORY\nYou MUST define dependencies between sections:\n- diverge_data.output → organize_data.input\n- organize_data.output → converge_data.input\n\n# Input\n\n## User Concern\n引越し先を検討中。候補地の長所短所を分類してから、最終的にトレードオフを比較したい\n\n## Bottleneck Type\nthought\n\n## Selected Widgets\n\n### Diverge Section\n1. mind_map - 引越し候補地に関して中心トピックから関連要素を放射状に展開し、各候補の特徴を洗い出すため\n\n### Organize Section\n1. swot_analysis - 各候補地の長所と短所、機会と脅威を整理し比較分析しやすくするため\n\n### Converge Section\n1. tradeoff_balance - 分類された情報を元に各候補地を比較し、どちらを選ぶかの意思決定を支援するため\n\n## Widget Port Information\n[\n  {\n    \"widgetId\": \"mind_map\",\n    \"purpose\": \"引越し候補地に関して中心トピックから関連要素を放射状に展開し、各候補の特徴を洗い出すため\",\n    \"inputs\": [\n      {\n        \"id\": \"centralTopic\",\n        \"dataType\": \"string\",\n        \"description\": \"中心トピック\",\n        \"required\": false\n      }\n    ],\n    \"outputs\": [\n      {\n        \"id\": \"nodes\",\n        \"dataType\": \"object[]\",\n        \"description\": \"マインドマップのノード\"\n      },\n      {\n        \"id\": \"connections\",\n        \"dataType\": \"object[]\",\n        \"description\": \"ノード間の接続\"\n      },\n      {\n        \"id\": \"depth\",\n        \"dataType\": \"number\",\n        \"description\": \"最大の深さ\"\n      }\n    ]\n  },\n  {\n    \"widgetId\": \"swot_analysis\",\n    \"purpose\": \"各候補地の長所と短所、機会と脅威を整理し比較分析しやすくするため\",\n    \"inputs\": [\n      {\n        \"id\": \"items\",\n        \"dataType\": \"object[]\",\n        \"description\": \"SWOTアイテムリスト。各アイテムは {text: string, quadrant: string} の形式。\",\n        \"required\": false\n      }\n    ],\n    \"outputs\": [\n      {\n        \"id\": \"placement\",\n        \"dataType\": \"object\",\n        \"description\": \"象限ごとのアイテム配置 {strengths: Item[], weaknesses: Item[], opportunities: Item[], threats: Item[]}\"\n      },\n      {\n        \"id\": \"counts\",\n        \"dataType\": \"object\",\n        \"description\": \"各象限のアイテム数\"\n      },\n      {\n        \"id\": \"isComplete\",\n        \"dataType\": \"boolean\",\n        \"description\": \"全象限に最低1つ以上のアイテムがあるかどうか\"\n      }\n    ]\n  },\n  {\n    \"widgetId\": \"tradeoff_balance\",\n    \"purpose\": \"分類された情報を元に各候補地を比較し、どちらを選ぶかの意思決定を支援するため\",\n    \"inputs\": [\n      {\n        \"id\": \"items\",\n        \"dataType\": \"object[]\",\n        \"description\": \"比較対象の項目リスト {text: string, side: \\\"left\\\"|\\\"right\\\", weight?: number}\",\n        \"required\": false\n      }\n    ],\n    \"outputs\": [\n      {\n        \"id\": \"balance\",\n        \"dataType\": \"number\",\n        \"description\": \"バランススコア（-100〜100）\"\n      },\n      {\n        \"id\": \"direction\",\n        \"dataType\": \"string\",\n        \"description\": \"天秤の傾き方向\"\n      },\n      {\n        \"id\": \"recommendation\",\n        \"dataType\": \"string\",\n        \"description\": \"判断の推奨テキスト\"\n      }\n    ]\n  }\n]\n\n# Output JSON Structure\n\nGenerate valid JSON with this structure:\n- version: \"5.0\"\n- planMetadata: { concernText, bottleneckType, sections }\n- entities: Array of Entity objects\n- dependencyGraph: { dependencies: Array of Dependency objects }\n\n## Entity Structure\n- id: string (e.g., \"diverge_data\", \"organize_data\", \"converge_data\")\n- type: string (\"concern\" | \"section_data\")\n- attributes: Array of Attribute objects\n\n## Attribute Types (structuralType)\n- SVAL: Scalar value (string, number, boolean)\n- ARRY: Array\n- PNTR: Pointer to another entity.attribute (use \"ref\" field)\n- DICT: Dictionary/Object\n\n## Dependency Structure (REQUIRED)\n{\n  \"id\": \"dep_diverge_to_organize\",\n  \"source\": \"diverge_data.output\",\n  \"target\": \"organize_data.input\",\n  \"mechanism\": \"update\",\n  \"relationship\": { \"type\": \"passthrough\" }\n}\n\n# Minimal Example\n{\n  \"version\": \"5.0\",\n  \"planMetadata\": {\n    \"concernText\": \"引越し先を検討中。候補地の長所短所を分類してから、最終的にトレードオフを比較したい\",\n    \"bottleneckType\": \"thought\",\n    \"sections\": [\"diverge\", \"organize\", \"converge\"]\n  },\n  \"entities\": [\n    { \"id\": \"concern\", \"type\": \"concern\", \"attributes\": [{ \"name\": \"text\", \"structuralType\": \"SVAL\", \"valueType\": \"string\" }] },\n    { \"id\": \"diverge_data\", \"type\": \"section_data\", \"attributes\": [{ \"name\": \"output\", \"structuralType\": \"ARRY\", \"itemType\": \"DICT\" }] },\n    { \"id\": \"organize_data\", \"type\": \"section_data\", \"attributes\": [\n      { \"name\": \"input\", \"structuralType\": \"PNTR\", \"ref\": \"diverge_data.output\" },\n      { \"name\": \"output\", \"structuralType\": \"DICT\", \"itemType\": \"ARRY\" }\n    ]},\n    { \"id\": \"converge_data\", \"type\": \"section_data\", \"attributes\": [\n      { \"name\": \"input\", \"structuralType\": \"PNTR\", \"ref\": \"organize_data.output\" },\n      { \"name\": \"output\", \"structuralType\": \"ARRY\", \"itemType\": \"DICT\" }\n    ]}\n  ],\n  \"dependencyGraph\": {\n    \"dependencies\": [\n      { \"id\": \"dep_diverge_to_organize\", \"source\": \"diverge_data.output\", \"target\": \"organize_data.input\", \"mechanism\": \"update\", \"relationship\": { \"type\": \"passthrough\" } },\n      { \"id\": \"dep_organize_to_converge\", \"source\": \"organize_data.output\", \"target\": \"converge_data.input\", \"mechanism\": \"update\", \"relationship\": { \"type\": \"javascript\", \"javascript\": \"Object.values(source).flat()\" } }\n    ],\n    \"metadata\": { \"version\": \"5.0\" }\n  },\n  \"metadata\": { \"generatedAt\": 1765618938119, \"sessionId\": \"batch-772ca8db-4545-405b-a707-4bc221153420-5\" }\n}\n",
+      "inputVariables": {
+        "concernText": "引越し先を検討中。候補地の長所短所を分類してから、最終的にトレードオフを比較したい",
+        "bottleneckType": "thought",
+        "widgetSelectionResult": "(omitted for brevity)"
+      },
+      "serverValidatedAt": null,
+      "timestamp": "2025-12-13T10:09:15.079Z"
+    },
+    {
+      "id": "b5f2d4c1-b664-4568-ace2-1173a11a04bf",
+      "experimentId": "exp_1765620460044",
+      "batchId": "772ca8db-4545-405b-a707-4bc221153420",
+      "trialNumber": 5,
+      "inputId": "case_05",
+      "modelConfig": "A",
+      "modelRouterSelection": null,
+      "stage": 3,
+      "inputTokens": 2978,
+      "outputTokens": 1818,
+      "latencyMs": 11161,
+      "dslErrors": null,
+      "renderErrors": [
+        "VALIDATION_ERROR: Cannot read properties of undefined (reading 'map')"
+      ],
+      "w2wrErrors": null,
+      "reactComponentErrors": [
+        "RENDER_EXCEPTION"
+      ],
+      "jotaiAtomErrors": null,
+      "typeErrorCount": 0,
+      "referenceErrorCount": 0,
+      "cycleDetected": false,
+      "regenerated": false,
+      "runtimeError": false,
+      "generatedData": {
+        "stage": "plan",
+        "layout": {
+          "type": "sectioned",
+          "sectionGap": 24,
+          "sectionOrder": [
+            "diverge",
+            "organize",
+            "converge"
+          ]
+        },
+        "version": "5.0",
+        "metadata": {
+          "llmModel": "fallback",
+          "generatedAt": 1765620566243
+        },
+        "sections": {
+          "diverge": {
+            "header": {
+              "title": "発散",
+              "description": "アイデアを広げましょう"
+            },
+            "widgets": [
+              {
+                "id": "mind_map_diverge_0",
+                "config": {
+                  "centralTopic": "引越し候補地比較"
+                },
+                "metadata": {
+                  "purpose": "引越し候補地に関して中心トピックから関連要素を放射状に展開し、各候補の特徴を洗い出すため"
+                },
+                "position": 0,
+                "component": "mind_map",
+                "dataBindings": []
+              }
+            ]
+          },
+          "converge": {
+            "header": {
+              "title": "収束",
+              "description": "優先順位をつけましょう"
+            },
+            "widgets": [
+              {
+                "id": "tradeoff_balance_converge_0",
+                "config": {},
+                "metadata": {
+                  "purpose": "分類された情報を元に各候補地を比較し、どちらを選ぶかの意思決定を支援するため"
+                },
+                "position": 0,
+                "component": "tradeoff_balance",
+                "dataBindings": []
+              }
+            ]
+          },
+          "organize": {
+            "header": {
+              "title": "整理",
+              "description": "情報を整理しましょう"
+            },
+            "widgets": [
+              {
+                "id": "swot_analysis_organize_0",
+                "config": {},
+                "metadata": {
+                  "purpose": "各候補地の長所と短所、機会と脅威を整理し比較分析しやすくするため"
+                },
+                "position": 0,
+                "component": "swot_analysis",
+                "dataBindings": []
+              }
+            ]
+          }
+        },
+        "sessionId": "batch-772ca8db-4545-405b-a707-4bc221153420-5",
+        "reactiveBindings": {
+          "bindings": [
+            {
+              "id": "rb_diverge_to_organize",
+              "source": "mind_map_diverge_0.nodes",
+              "target": "swot_analysis_organize_0.items",
+              "enabled": true,
+              "mechanism": "update",
+              "updateMode": "realtime",
+              "description": "発散→整理のデータ連携",
+              "relationship": {
+                "type": "passthrough"
+              }
+            },
+            {
+              "id": "rb_organize_to_converge",
+              "source": "swot_analysis_organize_0.placement",
+              "target": "tradeoff_balance_converge_0.items",
+              "enabled": true,
+              "mechanism": "update",
+              "debounceMs": 300,
+              "updateMode": "debounced",
+              "description": "整理→収束のデータ連携",
+              "relationship": {
+                "type": "javascript",
+                "javascript": "Object.values(source).flat()"
+              }
+            }
+          ],
+          "metadata": {
+            "version": "4.0",
+            "generatedAt": 1765620566243
+          }
+        }
+      },
+      "promptData": "\n# Role\nYou are a UI specification generator for a thought-organization app.\nGenerate a PlanUISpec with dynamic content and widget connections.\n\n# CRITICAL REQUIREMENTS (READ FIRST)\n\n## 1. generatedValue - MANDATORY for widgets with generationHints\n\nFor EACH widget in \"Widget Definitions\" that has \"generationHints\":\n- Generate content in config using the field name from generationHints\n- Content MUST relate to the user's concern: \"引越し先を検討中。候補地の長所短所を分類してから、最終的にトレードオフを比較したい\"\n- Mark ALL items with isGenerated: true\n\nCHECKLIST (verify before output):\n[ ] swot_analysis: config.sampleItems (samples, 4-4 items)\n[ ] tradeoff_balance: config.items (samples, 2-4 items)\n\nExample for brainstorm_cards:\n\"config\": {\n  \"sampleCards\": {\n    \"items\": [\n      { \"id\": \"sample_1\", \"text\": \"Specific idea related to 引越し先を検討中。候補地の長所短所を分類してから、最終的にトレードオフを比較したい\", \"isGenerated\": true },\n      { \"id\": \"sample_2\", \"text\": \"Another relevant thought\", \"isGenerated\": true }\n    ],\n    \"isGenerated\": true\n  }\n}\n\nExample for emotion_palette:\n\"config\": {\n  \"emotions\": [\n    { \"id\": \"emotion_1\", \"label\": \"不安\", \"color\": \"#9370DB\", \"category\": \"negative\", \"isGenerated\": true },\n    { \"id\": \"emotion_2\", \"label\": \"焦り\", \"color\": \"#FF6B6B\", \"category\": \"negative\", \"isGenerated\": true }\n  ]\n}\n\n## 2. ReactiveBindings - MANDATORY when enableReactivity=true\n\nDefine widget-to-widget connections across sections:\n\nREQUIRED CONNECTIONS:\n- mind_map_0.nodes → swot_analysis_0.items (diverge→organize)\n- mind_map_0.connections → swot_analysis_0.items (diverge→organize)\n- mind_map_0.depth → swot_analysis_0.items (diverge→organize)\n- swot_analysis_0.placement → tradeoff_balance_0.items (organize→converge)\n- swot_analysis_0.counts → tradeoff_balance_0.items (organize→converge)\n- swot_analysis_0.isComplete → tradeoff_balance_0.items (organize→converge)\n\nFormat: \"widgetId.portId\" (e.g., \"brainstorm_cards_0.cards\")\n\nExample binding (diverge → organize):\n{\n  \"id\": \"rb_diverge_to_organize\",\n  \"source\": \"brainstorm_cards_0.cards\",\n  \"target\": \"card_sorting_0.cards\",\n  \"mechanism\": \"update\",\n  \"relationship\": { \"type\": \"passthrough\" },\n  \"updateMode\": \"realtime\"\n}\n\nExample binding (organize → converge with transform):\n{\n  \"id\": \"rb_organize_to_converge\",\n  \"source\": \"card_sorting_0.categories\",\n  \"target\": \"priority_slider_grid_0.items\",\n  \"mechanism\": \"update\",\n  \"relationship\": {\n    \"type\": \"javascript\",\n    \"javascript\": \"Object.values(source).flat().map(item => ({id: item.id, label: item.text, priority: 50}))\"\n  },\n  \"updateMode\": \"debounced\",\n  \"debounceMs\": 300\n}\n\n# Input Context\n\n## User Concern\n引越し先を検討中。候補地の長所短所を分類してから、最終的にトレードオフを比較したい\n\n## Selected Widgets by Section\n\n### Diverge Section\n1. mind_map - 引越し候補地に関して中心トピックから関連要素を放射状に展開し、各候補の特徴を洗い出すため\nPurpose: 候補地に関する情報や特徴を幅広く発散させる\nTarget: 候補地の長所・短所や関連要因を網羅的に抽出する\nPorts:\nmind_map (complexity: 0.5):\n  IN: centralTopic (string)\n  OUT: nodes (object[])\n  OUT: connections (object[])\n  OUT: depth (number)\n\n### Organize Section\n1. swot_analysis - 各候補地の長所と短所、機会と脅威を整理し比較分析しやすくするため\nPurpose: 発散した情報を構造化して整理する\nTarget: 候補地ごとに長所・短所・機会・脅威を明確化する\nPorts:\nswot_analysis (complexity: 0.6):\n  IN: items (object[])\n  OUT: placement (object)\n  OUT: counts (object)\n  OUT: isComplete (boolean)\n  GENERATE: config.sampleItems\n\n### Converge Section\n1. tradeoff_balance - 分類された情報を元に各候補地を比較し、どちらを選ぶかの意思決定を支援するため\nPurpose: 候補地間のトレードオフを評価し最終的な判断を行う\nTarget: 候補地間の重み付けとバランス比較\nPorts:\ntradeoff_balance (complexity: 0.5):\n  IN: items (object[])\n  OUT: balance (number)\n  OUT: direction (string)\n  OUT: recommendation (string)\n  GENERATE: config.items\n\n## Widget Definitions (with generationHints - IMPORTANT)\n{\n  \"diverge\": [\n    {\n      \"id\": \"mind_map\",\n      \"name\": \"マインドマップ\",\n      \"description\": \"中心トピックから放射状にアイデアを展開。\",\n      \"complexity\": 0.5,\n      \"inputs\": [\n        {\n          \"id\": \"centralTopic\",\n          \"dataType\": \"string\",\n          \"description\": \"中心トピック\",\n          \"required\": false\n        }\n      ],\n      \"outputs\": [\n        {\n          \"id\": \"nodes\",\n          \"dataType\": \"object[]\",\n          \"description\": \"マインドマップのノード\"\n        },\n        {\n          \"id\": \"connections\",\n          \"dataType\": \"object[]\",\n          \"description\": \"ノード間の接続\"\n        },\n        {\n          \"id\": \"depth\",\n          \"dataType\": \"number\",\n          \"description\": \"最大の深さ\"\n        }\n      ]\n    }\n  ],\n  \"organize\": [\n    {\n      \"id\": \"swot_analysis\",\n      \"name\": \"SWOT分析\",\n      \"description\": \"強み(Strengths)・弱み(Weaknesses)・機会(Opportunities)・脅威(Threats)の4象限で状況を整理。\",\n      \"complexity\": 0.6,\n      \"inputs\": [\n        {\n          \"id\": \"items\",\n          \"dataType\": \"object[]\",\n          \"description\": \"SWOTアイテムリスト。各アイテムは {text: string, quadrant: string} の形式。\",\n          \"required\": false\n        }\n      ],\n      \"outputs\": [\n        {\n          \"id\": \"placement\",\n          \"dataType\": \"object\",\n          \"description\": \"象限ごとのアイテム配置 {strengths: Item[], weaknesses: Item[], opportunities: Item[], threats: Item[]}\"\n        },\n        {\n          \"id\": \"counts\",\n          \"dataType\": \"object\",\n          \"description\": \"各象限のアイテム数\"\n        },\n        {\n          \"id\": \"isComplete\",\n          \"dataType\": \"boolean\",\n          \"description\": \"全象限に最低1つ以上のアイテムがあるかどうか\"\n        }\n      ],\n      \"generationHints\": {\n        \"samples\": {\n          \"field\": \"sampleItems\",\n          \"instruction\": \"悩みに関連するSWOT要素を各象限1つずつ（計4つ）生成してください。ユーザーの具体的な状況に合わせた内容にしてください。\",\n          \"count\": {\n            \"min\": 4,\n            \"max\": 4\n          },\n          \"schema\": {\n            \"id\": \"string (sample_s, sample_w, sample_o, sample_t)\",\n            \"text\": \"string (日本語、15-30文字)\",\n            \"quadrant\": \"string (strengths|weaknesses|opportunities|threats)\"\n          }\n        }\n      }\n    }\n  ],\n  \"converge\": [\n    {\n      \"id\": \"tradeoff_balance\",\n      \"name\": \"トレードオフ天秤\",\n      \"description\": \"複数の選択肢を重み付けし、バランスを視覚的に表示。天秤のメタファーで直感的に比較可能。\",\n      \"complexity\": 0.5,\n      \"inputs\": [\n        {\n          \"id\": \"items\",\n          \"dataType\": \"object[]\",\n          \"description\": \"比較対象の項目リスト {text: string, side: \\\"left\\\"|\\\"right\\\", weight?: number}\",\n          \"required\": false\n        }\n      ],\n      \"outputs\": [\n        {\n          \"id\": \"balance\",\n          \"dataType\": \"number\",\n          \"description\": \"バランススコア（-100〜100）\"\n        },\n        {\n          \"id\": \"direction\",\n          \"dataType\": \"string\",\n          \"description\": \"天秤の傾き方向\"\n        },\n        {\n          \"id\": \"recommendation\",\n          \"dataType\": \"string\",\n          \"description\": \"判断の推奨テキスト\"\n        }\n      ],\n      \"generationHints\": {\n        \"samples\": {\n          \"field\": \"items\",\n          \"instruction\": \"悩みに関連する比較対象を生成してください。左右それぞれ1-2個ずつ、計2-4個を生成します。ユーザーの具体的な状況に応じた選択肢を示してください。\",\n          \"count\": {\n            \"min\": 2,\n            \"max\": 4\n          },\n          \"schema\": {\n            \"id\": \"string (item_1, item_2, ...)\",\n            \"text\": \"string (日本語、10-20文字)\",\n            \"side\": \"string (left|right)\",\n            \"weight\": \"number (optional, 30-70程度の初期値)\"\n          }\n        }\n      }\n    }\n  ]\n}\n\n## ORS Data Structure\n{\n  \"version\": \"5.0\",\n  \"planMetadata\": {\n    \"concernText\": \"引越し先を検討中。候補地の長所短所を分類してから、最終的にトレードオフを比較したい\",\n    \"bottleneckType\": \"thought\",\n    \"sections\": [\n      \"diverge\",\n      \"organize\",\n      \"converge\"\n    ]\n  },\n  \"entities\": [\n    {\n      \"id\": \"concern\",\n      \"type\": \"concern\",\n      \"attributes\": [\n        {\n          \"name\": \"text\",\n          \"structuralType\": \"SVAL\",\n          \"valueType\": \"string\",\n          \"description\": \"ユーザーの元の悩みテキスト\"\n        }\n      ]\n    }\n  ],\n  \"dependencyGraph\": {\n    \"dependencies\": [],\n    \"metadata\": {\n      \"version\": \"5.0\",\n      \"generatedAt\": 1765620555076\n    }\n  },\n  \"metadata\": {\n    \"generatedAt\": 1765620555076,\n    \"llmModel\": \"fallback\",\n    \"sessionId\": \"batch-772ca8db-4545-405b-a707-4bc221153420-5\",\n    \"concernText\": \"引越し先を検討中。候補地の長所短所を分類してから、最終的にトレードオフを比較したい\",\n    \"bottleneckType\": \"thought\",\n    \"sections\": [\n      \"diverge\",\n      \"organize\",\n      \"converge\"\n    ]\n  }\n}\n\n# Output JSON Structure\n\nGenerate valid JSON with:\n- version: \"5.0\"\n- sessionId: \"batch-772ca8db-4545-405b-a707-4bc221153420-5\"\n- stage: \"plan\"\n- sections: { diverge, organize, converge } - each with header and widgets array\n- reactiveBindings: { bindings: [...] } - widget connections (REQUIRED when enableReactivity=true)\n- layout: { type: \"sectioned\", sectionGap: 24, sectionOrder: [\"diverge\", \"organize\", \"converge\"] }\n\n## Widget Structure\n{\n  \"id\": \"widgetType_sectionIndex\" (e.g., \"brainstorm_cards_0\"),\n  \"component\": \"widgetType\",\n  \"position\": 0,\n  \"layout\": \"full\",\n  \"config\": { /* include generatedValue here if widget has generationHints */ },\n  \"dataBindings\": [{ \"portId\": \"...\", \"entityAttribute\": \"entity.attribute\", \"direction\": \"in|out\" }],\n  \"metadata\": { \"purpose\": \"...\" }\n}\n\n# Rules Reference\n\n## updateMode Selection\n- \"realtime\": Both widgets have complexity <= 0.3\n- \"debounced\" (300ms): Either widget has complexity > 0.3\n\n## relationship.type Selection\n- \"passthrough\": Same data structure (e.g., cards → cards)\n- \"javascript\": Need transformation (e.g., categories → items)\n",
+      "inputVariables": {
+        "planORS": "(omitted for brevity)",
+        "concernText": "引越し先を検討中。候補地の長所短所を分類してから、最終的にトレードオフを比較したい",
+        "enableReactivity": true,
+        "widgetSelectionResult": "(omitted for brevity)"
+      },
+      "serverValidatedAt": "2025-12-13T10:09:26.243Z",
+      "timestamp": "2025-12-13T10:09:26.244Z"
+    }
+  ]
+}
